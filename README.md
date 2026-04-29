@@ -1,243 +1,153 @@
-# GreenFreightAcademy — Frontend Package
+# Green Freight Academy (GFA)
 
-**Stack:** Next.js 15 (App Router) · TypeScript · Tailwind CSS · shadcn/ui  
-**Role in ecosystem:** Enterprise capability and performance engine for road freight operators  
-**Audience:** Fleet operators, transport company owners, HR and training managers, procurement teams  
-**Handoff to:** Asif (backend, API layer, Supabase, Moodle middleware, Vercel deployment)
+**Website:** [greenfreightacademy.co.za](https://greenfreightacademy.co.za)
+
+GFA is a B2B training platform that enables transport companies to deploy professional driver training programmes at scale. Companies register, import their drivers, pay via Paystack, and deploy training through the BetterDriver LMS. This repository contains the full source code for the GFA platform.
 
 ---
 
-## Quick Start
+## Technology Stack
+
+| Layer | Technology |
+| :--- | :--- |
+| Framework | Next.js 14 (App Router, standalone output) |
+| Language | TypeScript |
+| Styling | Tailwind CSS |
+| Database | Supabase (PostgreSQL) |
+| Payments | Paystack |
+| Email | Resend |
+| Messaging | WhatsApp Business API (Meta Graph API) |
+| LMS | Moodle (via REST API) |
+| Auth | JWT (custom auth for clients and admins) |
+| Deployment | Node.js standalone + Nginx + PM2 |
+
+---
+
+## User Roles
+
+| Role | Access | Description |
+| :--- | :--- | :--- |
+| Client | Company dashboard | Transport company managing drivers, quotes, payments, bulletins |
+| Admin | Admin dashboard | GFA staff managing companies, cohorts, vouchers, CPD queue |
+| Super Admin | CEO dashboard and Sales Funnel | Full platform visibility and lead management |
+
+---
+
+## Project Structure
+
+```
+app/
+  api/                        # Backend API routes
+    admin/                    # Admin-only routes (JWT protected)
+    auth/                     # Login, logout, register
+    bulletins/                # CPD bulletin creation and dissemination
+    company/                  # Driver import, quoting, deployment
+    paystack/                 # Payment initialisation, verification, webhook
+    trial/                    # Trial voucher activation
+  admin/                      # Admin pages
+    dashboard/                # Admin overview
+    companies/                # Company management
+    cohorts/                  # Cohort approval workflow
+    leads/                    # Lead management
+    vouchers/                 # Trial voucher management
+    cpd-queue/                # CPD bulletin approval queue
+    funnel/                   # Sales funnel (super admin only)
+    super/                    # CEO dashboard (super admin only)
+    pricing/                  # Programme pricing management
+    stats/                    # Impact statistics
+    email-settings/           # Email template settings
+    settings/messaging/       # WhatsApp message template settings
+  dashboard/                  # Client dashboard pages
+    bulletins/                # CPD bulletin creation and management
+    campaigns/                # Bulletin campaign management
+    import/                   # Driver CSV import
+    reports/                  # Training reports
+  programmes/                 # Public programme listing
+  pricing/                    # Public pricing page
+  publications/               # CPD publications library
+  registry/                   # Public driver registry
+  login/ register/ trial/     # Auth and onboarding
+  about/ contact/ privacy/ terms/ cpd-bulletins/
+components/                   # Shared React components
+lib/                          # Utilities, constants, Supabase client
+public/                       # Static assets
+```
+
+---
+
+## Local Development
 
 ```bash
-cp .env.example .env.local
-# Fill in .env.local values
+git clone https://github.com/Abdool11/greenfreightacademy.git
+cd greenfreightacademy
 npm install
+cp .env.local.example .env.local
+# Fill in .env.local values
+# Run supabase-setup.sql against your Supabase project
 npm run dev
 ```
 
 ---
 
-## File Structure
+## Environment Variables
 
-```
-app/                          → Page routes (App Router)
-  page.tsx                    → Homepage (12 sections)
-  layout.tsx                  → Root layout with Navigation + Footer
-  loading.tsx                 → Root loading state
-  error.tsx                   → Root error boundary
-  not-found.tsx               → 404 page
-  about/                      → About GFA
-  programmes/                 → Programme catalogue (6 programmes)
-  pricing/                    → Pricing page
-  contact/                    → Enquiry form
-  registry/                   → Public driver registry (stub)
-  login/                      → Company login (stub)
-  register/                   → Company registration (stub)
-  dashboard/
-    page.tsx                  → Company dashboard — metrics + enrolment grid
-    import/                   → CSV employee import
-    career-planner/           → Career path planner
-    cpd-submission/           → CPD incident submission form
-    reports/                  → Reports download (stub)
-
-components/
-  layout/
-    Navigation.tsx            → Top navigation with logo, links, auth state
-    Footer.tsx                → Footer with ecosystem links
-
-lib/
-  constants.ts                → All static data — programmes, pricing, mock employees, nav links
-
-types/
-  index.ts                    → All TypeScript interfaces
-
-.env.example                  → All required environment variables
-```
+| Variable | Required | Description |
+| :--- | :--- | :--- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key |
+| `GFA_JWT_SECRET` | Yes | Secret for signing client JWT tokens |
+| `ADMIN_JWT_SECRET` | Yes | Secret for signing admin JWT tokens |
+| `PAYSTACK_SECRET_KEY` | Yes | Paystack secret key |
+| `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | Yes | Paystack public key |
+| `RESEND_API_KEY` | Yes | Resend API key for transactional emails |
+| `WHATSAPP_ACCESS_TOKEN` | Optional | Meta Graph API token for WhatsApp nudges |
+| `WHATSAPP_PHONE_NUMBER_ID` | Optional | WhatsApp Business phone number ID |
+| `MOODLE_URL` | Optional | Base URL of the Moodle instance |
+| `MOODLE_TOKEN` | Optional | Moodle REST API token |
+| `MOODLE_DRIVER_PROGRAMME_COURSE_ID` | Optional | Moodle course ID for Professional Driver programme |
+| `MOODLE_ECO_DRIVER_COURSE_ID` | Optional | Moodle course ID for Eco-Driver programme |
+| `BD_BASE_URL` | Yes | BetterDriver site URL |
+| `NEXT_PUBLIC_SITE_URL` | Yes | Full URL of this site in production |
 
 ---
 
-## Component Inventory
+## Branching and Version Control Workflow
 
-| Component | File | Props | Data source |
-|---|---|---|---|
-| Navigation | `components/layout/Navigation.tsx` | `user?: User` | TODO: Supabase session |
-| Footer | `components/layout/Footer.tsx` | none | Static — `FOOTER_LINKS` |
-| Homepage | `app/page.tsx` | none | `DEMO_METRICS` (TODO: `/api/metrics`) |
-| Programmes | `app/programmes/page.tsx` | none | Static — `PROGRAMMES` |
-| Pricing | `app/pricing/page.tsx` | none | Static — `PROGRAMMES` |
-| Contact form | `app/contact/page.tsx` | URL params: `?type=`, `?programme=` | TODO: `/api/submit-enquiry` |
-| Dashboard | `app/dashboard/page.tsx` | none | `MOCK_EMPLOYEES` (TODO: `/api/company/*`) |
-| Import | `app/dashboard/import/page.tsx` | none | TODO: `/api/company/import-employees` |
-| Career planner | `app/dashboard/career-planner/page.tsx` | none | Static — `CAREER_PATHWAYS` |
-| CPD submission | `app/dashboard/cpd-submission/page.tsx` | none | TODO: `/api/cpd-submission` + Paystack |
+All changes go through a branch and Pull Request — nothing is pushed directly to `main`.
 
----
+### Branch Naming Convention
 
-## Data Flow
+| Type | Pattern | Example |
+| :--- | :--- | :--- |
+| New feature | `feature/short-description` | `feature/bulk-driver-import` |
+| Bug fix | `fix/short-description` | `fix/paystack-webhook-signature` |
+| Content update | `content/short-description` | `content/update-pricing-page` |
+| Hotfix (urgent) | `hotfix/short-description` | `hotfix/login-redirect-broken` |
 
-### Academy Impact Strip (Homepage)
-```
-Frontend (client-side fetch)
-  → GET /api/metrics
-  → Returns: { seatsBooked, certificationsCompleted, companiesEnrolled, lastUpdated, dataSource }
-  → Falls back to DEMO_METRICS if fetch fails or dataSource === "demo"
-```
+### Step-by-Step Workflow
 
-### Enquiry Form
-```
-Contact page form submit
-  → Server Action → POST /api/submit-enquiry
-  → Payload: { type, organisationName, organisationRole, name, email, mobile, fleetSize?, message }
-  → Supabase: INSERT into enquiry_submissions
-  → Edge function: send email notification to admin
-```
-
-### Employee Import
-```
-Dashboard import page
-  → GET /api/company/template → CSV download
-  → POST /api/company/import-employees (multipart/form-data)
-  → Supabase: INSERT employees into company_employees table
-  → Returns: { imported: number, errors: ImportError[] }
-```
-
-### Bulk Enrolment
-```
-Dashboard enrolment grid
-  → User selects employees + programme → clicks "Enrol selected"
-  → POST /api/bulk-enroll
-  → Payload: { employeeIds: string[], programmeId: string }
-  → Moodle middleware: create enrolments
-  → Supabase: log enrolment records
-  → Paystack: initiate payment if applicable
-```
-
-### CPD Submission
-```
-CPD submission form
-  → POST /api/cpd-submission
-  → Payload: { companyId, incidentTitle, incidentDescription, mitigation, visibility, dispatch }
-  → Supabase: INSERT into cpd_submissions
-  → If dispatch === "urgent": redirect to Paystack for URGENT_CPD_FEE_ZAR
-  → On payment success: mark urgent_fee_paid = true, notify admin
-  → Edge function: email notification to admin
-```
+1. Create a branch from `main`: `git checkout -b feature/your-feature-name`
+2. Make changes and commit: `git commit -m "feat: describe what changed and why"`
+3. Push the branch: `git push origin feature/your-feature-name`
+4. Open a Pull Request on GitHub against `main`
+5. Review the diff — GitHub flags any conflicts before merge
+6. Approve and merge to `main`
+7. Delete the feature branch after merging
 
 ---
 
-## Supabase Schema (Required Tables)
+## Deployment
 
-### enquiry_submissions
-```sql
-CREATE TABLE enquiry_submissions (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  type TEXT NOT NULL, -- fleet-company | individual-learner | partnership | general
-  organisation_name TEXT NOT NULL,
-  organisation_role TEXT NOT NULL,
-  name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  mobile TEXT NOT NULL,
-  fleet_size TEXT,
-  message TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
+Packaged as a standalone tar.gz including `server.js`, `pm2.config.js`, `nginx.conf`, `deploy.sh`, `QUICK-START-CARD.md`, and `.env.local.example`.
 
-### company_employees
-```sql
-CREATE TABLE company_employees (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  company_id UUID NOT NULL REFERENCES companies(id),
-  name TEXT NOT NULL,
-  role TEXT,
-  email TEXT NOT NULL,
-  mobile TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
-
-### enrolments
-```sql
-CREATE TABLE enrolments (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  employee_id UUID NOT NULL REFERENCES company_employees(id),
-  programme_id TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'enrolled', -- enrolled | in-progress | certified
-  progress_percent INTEGER DEFAULT 0,
-  started_at TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ,
-  certificate_url TEXT,
-  cpd_completions INTEGER DEFAULT 0,
-  last_activity_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
-
-### cpd_submissions
-```sql
-CREATE TABLE cpd_submissions (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  company_id UUID NOT NULL REFERENCES companies(id),
-  incident_title TEXT NOT NULL,
-  incident_description TEXT NOT NULL,
-  mitigation TEXT NOT NULL,
-  visibility TEXT NOT NULL, -- anonymous | confidential
-  dispatch TEXT NOT NULL, -- urgent | standard
-  status TEXT NOT NULL DEFAULT 'submitted', -- submitted | under_review | accepted | in_development | published
-  urgent_fee_paid BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
+> **Important:** The Nginx config must include a `location /_next/static/` block. Without this the site loads without any styling. This is already included in the provided `nginx.conf`.
 
 ---
 
-## Moodle API Endpoints Required
+## Related Repositories
 
-Asif to request access to or document these endpoints:
-
-| Endpoint | Purpose |
-|---|---|
-| `core_course_get_courses` | Fetch course catalogue |
-| `enrol_manual_enrol_users` | Enrol a user in a course |
-| `core_completion_get_course_completion_status` | Get completion status for a user |
-| `core_user_create_users` | Create a Moodle user account |
-| `gradereport_user_get_grade_items` | Get grades/assessment results |
-
----
-
-## Authentication Flow (Supabase Auth)
-
-1. Company registers at `/register` → Supabase creates user + company record
-2. Company logs in at `/login` → Supabase session cookie set
-3. Dashboard routes check for session → redirect to `/login` if none
-4. `ctx.user.companyId` available in all authenticated routes
-5. Company self-service: import employees, select programmes, make payment, view reports
-
----
-
-## Mock Data
-
-All mock data is in `lib/constants.ts` and clearly marked with `// TODO: Asif to replace`.
-
-- `DEMO_METRICS`: 152 seats booked, 127 certifications (84% completion) — derived from AutoCarriers (89) + KDG (63) driver registers
-- `MOCK_EMPLOYEES`: 5 employees with varied enrolment states for dashboard UI demonstration
-
----
-
-## TODO: Asif Integration Checklist
-
-- [ ] Implement Supabase Auth (company registration, login, session)
-- [ ] Protect dashboard routes with auth middleware
-- [ ] Build `/api/metrics` endpoint with Supabase query + caching
-- [ ] Build `/api/submit-enquiry` with Supabase insert + email notification
-- [ ] Build `/api/company/employees` — fetch employees for authenticated company
-- [ ] Build `/api/company/import-employees` — CSV parse + Supabase insert
-- [ ] Build `/api/bulk-enroll` — Moodle enrolment + Supabase audit log
-- [ ] Build `/api/cpd-submission` — Supabase insert + Paystack redirect for urgent
-- [ ] Build `/api/reports` — aggregated progress data, downloadable CSV/PDF
-- [ ] Build Moodle middleware layer (sanitize, cache, log)
-- [ ] Wire Navigation auth state to Supabase session
-- [ ] Implement Paystack payment for urgent CPD fee and programme enrolments
-- [ ] Build driver registry search at `/registry`
-- [ ] Set `NEXT_PUBLIC_DATA_SOURCE=live` when all endpoints are connected
+| Site | Repository |
+| :--- | :--- |
+| Transport Action Group | [Abdool11/transportactiongroup](https://github.com/Abdool11/transportactiongroup) |
+| BetterDriver | [Abdool11/betterdriver](https://github.com/Abdool11/betterdriver) |
