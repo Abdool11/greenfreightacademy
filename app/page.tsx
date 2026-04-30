@@ -8,6 +8,7 @@
  * Programme cards: static from lib/constants.ts (PROGRAMMES array)
  */
 
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -26,7 +27,52 @@ import {
 import { PROGRAMMES, CAPABILITY_PILLARS, ECOSYSTEM_URLS } from "@/lib/constants";
 import { LiveStats } from "@/components/LiveStats";
 
-// ─── Section 1: Hero ──────────────────────────────────────────────────────────
+export const metadata: Metadata = {
+  title: "Green Freight Academy | Specialist Training for Road Freight Companies",
+  description:
+    "GreenFreightAcademy is South Africa's specialist capability platform for the road freight sector. Practical training, certification, and development programmes for drivers, fleet managers, and transport leaders — built to reduce risk and increase profits.",
+  keywords: [
+    "green freight academy",
+    "truck driver training South Africa",
+    "fleet management training South Africa",
+    "eco-driving training",
+    "road freight training",
+    "driver certification South Africa",
+    "fleet capability platform",
+    "transport manager training",
+    "green freight training",
+    "professional driver development",
+    "road freight South Africa",
+    "fleet performance improvement",
+    "RTMS training South Africa",
+  ],
+  openGraph: {
+    title: "Green Freight Academy | Specialist Training for Road Freight Companies",
+    description:
+      "South Africa's specialist capability platform for road freight. Practical training and certification programmes for drivers, fleet managers, and transport leaders.",
+    url: "https://www.greenfreightacademy.co.za",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Green Freight Academy — Specialist Training for Road Freight",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Green Freight Academy | Specialist Training for Road Freight Companies",
+    description:
+      "South Africa's specialist capability platform for road freight. Practical training and certification programmes for drivers, fleet managers, and transport leaders.",
+    images: ["/og-image.png"],
+  },
+  alternates: {
+    canonical: "https://www.greenfreightacademy.co.za",
+  },
+};
+
+// ─── Section 1: Hero ───────────────────────────────────────────────────────────
 async function HeroSection() {
   return (
     <section

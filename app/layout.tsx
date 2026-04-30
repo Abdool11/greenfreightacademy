@@ -22,7 +22,14 @@ export const metadata: Metadata = {
     "green freight procurement",
     "freight certification",
     "RTMS training",
+    "fleet management South Africa",
+    "professional driver development",
+    "road freight South Africa",
+    "transport manager training",
   ],
+  authors: [{ name: "Green Freight Academy", url: "https://www.greenfreightacademy.co.za" }],
+  creator: "Green Freight Academy",
+  publisher: "Green Freight Academy",
   robots: {
     index: true,
     follow: true,
@@ -40,12 +47,52 @@ export const metadata: Metadata = {
     title: `${SITE_NAME} — ${SITE_TAGLINE}`,
     description: SITE_DESCRIPTION,
     locale: "en_ZA",
+    url: "https://www.greenfreightacademy.co.za",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Green Freight Academy — Specialist Training for Road Freight",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: `${SITE_NAME} — ${SITE_TAGLINE}`,
     description: SITE_DESCRIPTION,
+    images: ["/og-image.png"],
   },
+  alternates: {
+    canonical: "https://www.greenfreightacademy.co.za",
+  },
+};
+
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "EducationalOrganization",
+  name: "Green Freight Academy",
+  alternateName: "GFA",
+  url: "https://www.greenfreightacademy.co.za",
+  logo: "https://www.greenfreightacademy.co.za/og-image.png",
+  description:
+    "Green Freight Academy is South Africa's specialist capability platform for the road freight sector — providing practical training, certification, and development programmes for drivers, fleet managers, and transport leaders.",
+  address: {
+    "@type": "PostalAddress",
+    addressCountry: "ZA",
+  },
+  sameAs: [
+    "https://www.linkedin.com/company/green-freight-academy",
+  ],
+};
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Green Freight Academy",
+  url: "https://www.greenfreightacademy.co.za",
+  description:
+    "South Africa's specialist capability platform for the road freight sector.",
 };
 
 export default function RootLayout({
@@ -61,6 +108,14 @@ export default function RootLayout({
         <link
           href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=Inter:wght@300;400;500;600&display=swap"
           rel="stylesheet"
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
       </head>
       <body>

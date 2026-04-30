@@ -15,9 +15,28 @@ import { PROGRAMMES } from "@/lib/constants";
 import { getSession } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Programmes",
+  title: "Training Programmes | Road Freight Capability Development",
   description:
-    "Six training programmes covering every level of the road freight enterprise — from professional drivers to transition leaders.",
+    "Green Freight Academy offers six specialist training programmes for road freight companies — covering professional truck drivers, eco-driving, fleet management, transport managers, green freight procurement, and electric truck transition planning.",
+  keywords: [
+    "truck driver training programmes South Africa",
+    "eco-driving training programme",
+    "fleet management training programme",
+    "transport manager training South Africa",
+    "green freight procurement training",
+    "electric truck transition training",
+    "road freight training courses",
+    "professional driver development programme",
+  ],
+  openGraph: {
+    title: "Training Programmes | Green Freight Academy",
+    description:
+      "Six specialist training programmes for road freight companies — from professional drivers to transition leaders. Built for fleet-wide rollout.",
+    url: "https://www.greenfreightacademy.co.za/programmes",
+  },
+  alternates: {
+    canonical: "https://www.greenfreightacademy.co.za/programmes",
+  },
 };
 
 export default async function ProgrammesPage() {

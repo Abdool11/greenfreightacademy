@@ -15,9 +15,26 @@ import { PROGRAMMES } from "@/lib/constants";
 import { getSession } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Pricing",
+  title: "Pricing | Fleet Training Programmes",
   description:
-    "Transparent, adoption-friendly pricing across all GreenFreightAcademy programmes. Driver programmes from R35 per driver per month.",
+    "Transparent, adoption-friendly pricing for all Green Freight Academy training programmes. Driver development programmes from R35 per driver per month. Scalable pricing for fleet-wide rollout across South African road freight companies.",
+  keywords: [
+    "fleet training pricing South Africa",
+    "truck driver training cost South Africa",
+    "road freight training pricing",
+    "fleet development programme cost",
+    "driver training per month South Africa",
+    "green freight training fees",
+  ],
+  openGraph: {
+    title: "Pricing | Green Freight Academy",
+    description:
+      "Transparent, scalable pricing for fleet training programmes. Driver development from R35 per driver per month. Built for fleet-wide rollout.",
+    url: "https://www.greenfreightacademy.co.za/pricing",
+  },
+  alternates: {
+    canonical: "https://www.greenfreightacademy.co.za/pricing",
+  },
 };
 
 export default async function PricingPage() {
