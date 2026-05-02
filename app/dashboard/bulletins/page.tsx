@@ -1,4 +1,5 @@
 "use client";
+
 export const dynamic = "force-dynamic";
 
 import { useState, useRef, useEffect } from "react";
@@ -6,6 +7,7 @@ import Link from "next/link";
 import {
   Upload, X, Loader2, ImageIcon, Zap, BookOpen, CreditCard, FileText, CheckCircle2
 } from "lucide-react";
+import BulletinWhatsAppFieldSelector, { type BulletinNotificationField } from "@/components/BulletinWhatsAppFieldSelector";
 
 const CATEGORIES = [
   { value: "safety", label: "Safety" },
@@ -74,6 +76,7 @@ export default function BulletinsPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"paystack" | "invoice">("paystack");
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [notificationFields, setNotificationFields] = useState<BulletinNotificationField[]>(["title", "urgency", "driver_action", "portal_link"]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -240,7 +243,7 @@ export default function BulletinsPage() {
       const res = await fetch("/api/bulletins/disseminate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bulletin_id: result.bulletin_id }),
+        body: JSON.stringify({ bulletin_id: result.bulletin_id, notification_fields: notificationFields }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -755,6 +758,18 @@ export default function BulletinsPage() {
               </label>
             </div>
           )}
+
+          {/* WhatsApp notification fields */}
+          <div className="bg-[#0d1a0d] border border-[#1a3a22] rounded-xl p-5">
+            <BulletinWhatsAppFieldSelector
+              selected={notificationFields}
+              onChange={setNotificationFields}
+              driverName="Sipho"
+              bulletinTitle={form.title || "Tyre pressure check procedure"}
+              urgency={form.urgency}
+              driverAction={form.driver_action || "Check all tyre pressures before departure"}
+            />
+          </div>
 
           {/* Audience */}
           <div>

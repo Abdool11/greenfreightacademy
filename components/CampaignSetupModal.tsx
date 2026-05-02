@@ -1,11 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { X, Loader2, Calendar, CheckCircle2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, Loader2, Calendar, CheckCircle2, Play } from "lucide-react";
+
+interface GFAVideo {
+  id: string;
+  title: string;
+  playback_url: string | null;
+  language: string;
+  programme: string | null;
+  upload_status: string;
+}
 
 interface CampaignSetupModalProps {
-  quoteId: string;
+  quoteId?: string;
   enrolmentIds: string[];
+  programme?: string;
   onClose: () => void;
   onCreated: (campaignId: string) => void;
 }
@@ -19,6 +29,7 @@ const DURATION_OPTIONS = [
 
 export default function CampaignSetupModal({
   enrolmentIds,
+  programme,
   onClose,
   onCreated,
 }: CampaignSetupModalProps) {
@@ -28,6 +39,19 @@ export default function CampaignSetupModal({
   const [isCustom, setIsCustom] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [videos, setVideos] = useState<GFAVideo[]>([]);
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
+  const [loadingVideos, setLoadingVideos] = useState(true);
+
+  useEffect(() => {
+    const params = new URLSearchParams({ type: "invite" });
+    if (programme) params.set("programme", programme);
+    fetch(`/api/admin/video-library?${params}`)
+      .then((r) => r.json())
+      .then((d) => setVideos((d.videos ?? []).filter((v: GFAVideo) => v.upload_status === "ready")))
+      .catch(() => {})
+      .finally(() => setLoadingVideos(false));
+  }, [programme]);
 
   const effectiveDays = isCustom ? parseInt(customDays, 10) || 0 : selectedDuration;
 
@@ -43,6 +67,7 @@ export default function CampaignSetupModal({
     setError(null);
     setCreating(true);
     try {
+      const selectedVideo = videos.find((v) => v.id === selectedVideoId) ?? null;
       const res = await fetch("/api/company/training-campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -50,6 +75,8 @@ export default function CampaignSetupModal({
           name: name.trim(),
           duration_days: effectiveDays,
           enrolment_ids: enrolmentIds,
+          invite_video_id: selectedVideoId ?? null,
+          invite_video_url: selectedVideo?.playback_url ?? null,
         }),
       });
       const data = await res.json();
@@ -142,6 +169,34 @@ export default function CampaignSetupModal({
               <span>Campaign ends <strong className="text-white">{endDate}</strong></span>
             </div>
           )}
+
+          {/* Invite video */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Invite video <span className="text-gray-500 font-normal">(optional)</span></label>
+            <p className="text-xs text-gray-500 mb-2">Plays when the driver taps their magic link for the first time.</p>
+            {loadingVideos ? (
+              <div className="flex items-center gap-2 text-gray-500 text-sm"><Loader2 size={13} className="animate-spin" /> Loading videos…</div>
+            ) : videos.length === 0 ? (
+              <p className="text-xs text-gray-500">No invite videos available. Upload one in the <a href="/admin/video-library" target="_blank" className="text-[#4ade80] underline">Video Library</a>.</p>
+            ) : (
+              <div className="space-y-2">
+                <label className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border cursor-pointer transition-colors ${selectedVideoId === null ? "border-[#22c55e] bg-[#22c55e]/5" : "border-[#1a3a22] hover:border-[#22c55e]/30"}`}>
+                  <input type="radio" name="video" checked={selectedVideoId === null} onChange={() => setSelectedVideoId(null)} className="accent-[#22c55e]" />
+                  <span className="text-sm text-gray-400">No invite video</span>
+                </label>
+                {videos.map((video) => (
+                  <label key={video.id} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border cursor-pointer transition-colors ${selectedVideoId === video.id ? "border-[#22c55e] bg-[#22c55e]/5" : "border-[#1a3a22] hover:border-[#22c55e]/30"}`}>
+                    <input type="radio" name="video" checked={selectedVideoId === video.id} onChange={() => setSelectedVideoId(video.id)} className="accent-[#22c55e]" />
+                    <Play size={13} className={selectedVideoId === video.id ? "text-[#4ade80]" : "text-gray-600"} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-white truncate">{video.title}</div>
+                      <div className="text-xs text-gray-500">{video.language.toUpperCase()}{video.programme ? ` · ${video.programme.toUpperCase()}` : ""}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Enrolment count */}
           <div className="flex items-center gap-2 text-sm text-gray-400">

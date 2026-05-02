@@ -10,6 +10,8 @@ Key platform capabilities include:
 - **Escalation Nudges** — bulk or selective WhatsApp nudges to outstanding candidates, with campaign name and deadline embedded in the message
 - **Campaign Closure & Credit Refunds** — closing a campaign expires outstanding enrolments and refunds fees as platform credits (100% for non-starters, 50% for in-progress drivers)
 - **HR Feedback (Self-Evaluation)** — a 3-question 5-star widget completed by drivers after course completion: (1) I understand the material, (2) I enjoyed the learning experience, (3) I want to learn more; aggregate scores are visible per campaign
+- **GFA Video Library** — admin-managed Bunny.net-backed video library for invite videos, teaser videos, portal walkthrough videos, and module content; videos are tagged by type, language (EN/ZU), and programme; invite videos are selectable when creating a training campaign and are delivered to drivers on first magic link tap
+- **WhatsApp Bulletin Notification Fields** — when creating a driver bulletin, the operator selects which fields to include in the WhatsApp message (topic, urgency level, category, driver action, mitigation message, portal link); a live preview shows exactly what each driver will receive before dissemination
 
 ---
 
@@ -66,6 +68,7 @@ app/
     stats/                    # Impact statistics
     email-settings/           # Email template settings
     settings/messaging/       # WhatsApp message template settings
+    video-library/            # GFA Video Library (Bunny.net upload, manage, assign)
   dashboard/                  # Client dashboard pages
     bulletins/                # CPD bulletin creation and management
     campaigns/                # Bulletin campaign management
@@ -79,8 +82,9 @@ app/
   login/ register/ trial/     # Auth and onboarding
   about/ contact/ privacy/ terms/ cpd-bulletins/
 components/                   # Shared React components
-  CampaignSetupModal.tsx      # Duration picker modal shown after Deploy Training
+  CampaignSetupModal.tsx      # Duration picker + invite video selector shown after Deploy Training
   HRFeedbackWidget.tsx        # 3-question star-rating self-evaluation widget
+  BulletinWhatsAppFieldSelector.tsx  # Selectable WhatsApp notification fields for bulletin dissemination
 lib/                          # Utilities, constants, Supabase client
 public/                       # Static assets
 supabase/migrations/          # SQL migration files (apply via Supabase SQL editor)
@@ -100,6 +104,7 @@ cp .env.local.example .env.local
 #   supabase-setup.sql
 # Apply all incremental migrations in order:
 #   supabase/migrations/20260502_training_campaigns.sql
+#   supabase/migrations/20260502_video_library_bulletin_fields.sql
 npm run dev
 ```
 
@@ -125,6 +130,9 @@ npm run dev
 | `MOODLE_TOKEN` | Optional | Moodle REST API token |
 | `MOODLE_DRIVER_PROGRAMME_COURSE_ID` | Optional | Moodle course ID for Professional Driver programme |
 | `MOODLE_ECO_DRIVER_COURSE_ID` | Optional | Moodle course ID for Eco-Driver programme |
+| `BUNNY_API_KEY` | Optional | Bunny.net API key for video library uploads |
+| `BUNNY_LIBRARY_ID` | Optional | Bunny.net video library ID |
+| `BUNNY_CDN_HOSTNAME` | Optional | Bunny.net CDN hostname for playback URLs |
 | `BD_BASE_URL` | Yes | BetterDriver site URL |
 | `NEXT_PUBLIC_SITE_URL` | Yes | Full URL of this site in production |
 
