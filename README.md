@@ -4,6 +4,13 @@
 
 GFA is a B2B training platform that enables transport companies to deploy professional driver training programmes at scale. Companies register, import their drivers, pay via Paystack, and deploy training through the BetterDriver LMS. This repository contains the full source code for the GFA platform.
 
+Key platform capabilities include:
+- **Training Campaign Lifecycle** — companies set a target duration (1 week, 2 weeks, 1 month, or custom) when deploying training; campaigns track completion progress, outstanding candidates, and escalation nudges with WhatsApp deadline reminders
+- **Campaign Reporting** — per-campaign stats (enrolled, not started, in progress, completed) with a time progress bar and days-remaining countdown
+- **Escalation Nudges** — bulk or selective WhatsApp nudges to outstanding candidates, with campaign name and deadline embedded in the message
+- **Campaign Closure & Credit Refunds** — closing a campaign expires outstanding enrolments and refunds fees as platform credits (100% for non-starters, 50% for in-progress drivers)
+- **HR Feedback (Self-Evaluation)** — a 3-question 5-star widget completed by drivers after course completion: (1) I understand the material, (2) I enjoyed the learning experience, (3) I want to learn more; aggregate scores are visible per campaign
+
 ---
 
 ## Technology Stack
@@ -42,6 +49,8 @@ app/
     auth/                     # Login, logout, register
     bulletins/                # CPD bulletin creation and dissemination
     company/                  # Driver import, quoting, deployment
+      training-campaigns/     # Campaign CRUD, close (credit refund), escalation nudge
+    driver/                   # Driver-facing endpoints (HR feedback)
     paystack/                 # Payment initialisation, verification, webhook
     trial/                    # Trial voucher activation
   admin/                      # Admin pages
@@ -60,6 +69,7 @@ app/
   dashboard/                  # Client dashboard pages
     bulletins/                # CPD bulletin creation and management
     campaigns/                # Bulletin campaign management
+    training-campaigns/       # Training campaign lifecycle management (progress, nudges, close, HR feedback)
     import/                   # Driver CSV import
     reports/                  # Training reports
   programmes/                 # Public programme listing
@@ -69,8 +79,11 @@ app/
   login/ register/ trial/     # Auth and onboarding
   about/ contact/ privacy/ terms/ cpd-bulletins/
 components/                   # Shared React components
+  CampaignSetupModal.tsx      # Duration picker modal shown after Deploy Training
+  HRFeedbackWidget.tsx        # 3-question star-rating self-evaluation widget
 lib/                          # Utilities, constants, Supabase client
 public/                       # Static assets
+supabase/migrations/          # SQL migration files (apply via Supabase SQL editor)
 ```
 
 ---
@@ -83,9 +96,14 @@ cd greenfreightacademy
 npm install
 cp .env.local.example .env.local
 # Fill in .env.local values
-# Run supabase-setup.sql against your Supabase project
+# Apply the base schema against your Supabase project:
+#   supabase-setup.sql
+# Apply all incremental migrations in order:
+#   supabase/migrations/20260502_training_campaigns.sql
 npm run dev
 ```
+
+> **Database migrations:** Each file in `supabase/migrations/` is a standalone SQL script. Apply them in filename order via the Supabase dashboard SQL editor or the Supabase CLI (`supabase db push`).
 
 ---
 
