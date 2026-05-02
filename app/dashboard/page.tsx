@@ -5,8 +5,9 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   Users, Award, Upload, CheckCircle2, Loader2, Send,
-  CreditCard, BarChart3, FileText, LogOut, RefreshCw, Bell, BookOpen, Zap,
+  CreditCard, BarChart3, FileText, LogOut, RefreshCw, Bell, BookOpen, Zap, Target,
 } from "lucide-react";
+import CampaignSetupModal from "@/components/CampaignSetupModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -103,6 +104,11 @@ export default function DashboardPage() {
   const [deploying, setDeploying] = useState<string | null>(null);
   const [sendingNudge, setSendingNudge] = useState(false);
   const [nudgeSent, setNudgeSent] = useState(false);
+  // Campaign setup modal
+  const [showCampaignModal, setShowCampaignModal] = useState(false);
+  const [pendingDeployQuoteId, setPendingDeployQuoteId] = useState<string | null>(null);
+  const [pendingEnrolmentIds, setPendingEnrolmentIds] = useState<string[]>([]);
+  const [campaignCreated, setCampaignCreated] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -201,8 +207,21 @@ export default function DashboardPage() {
   const handleDeploy = async (quoteId: string) => {
     setDeploying(quoteId);
     try {
-      await fetch("/api/company/deploy", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quoteId }) });
-      await fetchData();
+      const res = await fetch("/api/company/deploy", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quoteId }) });
+      if (res.ok) {
+        // After deploying, gather the newly created enrolment IDs and show campaign setup
+        const driversRes = await fetch("/api/company/drivers");
+        const driversData = await driversRes.json();
+        const allEnrolments: string[] = (driversData.drivers ?? []).flatMap((d: { enrolments: Array<{ id: string; quote_id?: string }> }) =>
+          d.enrolments.filter((e) => e.quote_id === quoteId).map((e) => e.id)
+        );
+        if (allEnrolments.length > 0) {
+          setPendingDeployQuoteId(quoteId);
+          setPendingEnrolmentIds(allEnrolments);
+          setShowCampaignModal(true);
+        }
+        await fetchData();
+      }
     } finally { setDeploying(null); }
   };
 
@@ -235,6 +254,20 @@ export default function DashboardPage() {
 
   return (
     <div style={{ paddingTop: "5rem", background: "var(--color-slate-900)", minHeight: "100vh" }}>
+      {/* Campaign Setup Modal */}
+      {showCampaignModal && pendingDeployQuoteId && (
+        <CampaignSetupModal
+          quoteId={pendingDeployQuoteId}
+          enrolmentIds={pendingEnrolmentIds}
+          onClose={() => { setShowCampaignModal(false); setPendingDeployQuoteId(null); }}
+          onCreated={(id) => {
+            setCampaignCreated(id);
+            setShowCampaignModal(false);
+            setPendingDeployQuoteId(null);
+            setTimeout(() => setCampaignCreated(null), 6000);
+          }}
+        />
+      )}
       <div style={{ background: "linear-gradient(160deg, #0a1628 0%, #0f1f3d 100%)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "2rem 0" }}>
         <div className="container-gfa" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
           <div>
@@ -251,8 +284,11 @@ export default function DashboardPage() {
             <Link href="/dashboard/bulletins" style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "0.5rem", padding: "0.5rem 1rem", color: "#f59e0b", fontSize: "0.8125rem", fontWeight: 600, textDecoration: "none" }}>
               <Bell size={14} /> Driver Bulletins
             </Link>
+            <Link href="/dashboard/training-campaigns" style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.15)", borderRadius: "0.5rem", padding: "0.5rem 1rem", color: "#4ade80", fontSize: "0.8125rem", fontWeight: 600, textDecoration: "none" }}>
+              <Target size={14} /> Training Campaigns
+            </Link>
             <Link href="/dashboard/campaigns" style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "0.5rem", padding: "0.5rem 1rem", color: "#9ca3af", fontSize: "0.8125rem", textDecoration: "none" }}>
-              <BarChart3 size={14} /> Campaigns
+              <BarChart3 size={14} /> Bulletin Campaigns
             </Link>
             <Link href="/dashboard/cpd-library" style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "0.5rem", padding: "0.5rem 1rem", color: "#9ca3af", fontSize: "0.8125rem", textDecoration: "none" }}>
               <BookOpen size={14} /> CPD Library
@@ -301,6 +337,12 @@ export default function DashboardPage() {
             {nudgeSent && (
               <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "0.875rem", padding: "1rem 1.25rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.75rem", color: "#f59e0b" }}>
                 <Bell size={17} /> Reminder messages sent successfully.
+              </div>
+            )}
+            {campaignCreated && (
+              <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "0.875rem", padding: "1rem 1.25rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", color: "#22c55e" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><CheckCircle2 size={17} /> Training campaign created. Track progress and send escalation nudges from the <strong>Training Campaigns</strong> page.</span>
+                <Link href="/dashboard/training-campaigns" style={{ color: "#4ade80", fontWeight: 700, fontSize: "0.8125rem", textDecoration: "none", whiteSpace: "nowrap" }}>View Campaigns →</Link>
               </div>
             )}
 

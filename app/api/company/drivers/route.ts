@@ -28,6 +28,8 @@ export async function GET() {
       enrolments(
         id,
         course_id,
+        quote_id,
+        campaign_id,
         status,
         progress_percent,
         progress_modules,
