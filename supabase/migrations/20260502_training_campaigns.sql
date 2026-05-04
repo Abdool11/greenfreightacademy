@@ -41,10 +41,20 @@ ALTER TABLE companies
 -- 4. Row-level security: companies can only see their own campaigns
 ALTER TABLE training_campaigns ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "company_own_campaigns"
-  ON training_campaigns
-  FOR ALL
-  USING (company_id = (
-    SELECT id FROM companies
-    WHERE id = training_campaigns.company_id
-  ));
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'training_campaigns'
+    AND policyname = 'company_own_campaigns'
+  ) THEN
+    CREATE POLICY "company_own_campaigns"
+      ON training_campaigns
+      FOR ALL
+      USING (company_id = (
+        SELECT id FROM companies
+        WHERE id = training_campaigns.company_id
+      ));
+  END IF;
+END
+$$;
