@@ -100,15 +100,21 @@ cd greenfreightacademy
 npm install
 cp .env.local.example .env.local
 # Fill in .env.local values
-# Apply the base schema against your Supabase project:
-#   supabase-setup.sql
-# Apply all incremental migrations in order:
+# For a fresh deployment — run the combined file in one paste:
+#   ALL_MIGRATIONS_RUN_ONCE.sql  (repo root)
+#
+# Or apply individually in this order:
+#   supabase/migrations/20260501_base_schema.sql              <- RUN FIRST
 #   supabase/migrations/20260502_training_campaigns.sql
 #   supabase/migrations/20260502_video_library_bulletin_fields.sql
 npm run dev
 ```
 
-> **Database migrations:** Each file in `supabase/migrations/` is a standalone SQL script. Apply them in filename order via the Supabase dashboard SQL editor or the Supabase CLI (`supabase db push`).
+> **Database migrations:** Each file in `supabase/migrations/` is a standalone SQL script. Apply them in filename order via the Supabase dashboard SQL editor or the Supabase CLI (`supabase db push`). All statements are idempotent — safe to re-run.
+>
+> **Fresh deployment shortcut:** Use `ALL_MIGRATIONS_RUN_ONCE.sql` in the repo root — all migrations concatenated in the correct order, ready to paste into the Supabase SQL editor in one go.
+>
+> **GFA → BD magic link:** The deploy route (`app/api/company/deploy/route.ts`) generates a BD invitation token per driver and sends a WhatsApp message containing the magic link (`{BD_BASE_URL}/join/{token}`). Set `BD_BASE_URL=https://betterdriver.co.za` in `.env.local`.
 
 ---
 
