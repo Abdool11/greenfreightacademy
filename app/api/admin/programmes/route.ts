@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 
   // Log the action
   await supabaseAdmin.from("admin_audit_log").insert({
-    admin_id: session.id,
+    admin_id: session.adminId,
     action: "programme_created",
     details: { programme_id: data.id, name: data.name },
   }).catch(() => {});
@@ -97,7 +97,7 @@ export async function PATCH(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   await supabaseAdmin.from("admin_audit_log").insert({
-    admin_id: session.id,
+    admin_id: session.adminId,
     action: "programme_updated",
     details: { programme_id: id, changes: Object.keys(updates) },
   }).catch(() => {});
@@ -135,7 +135,7 @@ export async function DELETE(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   await supabaseAdmin.from("admin_audit_log").insert({
-    admin_id: session.id,
+    admin_id: session.adminId,
     action: "programme_deleted",
     details: { programme_id: id },
   }).catch(() => {});

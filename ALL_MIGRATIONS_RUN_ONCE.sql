@@ -1,11 +1,4 @@
 -- =============================================================================
--- ALL MIGRATIONS — TAG Ecosystem (GFA + BetterDriver)
--- Run this ONCE on a fresh Supabase project.
--- All statements are idempotent (safe to re-run).
--- Order: base schema → feature migrations
--- =============================================================================
-
--- =============================================================================
 -- BASE SCHEMA — TAG Ecosystem (GFA + BetterDriver)
 -- Run this FIRST on a fresh Supabase project.
 -- All statements are idempotent (safe to re-run).
@@ -505,12 +498,6 @@ ALTER TABLE training_campaigns ENABLE ROW LEVEL SECURITY;
 -- =============================================================================
 -- END OF BASE SCHEMA
 -- =============================================================================
-
--- ============================================================
--- NOTE: The following migrations add to the base schema above.
--- They are safe to run even if base schema already exists.
--- ============================================================
-
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Migration: Training Campaign Lifecycle
 -- Adds training_campaigns table, links enrolments to campaigns,
@@ -571,7 +558,6 @@ BEGIN
   END IF;
 END
 $$;
-
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Migration: GFA Video Library + Bulletin WhatsApp notification fields
 -- Date: 2026-05-02
@@ -641,127 +627,182 @@ ALTER TABLE training_campaigns
 
 ALTER TABLE driver_invitations
   ADD COLUMN IF NOT EXISTS invite_video_url TEXT;
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Migration: Schema Gaps Fix
+-- Date: 2026-05-05
+-- Purpose: Adds all tables and columns referenced in GFA/BD code that were
+--          missing from the base schema (20260501_base_schema.sql).
+--          Safe to run multiple times (IF NOT EXISTS / IF NOT EXISTS guards).
+-- ─────────────────────────────────────────────────────────────────────────────
 
--- ============================================================
--- BD Phase 1: Hybrid token auth rebuild (no password for drivers)
--- Applied: 2026-05-02
--- ============================================================
+-- =============================================================================
+-- 1. bulletin_campaigns
+-- Referenced by: disseminate/route.ts, campaign/route.ts, interactions/route.ts
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS bulletin_campaigns (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  bulletin_id           UUID REFERENCES bulletins(id) ON DELETE CASCADE,
+  company_id            UUID REFERENCES companies(id) ON DELETE CASCADE,
+  total_targeted        INT DEFAULT 0,
+  total_delivered       INT DEFAULT 0,
+  total_opened          INT DEFAULT 0,
+  total_acknowledged    INT DEFAULT 0,
+  total_check_completed INT DEFAULT 0,
+  total_feedback_submitted INT DEFAULT 0,
+  notification_fields   JSONB,
+  disseminated_at       TIMESTAMPTZ DEFAULT NOW(),
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_bulletin_campaigns_bulletin ON bulletin_campaigns(bulletin_id);
+CREATE INDEX IF NOT EXISTS idx_bulletin_campaigns_company ON bulletin_campaigns(company_id);
 
--- 1. Rename activated_at → first_accessed_at on driver_invitations
---    (audit only — no longer gates access)
-ALTER TABLE driver_invitations
-  RENAME COLUMN activated_at TO first_accessed_at;
+-- =============================================================================
+-- 2. campaign_logs
+-- Referenced by: admin/campaigns/route.ts, admin/funnel/route.ts
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS campaign_logs (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_by    UUID,
+  lead_id       UUID REFERENCES prospect_leads(id) ON DELETE SET NULL,
+  lead_count    INT DEFAULT 0,
+  sent_count    INT DEFAULT 0,
+  seats         INT DEFAULT 0,
+  expires_days  INT DEFAULT 30,
+  send_via      TEXT,               -- 'email', 'whatsapp', 'both'
+  channel       TEXT,               -- alias for send_via (used in funnel route)
+  status        TEXT DEFAULT 'sent',
+  sent_at       TIMESTAMPTZ DEFAULT NOW(),
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_campaign_logs_created ON campaign_logs(created_at DESC);
 
--- 2. Add revoked_at for instant operator revocation
-ALTER TABLE driver_invitations
-  ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ DEFAULT NULL;
+-- =============================================================================
+-- 3. cpd_library
+-- Referenced by: bulletins/cpd-library/route.ts, admin/super/route.ts
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS cpd_library (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title         TEXT NOT NULL,
+  category      TEXT,
+  description   TEXT,
+  why_relevant  TEXT,
+  company_id    UUID REFERENCES companies(id) ON DELETE SET NULL,
+  status        TEXT DEFAULT 'active',  -- 'active', 'archived'
+  gfa_notes     TEXT,
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_cpd_library_status ON cpd_library(status);
 
--- 3. Add invite_video_url — the Bunny.net video URL sent with the magic link
-ALTER TABLE driver_invitations
-  ADD COLUMN IF NOT EXISTS invite_video_url TEXT DEFAULT NULL;
+-- =============================================================================
+-- 4. cpd_library_items
+-- Referenced by: bulletins/submit/route.ts, admin/cpd-queue/route.ts
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS cpd_library_items (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  bulletin_id           UUID REFERENCES bulletins(id) ON DELETE CASCADE,
+  company_id            UUID REFERENCES companies(id) ON DELETE SET NULL,
+  title                 TEXT NOT NULL,
+  category              TEXT,
+  description           TEXT,
+  why_relevant          TEXT,
+  source_company_name   TEXT,
+  shared_anonymously    BOOLEAN DEFAULT FALSE,
+  image_urls            JSONB,
+  status                TEXT DEFAULT 'pending_review',
+                        -- 'pending_review', 'approved', 'rejected'
+  is_urgent_contribution BOOLEAN DEFAULT FALSE,
+  admin_notes           TEXT,
+  reviewed_by           UUID,
+  reviewed_at           TIMESTAMPTZ,
+  created_at            TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_cpd_library_items_status ON cpd_library_items(status);
 
--- 4. Remove password_hash from drivers table (drivers never create passwords)
---    We keep the column nullable rather than dropping it to avoid breaking
---    any existing rows; the application will no longer write to it.
-ALTER TABLE drivers
-  ALTER COLUMN password_hash DROP NOT NULL;
-
--- 5. Session token blocklist — for server-side JWT invalidation on revocation
-CREATE TABLE IF NOT EXISTS session_token_blocklist (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  driver_id       UUID NOT NULL REFERENCES drivers(id) ON DELETE CASCADE,
-  blocked_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  reason          TEXT DEFAULT NULL  -- e.g. 'operator_revoked', 'session_expired'
+-- =============================================================================
+-- 5. gfa_admins
+-- Referenced by: lib/auth.ts (getAdminSession)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS gfa_admins (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name          TEXT NOT NULL,
+  email         TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  role          TEXT NOT NULL DEFAULT 'admin',  -- 'admin', 'super_admin'
+  created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_blocklist_driver_id ON session_token_blocklist(driver_id);
-
--- 6. Add program_assignment to driver_invitations
---    Values: 'p1', 'p2', 'p1_p2'
-ALTER TABLE driver_invitations
-  ADD COLUMN IF NOT EXISTS program_assignment TEXT DEFAULT 'p1';
-
--- 7. Add language_preference to drivers table
---    Values: 'en', 'zu', 'af'
-ALTER TABLE drivers
-  ADD COLUMN IF NOT EXISTS language_preference TEXT DEFAULT 'en';
-
--- 8. GFA video library table (managed by GFA admin, used for invite + marketing videos)
-CREATE TABLE IF NOT EXISTS gfa_videos (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title           TEXT NOT NULL,
-  description     TEXT DEFAULT NULL,
-  video_type      TEXT NOT NULL DEFAULT 'invite',
-  -- video_type: 'invite' (sent with magic link), 'teaser' (marketing), 'portal_walkthrough', 'module'
-  bunny_video_id  TEXT DEFAULT NULL,   -- Bunny.net Stream video ID
-  bunny_library_id TEXT DEFAULT NULL,  -- Bunny.net library ID
-  playback_url    TEXT DEFAULT NULL,   -- HLS stream URL
-  thumbnail_url   TEXT DEFAULT NULL,
-  duration_seconds INT DEFAULT NULL,
-  language        TEXT DEFAULT 'en',   -- 'en', 'zu', 'af'
-  programme       TEXT DEFAULT NULL,   -- 'p1', 'p2', null (for general/marketing)
-  is_public       BOOLEAN DEFAULT FALSE, -- true for teaser/welcome videos (no auth required)
-  upload_status   TEXT DEFAULT 'pending', -- 'pending', 'processing', 'ready', 'error'
-  created_by      UUID DEFAULT NULL,
-  created_at      TIMESTAMPTZ DEFAULT NOW(),
-  updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_gfa_videos_type ON gfa_videos(video_type);
-CREATE INDEX IF NOT EXISTS idx_gfa_videos_language ON gfa_videos(language);
-
--- 9. Link training_campaigns to an invite video
-ALTER TABLE training_campaigns
-  ADD COLUMN IF NOT EXISTS invite_video_id UUID REFERENCES gfa_videos(id) ON DELETE SET NULL;
-
--- 10. Add WhatsApp bulletin notification config fields to bulletins
---     These are the selectable fields the operator chooses when creating a bulletin
+-- =============================================================================
+-- 6. bulletins — add missing columns referenced in submit/route.ts
+-- =============================================================================
 ALTER TABLE bulletins
-  ADD COLUMN IF NOT EXISTS wa_notify_drivers BOOLEAN DEFAULT TRUE,
-  ADD COLUMN IF NOT EXISTS wa_include_topic BOOLEAN DEFAULT TRUE,
-  ADD COLUMN IF NOT EXISTS wa_include_urgency BOOLEAN DEFAULT TRUE,
-  ADD COLUMN IF NOT EXISTS wa_include_link BOOLEAN DEFAULT TRUE,
-  ADD COLUMN IF NOT EXISTS wa_custom_message TEXT DEFAULT NULL,
-  ADD COLUMN IF NOT EXISTS wa_sent_at TIMESTAMPTZ DEFAULT NULL,
-  ADD COLUMN IF NOT EXISTS wa_sent_count INT DEFAULT 0;
+  ADD COLUMN IF NOT EXISTS category              TEXT,
+  ADD COLUMN IF NOT EXISTS date_observed         DATE,
+  ADD COLUMN IF NOT EXISTS description           TEXT,
+  ADD COLUMN IF NOT EXISTS why_it_matters        TEXT,
+  ADD COLUMN IF NOT EXISTS mitigation_message    TEXT,
+  ADD COLUMN IF NOT EXISTS driver_action         JSONB,
+  ADD COLUMN IF NOT EXISTS distribution          TEXT DEFAULT 'cpd_library',
+  ADD COLUMN IF NOT EXISTS audience_type         TEXT DEFAULT 'all',
+  ADD COLUMN IF NOT EXISTS audience_ids          JSONB,
+  ADD COLUMN IF NOT EXISTS confidential          BOOLEAN DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS supporting_file_url   TEXT,
+  ADD COLUMN IF NOT EXISTS image_urls            JSONB,
+  ADD COLUMN IF NOT EXISTS disseminated_at       TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS sla_deadline          TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS created_by_user_id    UUID;
 
--- ============================================================
--- BD Phase 1: Moodle Integration Fields
--- Applied: 2026-05-04
--- ============================================================
--- Adds the columns needed for webhook + polling sync between
--- BetterDriver and Moodle, and for WhatsApp inactivity triggers.
+-- =============================================================================
+-- 7. driver_bulletin_interactions — add missing columns
+-- Referenced by: interactions/route.ts (status, campaign_id, opened_at, etc.)
+-- =============================================================================
+ALTER TABLE driver_bulletin_interactions
+  ADD COLUMN IF NOT EXISTS campaign_id              UUID REFERENCES bulletin_campaigns(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS status                   TEXT DEFAULT 'new',
+                           -- 'new','opened','acknowledged','check_completed','completed'
+  ADD COLUMN IF NOT EXISTS delivered_at             TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS opened_at                TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS check_completed_at       TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS completed_at             TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS understanding_questions  JSONB,
+  ADD COLUMN IF NOT EXISTS understanding_responses  JSONB,
+  ADD COLUMN IF NOT EXISTS understanding_score      INT,
+  ADD COLUMN IF NOT EXISTS feedback_comment         TEXT,
+  ADD COLUMN IF NOT EXISTS feedback_type            TEXT,
+  ADD COLUMN IF NOT EXISTS updated_at               TIMESTAMPTZ DEFAULT NOW();
 
--- 1. Add Moodle user ID to drivers table
---    Set by BD when the driver is created in Moodle via moodleCreateUser()
-ALTER TABLE drivers
-  ADD COLUMN IF NOT EXISTS moodle_user_id INTEGER DEFAULT NULL;
+CREATE INDEX IF NOT EXISTS idx_dbi_campaign ON driver_bulletin_interactions(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_dbi_status ON driver_bulletin_interactions(status);
 
-CREATE INDEX IF NOT EXISTS idx_drivers_moodle_user_id ON drivers(moodle_user_id);
+-- =============================================================================
+-- 8. prospect_leads — add missing columns
+-- Referenced by: admin/leads/route.ts, admin/funnel/route.ts
+-- =============================================================================
+ALTER TABLE prospect_leads
+  ADD COLUMN IF NOT EXISTS company_name      TEXT,
+  ADD COLUMN IF NOT EXISTS contact_name      TEXT,
+  ADD COLUMN IF NOT EXISTS phone             TEXT,
+  ADD COLUMN IF NOT EXISTS notes             TEXT,
+  ADD COLUMN IF NOT EXISTS stage             TEXT DEFAULT 'imported',
+  ADD COLUMN IF NOT EXISTS last_activity_at  TIMESTAMPTZ DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS voucher_id        UUID REFERENCES trial_vouchers(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS company_id        UUID REFERENCES companies(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS created_by        UUID;
 
--- 2. Add progress tracking columns to enrolments
-ALTER TABLE enrolments
-  ADD COLUMN IF NOT EXISTS progress_percent INTEGER DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS modules_completed INTEGER DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ DEFAULT NULL,
-  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ DEFAULT NULL;
+-- =============================================================================
+-- 9. admin_audit_log — add target_type / target_id aliases
+-- Code uses target_type/target_id; schema has entity_type/entity_id.
+-- Add both so either naming convention works.
+-- =============================================================================
+ALTER TABLE admin_audit_log
+  ADD COLUMN IF NOT EXISTS target_type  TEXT,
+  ADD COLUMN IF NOT EXISTS target_id    TEXT;
 
--- 3. Add WhatsApp inactivity nudge tracking to enrolments
---    Prevents duplicate messages being sent for the same trigger
-ALTER TABLE enrolments
-  ADD COLUMN IF NOT EXISTS wa_7day_sent_at TIMESTAMPTZ DEFAULT NULL,
-  ADD COLUMN IF NOT EXISTS wa_14day_sent_at TIMESTAMPTZ DEFAULT NULL;
-
--- 4. Add programme_slug to enrolments for Moodle course ID lookup
-ALTER TABLE enrolments
-  ADD COLUMN IF NOT EXISTS programme_slug TEXT DEFAULT 'professional-truck-driver';
-
--- 5. Index for polling query (active, incomplete enrolments with old activity)
-CREATE INDEX IF NOT EXISTS idx_enrolments_active_incomplete
-  ON enrolments(status, completed_at, last_activity_at)
-  WHERE status = 'active' AND completed_at IS NULL;
-
--- 6. Webhook event log — for debugging and audit trail
+-- =============================================================================
+-- 10. moodle_webhook_log
+-- Created by 20260504_moodle_integration.sql but included here for combined run
+-- =============================================================================
 CREATE TABLE IF NOT EXISTS moodle_webhook_log (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   received_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -773,6 +814,158 @@ CREATE TABLE IF NOT EXISTS moodle_webhook_log (
   processed       BOOLEAN DEFAULT FALSE,
   error           TEXT DEFAULT NULL
 );
-
 CREATE INDEX IF NOT EXISTS idx_webhook_log_received ON moodle_webhook_log(received_at DESC);
 CREATE INDEX IF NOT EXISTS idx_webhook_log_user ON moodle_webhook_log(moodle_user_id);
+
+-- =============================================================================
+-- END OF GAPS FIX MIGRATION
+-- =============================================================================
+-- =============================================================================
+-- MIGRATION: 20260506_column_gaps_fix.sql
+-- Fixes all column-level gaps identified by full code audit (May 2026)
+-- Safe to re-run: all statements use IF NOT EXISTS / IF EXISTS guards
+-- =============================================================================
+
+-- =============================================================================
+-- 1. companies — add all columns used in auth, registration, and trial flows
+-- =============================================================================
+-- register/route.ts inserts: name, contact_name, contact_email, contact_phone,
+--   fleet_size, password_hash, status
+-- trial/activate/route.ts inserts: contact_name, email (already exists),
+--   password_hash, account_type, trial_seats, trial_expires_at, status
+-- stats/route.ts filters on: status = 'active'
+-- vouchers/route.ts updates: account_type, trial_expires_at
+ALTER TABLE companies
+  ADD COLUMN IF NOT EXISTS contact_name      TEXT,
+  ADD COLUMN IF NOT EXISTS contact_email     TEXT,          -- alias; code uses both 'email' and 'contact_email'
+  ADD COLUMN IF NOT EXISTS contact_phone     TEXT,
+  ADD COLUMN IF NOT EXISTS fleet_size        INT,
+  ADD COLUMN IF NOT EXISTS password_hash     TEXT,
+  ADD COLUMN IF NOT EXISTS status            TEXT DEFAULT 'active',   -- 'active', 'suspended', 'trial'
+  ADD COLUMN IF NOT EXISTS trial_seats       INT DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS trial_expires_at  TIMESTAMPTZ;
+
+-- Create index on status for fast filtering
+CREATE INDEX IF NOT EXISTS idx_companies_status ON companies(status);
+CREATE INDEX IF NOT EXISTS idx_companies_contact_email ON companies(contact_email);
+
+-- =============================================================================
+-- 2. quotes — add reference_number alias, line_items, eft_reference
+-- =============================================================================
+-- admin/super/route.ts selects: reference_number, line_items, eft_reference
+-- company/quote/route.ts inserts: line_items (JSONB), reference (already exists)
+-- The code uses both 'reference' and 'reference_number' — add the alias column
+ALTER TABLE quotes
+  ADD COLUMN IF NOT EXISTS reference_number  TEXT,          -- alias for reference; populated by trigger below
+  ADD COLUMN IF NOT EXISTS line_items        JSONB,         -- structured line items for display
+  ADD COLUMN IF NOT EXISTS eft_reference     TEXT;          -- EFT payment reference from company
+
+-- Backfill reference_number from reference for any existing rows
+UPDATE quotes SET reference_number = reference WHERE reference_number IS NULL AND reference IS NOT NULL;
+
+-- Trigger to keep reference_number in sync with reference going forward
+CREATE OR REPLACE FUNCTION sync_quote_reference_number()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.reference IS NOT NULL AND NEW.reference_number IS NULL THEN
+    NEW.reference_number := NEW.reference;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_sync_quote_reference_number ON quotes;
+CREATE TRIGGER trg_sync_quote_reference_number
+  BEFORE INSERT OR UPDATE ON quotes
+  FOR EACH ROW EXECUTE FUNCTION sync_quote_reference_number();
+
+-- =============================================================================
+-- 3. courses — add all columns used in admin/programmes/route.ts
+-- =============================================================================
+-- programmes/route.ts inserts/updates: price_model, duration_weeks,
+--   module_count, cpd_frequency, audience, status
+-- Code uses .eq('status', 'archived') — schema has is_active (boolean)
+-- Add status column; keep is_active for backward compat
+ALTER TABLE courses
+  ADD COLUMN IF NOT EXISTS price_model      TEXT DEFAULT 'per_driver_per_month',
+  ADD COLUMN IF NOT EXISTS duration_weeks   INT,
+  ADD COLUMN IF NOT EXISTS module_count     INT DEFAULT 12,
+  ADD COLUMN IF NOT EXISTS cpd_frequency    TEXT DEFAULT 'quarterly',
+  ADD COLUMN IF NOT EXISTS audience         TEXT DEFAULT 'drivers',
+  ADD COLUMN IF NOT EXISTS status           TEXT DEFAULT 'active';   -- 'active', 'archived'
+
+-- Backfill status from is_active for existing rows
+UPDATE courses SET status = CASE WHEN is_active = TRUE THEN 'active' ELSE 'archived' END
+  WHERE status IS NULL OR status = 'active';
+
+-- =============================================================================
+-- 4. trial_vouchers — add all columns used in vouchers/route.ts
+-- =============================================================================
+-- vouchers/route.ts selects: expires_days, welcome_message, brochure_url,
+--   status, activated_at, notes
+-- vouchers/route.ts inserts: expires_days, welcome_message, brochure_url
+-- vouchers/route.ts updates: status, sent_at, activated_at (via trial/activate),
+--   company_id, converted_at, converted_by
+ALTER TABLE trial_vouchers
+  ADD COLUMN IF NOT EXISTS expires_days     INT DEFAULT 30,
+  ADD COLUMN IF NOT EXISTS welcome_message  TEXT,
+  ADD COLUMN IF NOT EXISTS brochure_url     TEXT,
+  ADD COLUMN IF NOT EXISTS sent_at          TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS activated_at     TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS company_id       UUID REFERENCES companies(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS converted_at     TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS converted_by     UUID,
+  ADD COLUMN IF NOT EXISTS notes            TEXT;
+
+-- =============================================================================
+-- 5. site_config — add description column used in admin/stats/route.ts upsert
+-- =============================================================================
+-- admin/stats/route.ts upserts: { key, value, description }
+ALTER TABLE site_config
+  ADD COLUMN IF NOT EXISTS description  TEXT;
+
+-- =============================================================================
+-- 6. gfa_admins — ensure adminId field maps correctly
+-- =============================================================================
+-- auth.ts returns session.adminId but programmes/route.ts uses session.id
+-- The session object has adminId (not id) — this is a code issue, not schema.
+-- Schema is correct. Note added for developer awareness.
+-- No schema change needed here; fix is in code (see note below).
+
+-- =============================================================================
+-- 7. prospect_leads — ensure assigned_to column exists (PATCH uses it)
+-- =============================================================================
+-- leads/route.ts PATCH updates: assigned_to
+ALTER TABLE prospect_leads
+  ADD COLUMN IF NOT EXISTS assigned_to  UUID;
+
+-- =============================================================================
+-- 8. Seed site_config with all keys required by admin/stats/route.ts
+-- =============================================================================
+INSERT INTO site_config (key, value, description) VALUES
+  ('stats_companies_mode',      'static',  'live = count from DB; static = use override value'),
+  ('stats_companies_static',    '7',       'Static company count shown on public stats strip'),
+  ('stats_drivers_mode',        'static',  'live = count from DB; static = use override value'),
+  ('stats_drivers_static',      '252',     'Static driver count shown on public stats strip'),
+  ('stats_certificates_mode',   'static',  'live = count from DB; static = use override value'),
+  ('stats_certificates_static', '207',     'Static certificate count shown on public stats strip'),
+  ('stats_workshops_mode',      'static',  'live = count from DB; static = use override value'),
+  ('stats_workshops_static',    '34',      'Static workshop count shown on public stats strip'),
+  ('contact_email',             'durbanroadtransport@gmail.com', 'Contact email shown across all three sites'),
+  ('bulletin_fee',              '500',     'Default fee (ZAR) for urgent private bulletins'),
+  ('whatsapp_phone_id',         '',        'Meta WhatsApp Business phone number ID'),
+  ('whatsapp_access_token',     '',        'Meta WhatsApp Business access token'),
+  ('email_booking_to',          'durbanroadtransport@gmail.com', 'Admin email for booking notifications'),
+  ('company_name',              'GreenFreightAcademy', 'Company name for quotes and invoices'),
+  ('company_vat_number',        '',        'VAT number for quotes and invoices'),
+  ('company_address',           '',        'Company address for quotes and invoices'),
+  ('company_bank_name',         '',        'Bank name for EFT payment details'),
+  ('company_bank_account',      '',        'Bank account number for EFT'),
+  ('company_bank_branch',       '',        'Bank branch code for EFT'),
+  ('company_email',             'info@greenfreightacademy.com', 'Public contact email'),
+  ('company_phone',             '',        'Public contact phone number')
+ON CONFLICT (key) DO NOTHING;
+
+-- =============================================================================
+-- END OF MIGRATION
+-- =============================================================================
