@@ -10,6 +10,7 @@ Please read and execute these documents in the exact order listed below. Do not 
 *   **`00-INTRODUCTION-AND-EXECUTIVE-SUMMARY.md`**: Start here. Project vision, your role, and expectations.
 *   **`01-ECOSYSTEM-OVERVIEW.md`**: Complete feature inventory across all three platforms.
 *   **`01b-INTEGRATION-DEPENDENCY-MAP.md`**: Visual and written dependency map showing what depends on what.
+*   **`12-ONGOING-COLLABORATION-AND-ROLE-SEPARATION.md`**: Critical reading. Defines what Manus builds vs what Asif configures, the Moodle Contract Zone protection framework, the complete mock data inventory, and the workflow for all future features.
 
 ### Phase 2: Deployment & Configuration
 *   **`02-DEPLOYMENT-SEQUENCE.md`**: The exact step-by-step sequence for deploying the platforms, with strict "do not proceed until verified" gates.
@@ -37,3 +38,5 @@ Please read and execute these documents in the exact order listed below. Do not 
 ## Important Note
 
 The platforms are deeply interconnected. Attempting to test a feature before its underlying dependencies are configured will result in errors that appear to be code bugs but are actually sequencing failures. Follow the `02-DEPLOYMENT-SEQUENCE.md` strictly.
+
+The `12-ONGOING-COLLABORATION-AND-ROLE-SEPARATION.md` document is essential reading before any live data wiring begins. It contains the complete inventory of mock data pages that need to be connected to live Supabase and Moodle data.
