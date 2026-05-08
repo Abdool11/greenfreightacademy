@@ -11,6 +11,10 @@
  *
  * Copy this file into the root of each repo (TAG, GFA, BD) and run it
  * after filling in .env.local.
+ *
+ * IMPORTANT — Variable names in this script are the EXACT names used
+ * in the application code (verified by grep on 2026-05-07).
+ * Do not rename them.
  */
 
 const fs = require('fs');
@@ -25,53 +29,81 @@ const isTAG = !isBD && !isGFA;
 const platform = isBD ? 'BetterDriver (BD)' : isGFA ? 'Green Freight Academy (GFA)' : 'Transport Action Group (TAG)';
 
 // ─── Required Variables Per Platform ─────────────────────────────────────────
+// These names are the EXACT names used in process.env.XXX calls in the code.
+// The .env.local.example files include aliases (both names) where the codebase
+// uses more than one name for the same value.
 
 const REQUIRED = {
   TAG: [
+    // Supabase
     'NEXT_PUBLIC_SUPABASE_URL',
     'NEXT_PUBLIC_SUPABASE_ANON_KEY',
     'SUPABASE_SERVICE_ROLE_KEY',
-    'TAG_JWT_SECRET',
-    'RESEND_API_KEY',
-    'NEXT_PUBLIC_GFA_URL',
-    'NEXT_PUBLIC_BD_URL',
-    'NEXT_PUBLIC_TAG_URL',
+    // Admin Auth — TAG uses ADMIN_JWT_SECRET in its auth routes
+    'ADMIN_JWT_SECRET',
     'ADMIN_EMAIL',
     'ADMIN_PASSWORD',
+    // Email
+    'RESEND_API_KEY',
+    // Site URLs
+    'NEXT_PUBLIC_SITE_URL',
+    'NEXT_PUBLIC_GFA_URL',
+    'NEXT_PUBLIC_BETTERDRIVER_URL',
+    'NEXT_PUBLIC_TAG_URL',
   ],
   GFA: [
+    // Supabase
     'NEXT_PUBLIC_SUPABASE_URL',
     'NEXT_PUBLIC_SUPABASE_ANON_KEY',
     'SUPABASE_SERVICE_ROLE_KEY',
+    // Auth — GFA uses both GFA_JWT_SECRET and JWT_SECRET in different routes
     'GFA_JWT_SECRET',
-    'ADMIN_JWT_SECRET',
+    'JWT_SECRET',
+    // Email
     'RESEND_API_KEY',
-    'META_WA_API_VERSION',
+    // WhatsApp — GFA code reads META_WA_TOKEN (not WHATSAPP_ACCESS_TOKEN)
+    'META_WA_TOKEN',
     'META_WA_PHONE_NUMBER_ID',
-    'META_WA_ACCESS_TOKEN',
+    'META_WA_API_VERSION',
+    // Payments
     'PAYSTACK_SECRET_KEY',
-    'NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY',
+    // Video CDN
+    'BUNNY_API_KEY',
+    'BUNNY_STREAM_LIBRARY_ID',
+    'BUNNY_CDN_HOSTNAME',
+    // BD integration — GFA uses both BD_BASE_URL and BETTERDRIVER_URL
+    'BD_BASE_URL',
+    'BETTERDRIVER_URL',
+    // Site URLs
     'NEXT_PUBLIC_GFA_URL',
-    'NEXT_PUBLIC_BD_URL',
+    'NEXT_PUBLIC_BETTERDRIVER_URL',
     'NEXT_PUBLIC_TAG_URL',
-    'BD_JWT_SECRET',
   ],
   BD: [
+    // Supabase
     'NEXT_PUBLIC_SUPABASE_URL',
     'NEXT_PUBLIC_SUPABASE_ANON_KEY',
     'SUPABASE_SERVICE_ROLE_KEY',
+    // Auth — BD uses both JWT_SECRET and BD_JWT_SECRET in different routes
+    'JWT_SECRET',
     'BD_JWT_SECRET',
-    'RESEND_API_KEY',
-    'META_WA_API_VERSION',
-    'META_WA_PHONE_NUMBER_ID',
-    'META_WA_ACCESS_TOKEN',
+    // Moodle — exact names used in lib/moodle.ts and api/moodle routes
     'MOODLE_URL',
     'MOODLE_TOKEN',
-    'MOODLE_COURSE_ID_EN',
-    'MOODLE_COURSE_ID_ZU',
+    'MOODLE_DRIVER_PROGRAMME_COURSE_ID',
+    'MOODLE_ECO_DRIVER_COURSE_ID',
     'MOODLE_WEBHOOK_SECRET',
-    'CRON_SECRET',
+    'MOODLE_POLL_SECRET',
+    // WhatsApp — BD code reads META_WA_TOKEN (not WHATSAPP_ACCESS_TOKEN)
+    'META_WA_TOKEN',
+    'META_WA_PHONE_NUMBER_ID',
+    'META_WA_API_VERSION',
+    // Site URLs
     'NEXT_PUBLIC_BD_URL',
+    'NEXT_PUBLIC_GFA_URL',
+    'NEXT_PUBLIC_TAG_URL',
+    // Branding
+    'NEXT_PUBLIC_SUPPORT_EMAIL',
   ],
 };
 
