@@ -68,7 +68,11 @@ async function getOrCreateInvitation(params: {
  *   {{1}} = driver first name
  *   {{2}} = company name
  *   {{3}} = programme name
- *   {{4}} = magic link URL
+ *   {{4}} = magic link TOKEN only (e.g. "a1b2c3d4...")
+ *
+ * The base URL (https://betterdriver.co.za/join/) is hardcoded in the Meta
+ * template body. Only the unique token is passed as a variable — this is
+ * required for Meta Utility category approval.
  *
  * Fallback (pre-approval / staging): sends a plain-text message.
  */
@@ -77,12 +81,13 @@ async function sendMagicLinkWhatsApp(params: {
   driverFirstName: string;
   companyName: string;
   programmeName: string;
-  magicLink: string;
+  magicLinkToken: string;  // token only, NOT the full URL
+  magicLinkFull: string;   // full URL for plain-text fallback only
   phoneId: string;
   accessToken: string;
   templateName?: string;
 }): Promise<boolean> {
-  const { mobile, driverFirstName, companyName, programmeName, magicLink, phoneId, accessToken, templateName } = params;
+  const { mobile, driverFirstName, companyName, programmeName, magicLinkToken, magicLinkFull, phoneId, accessToken, templateName } = params;
   const to = normaliseSAMobile(mobile);
 
   try {
@@ -104,17 +109,18 @@ async function sendMagicLinkWhatsApp(params: {
                 { type: "text", text: driverFirstName },
                 { type: "text", text: companyName },
                 { type: "text", text: programmeName },
-                { type: "text", text: magicLink },
+                // Pass only the token — base URL is hardcoded in the Meta template
+                { type: "text", text: magicLinkToken },
               ],
             },
           ],
         },
       };
     } else {
-      // ── Plain-text fallback (staging / pre-approval) ──────────────────────
+      // ── Plain-text fallback (staging / pre-approval) ────────────────────────────────────
       const text =
         `Hi ${driverFirstName}, ${companyName} has enrolled you in the ${programmeName} programme on BetterDriver. ` +
-        `Tap the link below to start your training — no password needed:\n\n${magicLink}`;
+        `Tap the link below to start your training — no password needed:\n\n${magicLinkFull}`;
       body = {
         messaging_product: "whatsapp",
         to,
@@ -302,7 +308,8 @@ export async function POST(req: NextRequest) {
         driverFirstName: driver.first_name,
         companyName: session.companyName ?? "Your company",
         programmeName,
-        magicLink,
+        magicLinkToken: token,        // token only — base URL hardcoded in Meta template
+        magicLinkFull: magicLink,     // full URL for plain-text fallback
         phoneId,
         accessToken,
         templateName: config.whatsapp_magic_link_template || undefined,
