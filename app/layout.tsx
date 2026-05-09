@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Navigation } from "@/components/layout/Navigation";
 import { Footer } from "@/components/layout/Footer";
+import { LogoIntro } from "@/components/layout/LogoIntro";
 import { SITE_NAME, SITE_DESCRIPTION, SITE_TAGLINE } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -119,6 +120,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <LogoIntro logoSrc="/tag-logo.png" />
         <Navigation />
         <main>{children}</main>
         <Footer />
