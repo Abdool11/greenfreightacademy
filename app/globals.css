@@ -1,0 +1,433 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Google Fonts ─────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=Inter:wght@300;400;500;600&display=swap');
+
+/* ─── Design Tokens ────────────────────────────────────────────────────────── */
+:root {
+  /* GFA Palette — deep slate + emerald green (enterprise, credible, growth) */
+  --color-slate-950: #0a1628;
+  --color-slate-900: #0f1f3d;
+  --color-slate-800: #1a2f52;
+  --color-slate-700: #243d6b;
+  --color-slate-600: #2e4d84;
+
+  --color-green-600: #16a34a;
+  --color-green-500: #22c55e;
+  --color-green-400: #4ade80;
+  --color-green-300: #86efac;
+
+  --color-teal-500: #14b8a6;
+  --color-teal-400: #2dd4bf;
+
+  --color-white: #ffffff;
+  --color-gray-50: #f8fafc;
+  --color-gray-100: #f1f5f9;
+  --color-gray-200: #e2e8f0;
+  --color-gray-400: #94a3b8;
+  --color-gray-500: #64748b;
+  --color-gray-600: #475569;
+  --color-gray-700: #334155;
+  --color-gray-800: #1e293b;
+
+  /* Semantic */
+  --bg-primary: var(--color-slate-950);
+  --bg-secondary: var(--color-slate-900);
+  --bg-surface: var(--color-slate-800);
+  --bg-card: rgba(255, 255, 255, 0.04);
+  --bg-card-hover: rgba(255, 255, 255, 0.07);
+
+  --text-primary: var(--color-white);
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-accent: var(--color-green-400);
+
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-card: rgba(255, 255, 255, 0.12);
+
+  --accent-primary: var(--color-green-500);
+  --accent-secondary: var(--color-teal-400);
+
+  /* Typography */
+  --font-display: 'DM Sans', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+
+  /* Spacing */
+  --section-padding-y: 5rem;
+  --section-padding-y-lg: 7rem;
+  --container-max: 1200px;
+  --container-padding: 1.5rem;
+}
+
+/* ─── Base ──────────────────────────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-slate-950);
+  color: var(--text-primary);
+  line-height: 1.6;
+  font-size: 1rem;
+}
+
+/* ─── Typography ────────────────────────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+h1 { font-size: clamp(2.25rem, 5vw, 3.75rem); }
+h2 { font-size: clamp(1.75rem, 3.5vw, 2.75rem); }
+h3 { font-size: clamp(1.25rem, 2.5vw, 1.75rem); }
+h4 { font-size: 1.25rem; }
+
+p {
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ─── Layout Utilities ──────────────────────────────────────────────────────── */
+.container-gfa {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 0 var(--container-padding);
+}
+
+.section-py {
+  padding-top: var(--section-padding-y);
+  padding-bottom: var(--section-padding-y);
+}
+
+.section-py-lg {
+  padding-top: var(--section-padding-y-lg);
+  padding-bottom: var(--section-padding-y-lg);
+}
+
+/* ─── Cards ─────────────────────────────────────────────────────────────────── */
+.card-gfa {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 1rem;
+  padding: 1.75rem;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.card-gfa:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(34, 197, 94, 0.25);
+  transform: translateY(-2px);
+}
+
+/* ─── Pill Badges ───────────────────────────────────────────────────────────── */
+.pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3rem 0.875rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: var(--font-display);
+}
+
+.pill-green {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--color-green-400);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.pill-teal {
+  background: rgba(20, 184, 166, 0.12);
+  color: var(--color-teal-400);
+  border: 1px solid rgba(20, 184, 166, 0.2);
+}
+
+.pill-white {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.pill-yellow {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+/* section-label — alias for pill-badge pill-green, consistent with TAG and BetterDriver */
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3125rem 0.875rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: var(--font-display);
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--color-green-400);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+/* ─── Buttons ───────────────────────────────────────────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.75rem;
+  background: var(--color-green-500);
+  color: #0a1628;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+  text-decoration: none;
+}
+
+.btn-primary:hover {
+  background: var(--color-green-400);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.75rem;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-card);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  text-decoration: none;
+}
+
+.btn-secondary:hover {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: rgba(34, 197, 94, 0.06);
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0;
+  background: transparent;
+  color: var(--color-green-400);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: gap 0.2s ease;
+}
+
+.btn-ghost:hover {
+  gap: 0.625rem;
+}
+
+/* ─── Gradient Text ─────────────────────────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-green-400) 0%, var(--color-teal-400) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Section Backgrounds ───────────────────────────────────────────────────── */
+.bg-section-dark {
+  background: var(--bg-primary);
+}
+
+.bg-section-mid {
+  background: var(--bg-secondary);
+}
+
+.bg-section-surface {
+  background: var(--bg-surface);
+}
+
+.bg-section-gradient {
+  background: linear-gradient(135deg, var(--color-slate-900) 0%, var(--color-slate-950) 100%);
+}
+
+.bg-section-green-gradient {
+  background: linear-gradient(135deg, rgba(22, 163, 74, 0.12) 0%, rgba(20, 184, 166, 0.08) 100%);
+}
+
+/* ─── Radial Blob (ZeroAfrica aesthetic) ────────────────────────────────────── */
+.blob-green {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.blob-teal {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(20, 184, 166, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ─── Status Indicators (Dashboard) ────────────────────────────────────────── */
+.status-certified {
+  color: var(--color-green-400);
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.status-in-progress {
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.2);
+}
+
+.status-not-enrolled {
+  color: var(--text-muted);
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.status-overdue {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+/* ─── Mock Data Banner ──────────────────────────────────────────────────────── */
+.mock-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 0.375rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-family: var(--font-display);
+}
+
+/* ─── Progress Bar ──────────────────────────────────────────────────────────── */
+.progress-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-green-500), var(--color-teal-400));
+  border-radius: 9999px;
+  transition: width 0.6s ease;
+}
+
+/* ─── Table ─────────────────────────────────────────────────────────────────── */
+.table-gfa {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-gfa th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.table-gfa td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.table-gfa tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* ─── Form Elements ─────────────────────────────────────────────────────────── */
+.input-gfa {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-card);
+  border-radius: 0.5rem;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  transition: border-color 0.2s ease;
+  outline: none;
+}
+
+.input-gfa:focus {
+  border-color: var(--color-green-500);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.input-gfa::placeholder {
+  color: var(--text-muted);
+}
+
+.label-gfa {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.375rem;
+}
+
+/* ─── Divider ───────────────────────────────────────────────────────────────── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border-card); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }

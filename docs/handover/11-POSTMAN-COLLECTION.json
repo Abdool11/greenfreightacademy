@@ -1,0 +1,169 @@
+{
+  "info": {
+    "name": "TAG Ecosystem — API Test Collection",
+    "_postman_id": "tag-ecosystem-v1",
+    "description": "Pre-built API tests for all three TAG ecosystem platforms. Set the environment variables BASE_URL_TAG, BASE_URL_GFA, BASE_URL_BD, and ADMIN_TOKEN before running.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "BASE_URL_TAG", "value": "https://transportactiongroup.co.za" },
+    { "key": "BASE_URL_GFA", "value": "https://greenfreightacademy.co.za" },
+    { "key": "BASE_URL_BD",  "value": "https://betterdriver.co.za" },
+    { "key": "TAG_ADMIN_TOKEN", "value": "" },
+    { "key": "GFA_ADMIN_TOKEN", "value": "" },
+    { "key": "BD_ADMIN_TOKEN",  "value": "" },
+    { "key": "COMPANY_TOKEN",   "value": "" },
+    { "key": "DRIVER_TOKEN",    "value": "" }
+  ],
+  "item": [
+    {
+      "name": "TAG",
+      "item": [
+        {
+          "name": "Admin Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{BASE_URL_TAG}}/api/admin/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"admin@transportactiongroup.co.za\", \"password\": \"TagAdmin2024!\"}"
+            }
+          }
+        },
+        {
+          "name": "Submit Contact Form",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{BASE_URL_TAG}}/api/contact",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Test User\", \"email\": \"test@example.com\", \"phone\": \"+27821234567\", \"message\": \"Test contact submission\"}"
+            }
+          }
+        },
+        {
+          "name": "Get Enquiries (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{TAG_ADMIN_TOKEN}}" }],
+            "url": "{{BASE_URL_TAG}}/api/admin/enquiries"
+          }
+        }
+      ]
+    },
+    {
+      "name": "GFA",
+      "item": [
+        {
+          "name": "Admin Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{BASE_URL_GFA}}/api/admin/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"admin@greenfreightacademy.co.za\", \"password\": \"GfaAdmin2024!\"}"
+            }
+          }
+        },
+        {
+          "name": "Company Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{BASE_URL_GFA}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Test Transport Co\", \"email\": \"test@transport.co.za\", \"phone\": \"+27821234567\", \"password\": \"TestPass123!\"}"
+            }
+          }
+        },
+        {
+          "name": "Company Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{BASE_URL_GFA}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"test@transport.co.za\", \"password\": \"TestPass123!\"}"
+            }
+          }
+        },
+        {
+          "name": "Generate Quote",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{COMPANY_TOKEN}}" }
+            ],
+            "url": "{{BASE_URL_GFA}}/api/company/quote",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"courseId\": \"REPLACE_WITH_COURSE_ID\", \"driverCount\": 5}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "BD",
+      "item": [
+        {
+          "name": "Admin Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{BASE_URL_BD}}/api/admin/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"admin@betterdriver.co.za\", \"password\": \"BdAdmin2024!\"}"
+            }
+          }
+        },
+        {
+          "name": "Resolve Magic Link Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{BASE_URL_BD}}/api/join/REPLACE_WITH_TOKEN"
+          }
+        },
+        {
+          "name": "Get Driver Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{DRIVER_TOKEN}}" }],
+            "url": "{{BASE_URL_BD}}/api/portal/profile"
+          }
+        },
+        {
+          "name": "Moodle Webhook (Simulate Progress Update)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Moodle-Signature", "value": "REPLACE_WITH_HMAC_SIGNATURE" }
+            ],
+            "url": "{{BASE_URL_BD}}/api/moodle/webhook",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event\": \"course_module_completion_updated\", \"userid\": 1, \"courseid\": 1, \"cmid\": 1, \"completionstate\": 1}"
+            }
+          }
+        },
+        {
+          "name": "Moodle Poll (Trigger Manual Sync)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer REPLACE_WITH_CRON_SECRET" }],
+            "url": "{{BASE_URL_BD}}/api/moodle/poll"
+          }
+        }
+      ]
+    }
+  ]
+}
