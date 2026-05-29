@@ -12,6 +12,9 @@ Key platform capabilities include:
 - **HR Feedback (Self-Evaluation)** — a 3-question 5-star widget completed by drivers after course completion: (1) I understand the material, (2) I enjoyed the learning experience, (3) I want to learn more; aggregate scores are visible per campaign
 - **GFA Video Library** — admin-managed Bunny.net-backed video library for invite videos, teaser videos, portal walkthrough videos, and module content; videos are tagged by type, language (EN/ZU), and programme; invite videos are selectable when creating a training campaign and are delivered to drivers on first magic link tap
 - **WhatsApp Bulletin Notification Fields** — when creating a driver bulletin, the operator selects which fields to include in the WhatsApp message (topic, urgency level, category, driver action, mitigation message, portal link); a live preview shows exactly what each driver will receive before dissemination
+- **Certificate Template Manager** — admin-uploadable certificate background (PNG/JPG from Canva, Illustrator, etc.); text overlay positions (driver name, programme, date, cert number) configurable per template; active/inactive status for staging new designs without downtime; accessible at `/admin/certificate-template`
+- **Survey Admin** — full CRUD interface for pre-course and post-course driver surveys; supports multiple choice, scale (1–5), and free-text question types; bilingual fields (English + IsiZulu); drag-to-reorder questions; activate/deactivate per survey; accessible at `/admin/surveys`
+- **Public Driver Registry** — `/registry` queries the BetterDriver Supabase `certifications` table in real time; live debounced search by driver name, ID number, or certificate number; paginated; certificates appear automatically on programme completion — no admin action required
 
 ---
 
@@ -46,8 +49,11 @@ Key platform capabilities include:
 
 ```
 app/
-  api/                        # Backend API routes
+  api/                        # Backend AP    api/
     admin/                    # Admin-only routes (JWT protected)
+      certificate-template/   # POST — upload template to Supabase Storage; GET — fetch active template
+      surveys/                # GET/POST — list and create survey questions
+      surveys/[id]/           # PATCH/DELETE — update or delete individual survey questions
     auth/                     # Login, logout, register
     bulletins/                # CPD bulletin creation and dissemination
     company/                  # Driver import, quoting, deployment
@@ -69,6 +75,8 @@ app/
     email-settings/           # Email template settings
     settings/messaging/       # WhatsApp message template settings
     video-library/            # GFA Video Library (Bunny.net upload, manage, assign)
+    certificate-template/     # Certificate template upload and text position editor
+    surveys/                  # Survey admin — pre/post survey CRUD, question editor, bilingual fields
   dashboard/                  # Client dashboard pages
     bulletins/                # CPD bulletin creation and management
     campaigns/                # Bulletin campaign management
@@ -141,6 +149,7 @@ npm run dev
 | `BUNNY_CDN_HOSTNAME` | Optional | Bunny.net CDN hostname for playback URLs |
 | `BD_BASE_URL` | Yes | BetterDriver site URL |
 | `NEXT_PUBLIC_SITE_URL` | Yes | Full URL of this site in production |
+| `NEXT_PUBLIC_BD_API_BASE_URL` | Yes | BetterDriver public API base URL (e.g. `https://betterdriver.co.za`) — used by the public registry to query live certifications |
 
 ---
 
@@ -174,6 +183,19 @@ All changes go through a branch and Pull Request — nothing is pushed directly 
 Packaged as a standalone tar.gz including `server.js`, `pm2.config.js`, `nginx.conf`, `deploy.sh`, `QUICK-START-CARD.md`, and `.env.local.example`.
 
 > **Important:** The Nginx config must include a `location /_next/static/` block. Without this the site loads without any styling. This is already included in the provided `nginx.conf`.
+
+---
+
+## Open Feature Branches (Pending Merge to Main)
+
+| Branch | What it contains |
+| :--- | :--- |
+| `feature/auth-ux-phase1` | Password visibility toggles on all login pages |
+| `feature/phase3-certificate-template` | Certificate template manager admin page and upload API |
+| `feature/phase4-survey-admin` | Survey admin interface (pre/post surveys, question CRUD, bilingual fields) |
+| `feature/registry-live-wiring` | GFA registry rewritten to query BD Supabase API instead of Moodle |
+
+> **Asif:** Merge these branches into `main` in the order listed above. Each branch is independently deployable. Ensure `NEXT_PUBLIC_BD_API_BASE_URL` is set in the GFA `.env.local` before deploying `feature/registry-live-wiring`.
 
 ---
 
