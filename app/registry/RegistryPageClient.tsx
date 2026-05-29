@@ -5,405 +5,299 @@
  *
  * PUBLIC PAGE — no login required.
  *
- * HOW THIS WORKS (for Asif to complete):
- * ─────────────────────────────────────────────────────────────────────────────
- * 1. The user enters a South African ID number (13-digit) OR a full name.
- * 2. On submit, the frontend calls POST /api/registry/lookup with { query }.
- * 3. The API route queries the BetterDriver Moodle instance via the Moodle
- *    External Services REST API:
- *      - Endpoint: https://betterdriver.co.za/webservice/rest/server.php
- *      - Function:  core_user_get_users (search by idnumber or fullname)
- *      - Then:      core_completion_get_activities_completion_status (per user)
- *      - Then:      mod_certificate_get_issued_certificates OR
- *                   core_course_get_user_administration_options for cert URL
- *    Moodle token should be stored in env var: MOODLE_API_TOKEN
- * 4. A successful response returns an array of:
- *      { programmeName, completedAt, certificateUrl }
- * 5. The UI renders the list with View / Download buttons per certificate.
+ * SOURCE OF TRUTH: BetterDriver Supabase `certifications` table (via BD API).
+ * Certificates are auto-inserted by the Moodle webhook on programme completion.
+ * This page queries GET /api/registry?q=<search> on the BD domain.
  *
- * STUB BEHAVIOUR (until Asif connects Moodle):
- * - Returns mock data when query matches "demo" (case-insensitive).
- * - Returns empty results for all other queries.
- * ─────────────────────────────────────────────────────────────────────────────
+ * The BD_API_BASE_URL env var must be set to the BetterDriver domain:
+ *   BD_API_BASE_URL=https://betterdriver.co.za
+ *
+ * For local development, set BD_API_BASE_URL=http://localhost:3001
  */
 
-import { useState } from "react";
-import { Search, FileText, Download, AlertCircle, Loader2 } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Search, CheckCircle2, XCircle, AlertCircle, Loader2, Award, ExternalLink } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-interface CertificateResult {
-  programmeName: string;
-  completedAt: string;
-  certificateUrl: string | null;
-}
-
-interface LookupResult {
+interface RegistryEntry {
+  id: string;
   driverName: string;
   idNumber: string;
-  certificates: CertificateResult[];
+  certificateNumber: string;
+  programme: string;
+  issuedAt: string;
+  status: string;
+  verificationUrl: string;
 }
 
-// ─── Mock data (remove once Moodle is connected) ─────────────────────────────
-const MOCK_RESULT: LookupResult = {
-  driverName: "Demo Driver",
-  idNumber: "0000000000000",
-  certificates: [
-    {
-      programmeName: "Professional Truck Driver Programme (PTDP)",
-      completedAt: "2025-03-14T10:00:00Z",
-      certificateUrl: "#",
-    },
-    {
-      programmeName: "Advanced Eco-Driving",
-      completedAt: "2025-06-01T09:30:00Z",
-      certificateUrl: "#",
-    },
-  ],
-};
+interface RegistryResponse {
+  results: RegistryEntry[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
 
+const DEBOUNCE_MS = 400;
+const BD_REGISTRY_URL = process.env.NEXT_PUBLIC_BD_API_BASE_URL
+  ? `${process.env.NEXT_PUBLIC_BD_API_BASE_URL}/api/registry`
+  : "/api/registry-proxy"; // falls back to a local proxy route (see below)
+
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function RegistryPageClient() {
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<LookupResult | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const [data, setData] = useState<RegistryResponse | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
+  const fetchRegistry = useCallback(async (q: string, p: number) => {
     setLoading(true);
-    setResult(null);
-    setNotFound(false);
     setError(null);
     try {
-      /**
-       * TODO (Asif): Replace stub below with real fetch:
-       *
-       * const res = await fetch("/api/registry/lookup", {
-       *   method: "POST",
-       *   headers: { "Content-Type": "application/json" },
-       *   body: JSON.stringify({ query: query.trim() }),
-       * });
-       * if (res.status === 404) { setNotFound(true); return; }
-       * if (!res.ok) throw new Error("lookup_failed");
-       * const data: LookupResult = await res.json();
-       * setResult(data);
-       *
-       * See developer notes at bottom of file for Moodle API details.
-       */
-      await new Promise((r) => setTimeout(r, 900));
-      if (query.trim().toLowerCase() === "demo") {
-        setResult(MOCK_RESULT);
-      } else {
-        setNotFound(true);
-      }
+      const params = new URLSearchParams({ page: String(p), limit: "20" });
+      if (q.trim()) params.set("q", q.trim());
+      const res = await fetch(`${BD_REGISTRY_URL}?${params.toString()}`);
+      if (!res.ok) throw new Error("Registry lookup failed");
+      const json: RegistryResponse = await res.json();
+      setData(json);
     } catch {
-      setError("An error occurred while searching. Please try again.");
+      setError("Could not load the registry. Please try again.");
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Initial load
+  useEffect(() => { fetchRegistry("", 1); }, [fetchRegistry]);
+
+  // Debounced search
+  const handleSearch = (value: string) => {
+    setQuery(value);
+    setPage(1);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchRegistry(value, 1), DEBOUNCE_MS);
   };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    fetchRegistry(query, newPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("en-ZA", { day: "2-digit", month: "short", year: "numeric" });
 
   return (
     <div style={{ paddingTop: "5rem", background: "var(--color-slate-900)", minHeight: "100vh" }}>
 
       {/* Hero */}
-      <section
-        style={{
-          padding: "5rem 0 4rem",
-          background: "linear-gradient(160deg, #0a1628 0%, #0f1f3d 100%)",
-          borderBottom: "1px solid var(--border-subtle)",
-        }}
-      >
+      <section style={{ padding: "5rem 0 4rem", background: "linear-gradient(160deg, #0a1628 0%, #0f1f3d 100%)", borderBottom: "1px solid var(--border-subtle)" }}>
         <div className="container-gfa">
           <h1 style={{ maxWidth: "600px", marginBottom: "1rem" }}>Registry of Professional Drivers</h1>
           <p style={{ maxWidth: "520px", color: "var(--text-secondary)", lineHeight: 1.7 }}>
-            Verify a driver&apos;s GreenFreightAcademy certifications. Enter a driver ID number or full
-            name to search the registry of trained and certified drivers.
+            Verify a driver&apos;s BetterDriver certifications. Search by driver name, ID number, or certificate number.
           </p>
           <p style={{ maxWidth: "520px", color: "var(--text-muted)", fontSize: "0.85rem", marginTop: "0.75rem", lineHeight: 1.6 }}>
             This registry is publicly accessible to fleet operators, employers, and compliance auditors.
+            Certificates are issued automatically upon programme completion.
           </p>
         </div>
       </section>
 
       {/* Search */}
-      <section style={{ padding: "4rem 0", borderBottom: "1px solid var(--border-subtle)" }}>
+      <section style={{ padding: "3rem 0 2rem", borderBottom: "1px solid var(--border-subtle)" }}>
         <div className="container-gfa" style={{ maxWidth: "680px" }}>
-          <form onSubmit={handleSearch}>
-            <label
-              htmlFor="registry-search"
+          <label
+            htmlFor="registry-search"
+            style={{ display: "block", fontSize: "0.875rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.625rem" }}
+          >
+            Search the registry
+          </label>
+          <div style={{ position: "relative" }}>
+            <Search size={16} style={{ position: "absolute", left: "0.875rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", pointerEvents: "none" }} />
+            {loading && query && (
+              <Loader2 size={15} style={{ position: "absolute", right: "0.875rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", animation: "spin 1s linear infinite" }} />
+            )}
+            <input
+              id="registry-search"
+              type="search"
+              value={query}
+              onChange={e => handleSearch(e.target.value)}
+              placeholder="Driver name, ID number, or certificate number…"
+              maxLength={100}
               style={{
-                display: "block",
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                color: "var(--text-secondary)",
-                marginBottom: "0.625rem",
+                width: "100%",
+                padding: "0.8125rem 2.5rem 0.8125rem 2.5rem",
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid var(--border-subtle)",
+                borderRadius: "0.625rem",
+                color: "white",
+                fontSize: "0.9375rem",
+                outline: "none",
+                boxSizing: "border-box",
+                transition: "border-color 0.15s",
               }}
-            >
-              Driver ID number or full name
-            </label>
-            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: "240px", position: "relative" }}>
-                <Search
-                  size={16}
-                  style={{
-                    position: "absolute",
-                    left: "0.875rem",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "var(--text-muted)",
-                    pointerEvents: "none",
-                  }}
-                />
-                <input
-                  id="registry-search"
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="e.g. 8001015009087 or John Smith"
-                  maxLength={100}
-                  style={{
-                    width: "100%",
-                    padding: "0.75rem 0.875rem 0.75rem 2.5rem",
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid var(--border-subtle)",
-                    borderRadius: "0.5rem",
-                    color: "white",
-                    fontSize: "0.9375rem",
-                    outline: "none",
-                    boxSizing: "border-box",
-                  }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-green-400)")}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border-subtle)")}
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading || !query.trim()}
-                className="btn-primary"
-                style={{ flexShrink: 0, opacity: loading || !query.trim() ? 0.6 : 1 }}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
-                    Searching…
-                  </>
-                ) : (
-                  <>
-                    <Search size={16} />
-                    Search
-                  </>
-                )}
-              </button>
-            </div>
-            <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "0.625rem" }}>
-              Enter a driver ID number for an exact match, or a full name to search by name.
-            </p>
-          </form>
+              onFocus={e => (e.currentTarget.style.borderColor = "var(--color-green-400)")}
+              onBlur={e => (e.currentTarget.style.borderColor = "var(--border-subtle)")}
+            />
+          </div>
+          <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "0.5rem" }}>
+            Results update as you type. ID numbers are partially masked for privacy.
+          </p>
         </div>
       </section>
 
       {/* Results */}
-      <section style={{ padding: "3.5rem 0" }}>
+      <section style={{ padding: "2.5rem 0 5rem" }}>
         <div className="container-gfa" style={{ maxWidth: "680px" }}>
 
-          {error && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "0.75rem",
-                padding: "1.25rem 1.5rem",
-                background: "rgba(248,113,113,0.06)",
-                border: "1px solid rgba(248,113,113,0.2)",
-                borderRadius: "0.75rem",
-                color: "#f87171",
-              }}
-            >
+          {/* Stats */}
+          {!loading && !error && data && (
+            <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", marginBottom: "1.25rem" }}>
+              {query.trim()
+                ? `${data.total} result${data.total !== 1 ? "s" : ""} for "${query.trim()}"`
+                : `${data.total.toLocaleString()} certified driver${data.total !== 1 ? "s" : ""} in the registry`}
+            </p>
+          )}
+
+          {/* Loading skeleton */}
+          {loading && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--border-subtle)", borderRadius: "0.75rem", padding: "1.25rem", height: 68, opacity: 0.4 + i * 0.1 }} />
+              ))}
+            </div>
+          )}
+
+          {/* Error */}
+          {!loading && error && (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", padding: "1.25rem 1.5rem", background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: "0.75rem", color: "#f87171" }}>
               <AlertCircle size={18} style={{ flexShrink: 0, marginTop: "0.125rem" }} />
               <p style={{ fontSize: "0.9rem", lineHeight: 1.6 }}>{error}</p>
             </div>
           )}
 
-          {notFound && (
-            <div
-              style={{
-                padding: "2.5rem",
-                background: "rgba(255,255,255,0.02)",
-                border: "1px solid var(--border-subtle)",
-                borderRadius: "0.75rem",
-                textAlign: "center",
-              }}
-            >
-              <p style={{ color: "var(--text-secondary)", marginBottom: "0.5rem", fontWeight: 600 }}>
-                No record found
+          {/* Empty state */}
+          {!loading && !error && data && data.results.length === 0 && (
+            <div style={{ padding: "3rem", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-subtle)", borderRadius: "0.75rem", textAlign: "center" }}>
+              <Award size={40} style={{ color: "var(--text-muted)", margin: "0 auto 1rem" }} />
+              <p style={{ color: "var(--text-secondary)", fontWeight: 600, marginBottom: "0.5rem" }}>
+                {query.trim() ? "No records found" : "No certificates issued yet"}
               </p>
               <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", lineHeight: 1.6 }}>
-                No certified driver was found matching{" "}
-                <strong style={{ color: "white" }}>&ldquo;{query}&rdquo;</strong>.
-                Please check the ID number or name and try again.
+                {query.trim()
+                  ? `No certified driver was found matching "${query.trim()}". Check the spelling or try a certificate number.`
+                  : "Certificates will appear here automatically once drivers complete their programmes."}
               </p>
             </div>
           )}
 
-          {result && (
-            <div>
-              <div
-                style={{
-                  padding: "1.5rem",
-                  background: "rgba(34,197,94,0.05)",
-                  border: "1px solid rgba(34,197,94,0.15)",
-                  borderRadius: "0.75rem",
-                  marginBottom: "1.5rem",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: "0.75rem",
-                }}
-              >
-                <div>
-                  <p style={{ fontWeight: 700, fontSize: "1.0625rem", color: "white", marginBottom: "0.25rem" }}>
-                    {result.driverName}
-                  </p>
-                  <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>ID: {result.idNumber}</p>
-                </div>
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "0.375rem",
-                    padding: "0.3rem 0.875rem",
-                    background: "rgba(34,197,94,0.1)",
-                    border: "1px solid rgba(34,197,94,0.25)",
-                    borderRadius: "9999px",
-                    fontSize: "0.75rem",
-                    fontWeight: 700,
-                    color: "var(--color-green-400)",
-                    letterSpacing: "0.04em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Verified
-                </span>
-              </div>
-
-              <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "white", marginBottom: "1rem" }}>
-                Completed programmes ({result.certificates.length})
-              </h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
-                {result.certificates.map((cert, i) => (
+          {/* Results list */}
+          {!loading && !error && data && data.results.length > 0 && (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "2rem" }}>
+                {data.results.map(entry => (
                   <div
-                    key={i}
+                    key={entry.id}
                     style={{
                       padding: "1.25rem 1.5rem",
                       background: "rgba(255,255,255,0.03)",
                       border: "1px solid var(--border-subtle)",
-                      borderRadius: "0.625rem",
+                      borderRadius: "0.75rem",
                       display: "flex",
-                      alignItems: "center",
                       justifyContent: "space-between",
+                      alignItems: "center",
                       flexWrap: "wrap",
                       gap: "1rem",
+                      transition: "border-color 0.15s",
                     }}
+                    onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.borderColor = "rgba(34,197,94,0.3)")}
+                    onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-subtle)")}
                   >
+                    {/* Driver info */}
                     <div>
-                      <p style={{ fontWeight: 600, color: "white", marginBottom: "0.25rem", fontSize: "0.9375rem" }}>
-                        {cert.programmeName}
+                      <p style={{ fontWeight: 700, fontSize: "1rem", color: "white", margin: "0 0 0.25rem" }}>
+                        {entry.driverName}
                       </p>
-                      <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                        Completed{" "}
-                        {new Date(cert.completedAt).toLocaleDateString("en-ZA", {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        })}
+                      <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", margin: 0 }}>
+                        {entry.programme}
                       </p>
                     </div>
-                    {cert.certificateUrl ? (
-                      <div style={{ display: "flex", gap: "0.625rem", flexShrink: 0 }}>
+
+                    {/* Cert details */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", flexWrap: "wrap" }}>
+                      <div style={{ textAlign: "right" }}>
+                        <p style={{ fontSize: "0.7rem", color: "var(--text-muted)", margin: "0 0 0.125rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Certificate</p>
+                        <p style={{ fontFamily: "monospace", fontSize: "0.8125rem", color: "var(--text-secondary)", margin: 0 }}>{entry.certificateNumber}</p>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <p style={{ fontSize: "0.7rem", color: "var(--text-muted)", margin: "0 0 0.125rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Issued</p>
+                        <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", margin: 0 }}>{formatDate(entry.issuedAt)}</p>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        {entry.status === "active" ? (
+                          <CheckCircle2 size={16} style={{ color: "var(--color-green-400)" }} />
+                        ) : (
+                          <XCircle size={16} style={{ color: "#f87171" }} />
+                        )}
+                        <span style={{
+                          fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
+                          color: entry.status === "active" ? "var(--color-green-400)" : "#f87171",
+                        }}>
+                          {entry.status === "active" ? "Verified" : "Revoked"}
+                        </span>
                         <a
-                          href={cert.certificateUrl}
+                          href={entry.verificationUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="btn-secondary"
-                          style={{ fontSize: "0.8rem", padding: "0.45rem 0.875rem", display: "inline-flex", alignItems: "center", gap: "0.375rem" }}
+                          style={{ color: "var(--text-muted)", display: "flex", alignItems: "center", marginLeft: "0.25rem" }}
+                          title="View certificate verification page"
                         >
-                          <FileText size={14} />
-                          View
-                        </a>
-                        <a
-                          href={cert.certificateUrl}
-                          download
-                          className="btn-ghost"
-                          style={{ fontSize: "0.8rem", padding: "0.45rem 0.875rem", display: "inline-flex", alignItems: "center", gap: "0.375rem" }}
-                        >
-                          <Download size={14} />
-                          Download
+                          <ExternalLink size={13} />
                         </a>
                       </div>
-                    ) : (
-                      <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontStyle: "italic" }}>
-                        Certificate pending
-                      </span>
-                    )}
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
 
-          {!result && !notFound && !error && !loading && (
-            <div
-              style={{
-                padding: "3rem",
-                background: "rgba(255,255,255,0.02)",
-                border: "1px dashed var(--border-subtle)",
-                borderRadius: "0.75rem",
-                textAlign: "center",
-              }}
-            >
-              <Search size={28} style={{ color: "var(--text-muted)", margin: "0 auto 1rem" }} />
-              <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", lineHeight: 1.6 }}>
-                Enter a South African ID number or driver name above to search the registry.
-              </p>
-            </div>
+              {/* Pagination */}
+              {data.totalPages > 1 && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem" }}>
+                  <button
+                    onClick={() => handlePageChange(page - 1)}
+                    disabled={page === 1}
+                    style={{
+                      padding: "0.5rem 1.125rem", borderRadius: "0.5rem",
+                      background: "rgba(255,255,255,0.04)", border: "1px solid var(--border-subtle)",
+                      color: page === 1 ? "var(--text-muted)" : "var(--text-secondary)",
+                      cursor: page === 1 ? "not-allowed" : "pointer", fontSize: "0.875rem",
+                    }}
+                  >
+                    Previous
+                  </button>
+                  <span style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>
+                    {page} / {data.totalPages}
+                  </span>
+                  <button
+                    onClick={() => handlePageChange(page + 1)}
+                    disabled={page === data.totalPages}
+                    style={{
+                      padding: "0.5rem 1.125rem", borderRadius: "0.5rem",
+                      background: "rgba(255,255,255,0.04)", border: "1px solid var(--border-subtle)",
+                      color: page === data.totalPages ? "var(--text-muted)" : "var(--text-secondary)",
+                      cursor: page === data.totalPages ? "not-allowed" : "pointer", fontSize: "0.875rem",
+                    }}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
           )}
-
         </div>
       </section>
-
-      {/*
-        ╔══════════════════════════════════════════════════════════════════════╗
-        ║  ASIF — MOODLE INTEGRATION NOTES                                    ║
-        ╠══════════════════════════════════════════════════════════════════════╣
-        ║  1. Create /app/api/registry/lookup/route.ts                        ║
-        ║  2. Accept POST { query: string }                                   ║
-        ║  3. Call Moodle REST API:                                           ║
-        ║     Base URL: https://betterdriver.co.za/webservice/rest/server.php ║
-        ║     Token env var: MOODLE_API_TOKEN                                 ║
-        ║                                                                     ║
-        ║  Step A — Find user:                                                ║
-        ║     wsfunction=core_user_get_users                                  ║
-        ║     criteria[0][key]=idnumber  (for SA ID search)                  ║
-        ║     criteria[0][value]={query}                                      ║
-        ║     OR criteria[0][key]=fullname  (for name search)                ║
-        ║                                                                     ║
-        ║  Step B — Get completions:                                          ║
-        ║     wsfunction=core_completion_get_activities_completion_status     ║
-        ║     userid={userId from Step A}                                     ║
-        ║     courseid={each enrolled course}                                 ║
-        ║                                                                     ║
-        ║  Step C — Get certificate URL:                                      ║
-        ║     wsfunction=mod_certificate_get_issued_certificates              ║
-        ║     OR /mod/certificate/view.php?id={cmid}&action=get              ║
-        ║                                                                     ║
-        ║  4. Return JSON: { driverName, idNumber, certificates[] }          ║
-        ║  5. Remove MOCK_RESULT and stub setTimeout above                    ║
-        ╚══════════════════════════════════════════════════════════════════════╝
-      */}
-
     </div>
   );
 }
