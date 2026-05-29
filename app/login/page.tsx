@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Loader2, Mail, Lock, AlertCircle } from "lucide-react";
+import { Loader2, Mail, Lock, AlertCircle, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -21,6 +22,10 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Invalid email or password.");
+        return;
+      }
       window.location.href = "/dashboard";
     } catch { setError("Something went wrong. Please try again."); }
     finally { setLoading(false); }
@@ -44,21 +49,50 @@ export default function LoginPage() {
                   <AlertCircle size={16} />{error}
                 </div>
               )}
+              {/* Email */}
               <div style={{ marginBottom: "1.25rem" }}>
                 <label style={{ display: "block", color: "#9ca3af", fontSize: "0.8125rem", fontWeight: 600, marginBottom: "0.5rem" }}>Work email</label>
                 <div style={{ position: "relative" }}>
                   <Mail size={16} style={{ position: "absolute", left: "0.875rem", top: "50%", transform: "translateY(-50%)", color: "#4b5563" }} />
-                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="you@company.co.za" style={{ width: "100%", background: "#0a1120", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "0.625rem", padding: "0.75rem 0.875rem 0.75rem 2.5rem", color: "#f9fafb", fontSize: "0.9375rem", outline: "none", boxSizing: "border-box" }} />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    placeholder="you@company.co.za"
+                    style={{ width: "100%", background: "#0a1120", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "0.625rem", padding: "0.75rem 0.875rem 0.75rem 2.5rem", color: "#f9fafb", fontSize: "0.9375rem", outline: "none", boxSizing: "border-box" }}
+                  />
                 </div>
               </div>
+              {/* Password */}
               <div style={{ marginBottom: "1.75rem" }}>
                 <label style={{ display: "block", color: "#9ca3af", fontSize: "0.8125rem", fontWeight: 600, marginBottom: "0.5rem" }}>Password</label>
                 <div style={{ position: "relative" }}>
                   <Lock size={16} style={{ position: "absolute", left: "0.875rem", top: "50%", transform: "translateY(-50%)", color: "#4b5563" }} />
-                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="Your password" style={{ width: "100%", background: "#0a1120", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "0.625rem", padding: "0.75rem 0.875rem 0.75rem 2.5rem", color: "#f9fafb", fontSize: "0.9375rem", outline: "none", boxSizing: "border-box" }} />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    autoComplete="current-password"
+                    placeholder="Your password"
+                    style={{ width: "100%", background: "#0a1120", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "0.625rem", padding: "0.75rem 2.75rem 0.75rem 2.5rem", color: "#f9fafb", fontSize: "0.9375rem", outline: "none", boxSizing: "border-box" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(v => !v)}
+                    style={{ position: "absolute", right: "0.875rem", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#4b5563", display: "flex", alignItems: "center", padding: 0 }}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
               </div>
-              <button type="submit" disabled={loading} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", background: "#22c55e", color: "#000", border: "none", borderRadius: "0.625rem", padding: "0.875rem", fontWeight: 700, fontSize: "0.9375rem", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1 }}>
+              <button
+                type="submit"
+                disabled={loading}
+                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", background: "#22c55e", color: "#000", border: "none", borderRadius: "0.625rem", padding: "0.875rem", fontWeight: 700, fontSize: "0.9375rem", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1 }}
+              >
                 {loading ? <Loader2 size={18} className="animate-spin" /> : null}
                 {loading ? "Logging in..." : "Log in"}
               </button>
