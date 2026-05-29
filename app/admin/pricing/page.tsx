@@ -18,11 +18,10 @@ import {
 
 interface Course {
   id: string;
-  name: string;
-  slug: string;
+  title: string;
   price_corporate: number;
   price_individual: number;
-  available: boolean;
+  is_visible: boolean;
   description?: string;
 }
 
@@ -135,9 +134,16 @@ export default function AdminPricingPage() {
   }
 
   function getVal(course: Course, field: keyof Course) {
-    return edits[course.id]?.[field] !== undefined
-      ? edits[course.id][field]
-      : course[field];
+    const editVal = edits[course.id]?.[field];
+    if (editVal !== undefined) return editVal;
+    const courseVal = course[field];
+    // Prevent null values on controlled inputs
+    if (courseVal === null || courseVal === undefined) {
+      if (field === "price_corporate" || field === "price_individual") return "";
+      if (field === "is_visible") return true;
+      return "";
+    }
+    return courseVal;
   }
 
   const adminNavStyle: React.CSSProperties = {
@@ -227,7 +233,7 @@ export default function AdminPricingPage() {
               const hasEdits = edits[course.id] && Object.keys(edits[course.id]).length > 0;
               const isSaving = saving === course.id;
               const isSaved = saved === course.id;
-              const isAvailable = getVal(course, "available") as boolean;
+              const isVisible = getVal(course, "is_visible") as boolean;
 
               return (
                 <div
@@ -243,7 +249,7 @@ export default function AdminPricingPage() {
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", marginBottom: "1rem" }}>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: "1rem", color: "#f9fafb", marginBottom: "0.25rem" }}>
-                        {course.name}
+                        {course.title}
                       </div>
                       {course.description && (
                         <div style={{ fontSize: "0.8125rem", color: "#6b7280", lineHeight: 1.5, maxWidth: "500px" }}>
@@ -254,24 +260,24 @@ export default function AdminPricingPage() {
 
                     {/* Visibility toggle */}
                     <button
-                      onClick={() => updateEdit(course.id, "available", !isAvailable)}
+                      onClick={() => updateEdit(course.id, "is_visible", !isVisible)}
                       style={{
                         display: "flex",
                         alignItems: "center",
                         gap: "0.375rem",
                         padding: "0.375rem 0.75rem",
-                        background: isAvailable ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)",
-                        border: `1px solid ${isAvailable ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
+                        background: isVisible ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)",
+                        border: `1px solid ${isVisible ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
                         borderRadius: "0.5rem",
-                        color: isAvailable ? "#22c55e" : "#f87171",
+                        color: isVisible ? "#22c55e" : "#f87171",
                         fontSize: "0.8125rem",
                         fontWeight: 600,
                         cursor: "pointer",
                         flexShrink: 0,
                       }}
                     >
-                      {isAvailable ? <Eye size={13} /> : <EyeOff size={13} />}
-                      {isAvailable ? "Visible" : "Hidden"}
+                      {isVisible ? <Eye size={13} /> : <EyeOff size={13} />}
+                      {isVisible ? "Visible" : "Hidden"}
                     </button>
                   </div>
 
@@ -444,7 +450,7 @@ export default function AdminPricingPage() {
             <p style={{ fontSize: "0.8rem", color: "#ef4444", marginTop: "0.5rem" }}>{bulletinFeeError}</p>
           )}
           <p style={{ fontSize: "0.75rem", color: "#4b5563", marginTop: "0.75rem" }}>
-            Current fee: <strong style={{ color: "#f9fafb" }}>R{bulletinFee.toLocaleString("en-ZA")}</strong> (excl. VAT)
+            Current fee: <strong style={{ color: "#f9fafb" }}>R{bulletinFee.toString()}</strong> (excl. VAT)
           </p>
         </div>
       </div>
