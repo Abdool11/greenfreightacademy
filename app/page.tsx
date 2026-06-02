@@ -401,7 +401,7 @@ function ProgrammeArchitectureSection() {
 function WhyCompaniesSection() {
   const reasons = [
     { icon: <Users size={18} />, title: "Fleet-wide rollout", body: "Enrol entire driver cohorts at once. Manage seats, track progress, and access reports from one dashboard." },
-    { icon: <TrendingUp size={18} />, title: "Adoption-friendly pricing", body: "Driver programmes at R35 per driver per month — designed to remove the cost barrier to fleet-wide capability building." },
+    { icon: <TrendingUp size={18} />, title: "Adoption-friendly pricing", body: `Driver programmes at R${PROGRAMMES.find((p) => p.pricingModel === "monthly-per-driver")?.price ?? 75} per driver per month — designed to remove the cost barrier to fleet-wide capability building.` },
     { icon: <BarChart3 size={18} />, title: "Management visibility", body: "Cohort progress, certification status, and CPD completion — all visible to management without chasing individuals." },
     { icon: <RefreshCw size={18} />, title: "Recurring value through CPD", body: "Training does not stop at certification. Quarterly CPD keeps capability current and relevant to real operational conditions." },
     { icon: <ClipboardList size={18} />, title: "Compliance-friendly reporting", body: "Progress and certification reports useful for RTMS, emissions compliance, and internal performance tracking." },

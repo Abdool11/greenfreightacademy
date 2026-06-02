@@ -2,10 +2,11 @@
 
 /**
  * GreenFreightAcademy — Pricing Page
+ * All prices are driven by PROGRAMMES in @/lib/constants.ts — no hardcoded values.
  */
 
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Info } from "lucide-react";
+import { ArrowRight, CheckCircle2, Info, Zap } from "lucide-react";
 import { PROGRAMMES } from "@/lib/constants";
 
 export default function PricingPage() {
@@ -13,8 +14,15 @@ export default function PricingPage() {
   const bookLabel = "Book for your company";
   const bookSeatsLabel = "Book seats";
 
+  // Single source of truth: all data comes from PROGRAMMES in constants.ts
   const monthlyProgrammes = PROGRAMMES.filter((p) => p.pricingModel === "monthly-per-driver");
-  const onceOffProgrammes = PROGRAMMES.filter((p) => p.pricingModel === "once-off" && p.slug !== "green-freight-procurement");
+  const onceOffProgrammes = PROGRAMMES.filter(
+    (p) => p.pricingModel === "once-off" && p.slug !== "green-freight-procurement" && (p as { status?: string }).status !== "coming-soon"
+  );
+  const comingSoonProgrammes = PROGRAMMES.filter((p) => (p as { status?: string }).status === "coming-soon");
+
+  // Derive the enrolment fee from constants (R75 per candidate setup fee — same as monthly price)
+  const enrolmentFee = monthlyProgrammes[0]?.price ?? 75;
 
   return (
     <div style={{ paddingTop: "5rem", background: "var(--color-slate-900)", minHeight: "100vh" }}>
@@ -41,7 +49,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Monthly programmes */}
+      {/* Monthly driver programmes */}
       <section style={{ padding: "4rem 0", background: "var(--color-slate-900)" }}>
         <div className="container-gfa">
           <div style={{ marginBottom: "2.5rem" }}>
@@ -66,6 +74,7 @@ export default function PricingPage() {
                 }}
               >
                 <h3 style={{ fontSize: "1.125rem", marginBottom: "0.75rem" }}>{prog.title}</h3>
+                {/* Price rendered from constants — no hardcoded value */}
                 <div
                   style={{
                     fontFamily: "var(--font-display)",
@@ -76,7 +85,7 @@ export default function PricingPage() {
                     marginBottom: "0.25rem",
                   }}
                 >
-                  R75
+                  R{prog.price}
                 </div>
                 <div style={{ fontSize: "0.875rem", color: "var(--text-muted)", marginBottom: "1.5rem" }}>
                   per driver per month
@@ -111,7 +120,7 @@ export default function PricingPage() {
             ))}
           </div>
 
-          {/* Commitment note */}
+          {/* Commitment note — enrolment fee derived from constants */}
           <div
             style={{
               marginTop: "1.5rem",
@@ -126,13 +135,13 @@ export default function PricingPage() {
           >
             <Info size={16} style={{ color: "var(--color-green-400)", marginTop: "0.15rem", flexShrink: 0 }} />
             <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
-              <strong style={{ color: "white" }}>Enrolment and cancellation:</strong> An enrolment and setup fee of R75 per candidate (once-off) with the monthly subscription covering coursework and CPD. Initial agreement is 24 months, thereafter month to month. Debit order setup available for company accounts.
+              <strong style={{ color: "white" }}>Enrolment and cancellation:</strong> An enrolment and setup fee of R{enrolmentFee} per candidate (once-off) with the monthly subscription covering coursework and CPD. Initial agreement is 24 months, thereafter month to month. Debit order setup available for company accounts.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Once-off programmes */}
+      {/* Once-off management/transition programmes */}
       <section style={{ padding: "4rem 0", background: "var(--bg-section-mid)" }}>
         <div className="container-gfa">
           <div style={{ marginBottom: "2.5rem" }}>
@@ -160,6 +169,7 @@ export default function PricingPage() {
                 }}
               >
                 <h4 style={{ fontSize: "1rem", marginBottom: "0.5rem" }}>{prog.title}</h4>
+                {/* Price from constants */}
                 <div
                   style={{
                     fontFamily: "var(--font-display)",
@@ -192,115 +202,119 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Coming soon — Electric Truck Driver teaser */}
-      <section style={{ padding: "4rem 0", background: "var(--color-slate-900)" }}>
-        <div className="container-gfa">
-          <div
-            style={{
-              padding: "2.5rem",
-              background: "linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(16,185,129,0.04) 100%)",
-              border: "1px solid rgba(34,197,94,0.2)",
-              borderRadius: "1.25rem",
-              display: "flex",
-              flexDirection: "column",
-              gap: "1.5rem",
-            }}
-          >
-            {/* Badge */}
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              <span
+      {/* Coming soon programmes — rendered from constants, fully dynamic */}
+      {comingSoonProgrammes.length > 0 && (
+        <section style={{ padding: "4rem 0", background: "var(--color-slate-900)" }}>
+          <div className="container-gfa">
+            {comingSoonProgrammes.map((prog) => (
+              <div
+                key={prog.id}
                 style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "0.35rem",
-                  padding: "0.25rem 0.75rem",
-                  background: "rgba(34,197,94,0.12)",
-                  border: "1px solid rgba(34,197,94,0.3)",
-                  borderRadius: "9999px",
-                  fontSize: "0.7rem",
-                  fontWeight: 700,
-                  fontFamily: "var(--font-display)",
-                  color: "#22c55e",
-                  letterSpacing: "0.05em",
-                  textTransform: "uppercase",
+                  padding: "2.5rem",
+                  background: "linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(16,185,129,0.04) 100%)",
+                  border: "1px solid rgba(34,197,94,0.2)",
+                  borderRadius: "1.25rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "1.5rem",
+                  marginBottom: "1.5rem",
                 }}
               >
-                <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#22c55e", display: "inline-block", animation: "pulse 2s infinite" }} />
-                Coming soon
-              </span>
-              <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>New programme launching shortly</span>
-            </div>
+                {/* Badge */}
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.35rem",
+                      padding: "0.25rem 0.75rem",
+                      background: "rgba(34,197,94,0.12)",
+                      border: "1px solid rgba(34,197,94,0.3)",
+                      borderRadius: "9999px",
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      fontFamily: "var(--font-display)",
+                      color: "#22c55e",
+                      letterSpacing: "0.05em",
+                      textTransform: "uppercase" as const,
+                    }}
+                  >
+                    <Zap size={10} />
+                    Coming soon
+                  </span>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>New programme launching shortly</span>
+                </div>
 
-            {/* Content */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "2rem", alignItems: "flex-start" }}>
-              <div>
-                <h3 style={{ fontSize: "1.375rem", marginBottom: "0.75rem" }}>The Professional Electric Truck Driver</h3>
-                <p style={{ fontSize: "0.9375rem", color: "var(--text-secondary)", lineHeight: 1.7, marginBottom: "1.25rem", maxWidth: "600px" }}>
-                  As battery electric trucks enter the South African fleet, drivers need specialist skills to operate them safely and efficiently. This focused one-hour programme covers the essentials: how electric drivetrains work, how to use regenerative braking to recover energy and extend range, high-voltage safety considerations, and correct charging procedures.
-                </p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1.5rem" }}>
-                  {[
-                    "Electric drivetrain fundamentals",
-                    "Regenerative braking for improved range",
-                    "High-voltage safety & emergency response",
-                    "Charging procedures & range planning",
-                    "EV driver certification",
-                  ].map((item) => (
-                    <span
-                      key={item}
+                {/* Content + price callout */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "2rem", alignItems: "flex-start" }}>
+                  <div>
+                    <h3 style={{ fontSize: "1.375rem", marginBottom: "0.75rem" }}>{prog.title}</h3>
+                    <p style={{ fontSize: "0.9375rem", color: "var(--text-secondary)", lineHeight: 1.7, marginBottom: "1.25rem", maxWidth: "600px" }}>
+                      {prog.fullDescription}
+                    </p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1.5rem" }}>
+                      {prog.outcomes.map((item) => (
+                        <span
+                          key={item}
+                          style={{
+                            padding: "0.3rem 0.75rem",
+                            background: "rgba(34,197,94,0.08)",
+                            border: "1px solid rgba(34,197,94,0.18)",
+                            borderRadius: "0.5rem",
+                            fontSize: "0.775rem",
+                            color: "var(--text-secondary)",
+                          }}
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                    <Link
+                      href={`/contact?type=ev-driver-interest&programme=${prog.slug}`}
+                      className="btn-secondary"
+                      style={{ fontSize: "0.875rem" }}
+                    >
+                      Register your interest
+                    </Link>
+                  </div>
+
+                  {/* Price callout — fully from constants */}
+                  <div
+                    style={{
+                      padding: "1.5rem 2rem",
+                      background: "rgba(34,197,94,0.08)",
+                      border: "1px solid rgba(34,197,94,0.2)",
+                      borderRadius: "1rem",
+                      textAlign: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <div style={{ fontSize: "0.7rem", fontFamily: "var(--font-display)", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" as const, color: "var(--text-muted)", marginBottom: "0.5rem" }}>
+                      Launch price
+                    </div>
+                    <div
                       style={{
-                        padding: "0.3rem 0.75rem",
-                        background: "rgba(34,197,94,0.08)",
-                        border: "1px solid rgba(34,197,94,0.18)",
-                        borderRadius: "0.5rem",
-                        fontSize: "0.775rem",
-                        color: "var(--text-secondary)",
+                        fontFamily: "var(--font-display)",
+                        fontWeight: 800,
+                        fontSize: "2.5rem",
+                        color: "#22c55e",
+                        lineHeight: 1,
+                        marginBottom: "0.25rem",
                       }}
                     >
-                      {item}
-                    </span>
-                  ))}
+                      R{prog.price.toLocaleString()}
+                    </div>
+                    <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>once-off · per driver</div>
+                    <div style={{ marginTop: "0.75rem", fontSize: "0.75rem", color: "var(--text-muted)", fontStyle: "italic" }}>
+                      {prog.durationLabel}
+                    </div>
+                  </div>
                 </div>
-                <Link
-                  href="/contact?type=ev-driver-interest"
-                  className="btn-secondary"
-                  style={{ fontSize: "0.875rem" }}
-                >
-                  Register your interest
-                </Link>
               </div>
-
-              {/* Price callout */}
-              <div
-                style={{
-                  padding: "1.5rem 2rem",
-                  background: "rgba(34,197,94,0.08)",
-                  border: "1px solid rgba(34,197,94,0.2)",
-                  borderRadius: "1rem",
-                  textAlign: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <div style={{ fontSize: "0.7rem", fontFamily: "var(--font-display)", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "0.5rem" }}>Launch price</div>
-                <div
-                  style={{
-                    fontFamily: "var(--font-display)",
-                    fontWeight: 800,
-                    fontSize: "2.5rem",
-                    color: "#22c55e",
-                    lineHeight: 1,
-                    marginBottom: "0.25rem",
-                  }}
-                >
-                  R999
-                </div>
-                <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>once-off · per driver</div>
-                <div style={{ marginTop: "0.75rem", fontSize: "0.75rem", color: "var(--text-muted)", fontStyle: "italic" }}>~1 hour programme</div>
-              </div>
-            </div>
+            ))}
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* CTA */}
       <section

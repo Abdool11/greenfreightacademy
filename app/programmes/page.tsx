@@ -5,8 +5,11 @@
  */
 
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, ChevronRight, Info } from "lucide-react";
+import { ArrowRight, CheckCircle2, ChevronRight, Info, Zap } from "lucide-react";
 import { PROGRAMMES } from "@/lib/constants";
+
+// Derive enrolment fee from constants — single source of truth
+const ENROLMENT_FEE = PROGRAMMES.find((p) => p.pricingModel === "monthly-per-driver")?.price ?? 75;
 
 export default function ProgrammesPage() {
   const bookHref = "/register";
@@ -299,7 +302,7 @@ export default function ProgrammesPage() {
               >
                 <Info size={15} style={{ color: "var(--color-green-400)", marginTop: "0.15rem", flexShrink: 0 }} />
                 <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", lineHeight: 1.6, margin: 0 }}>
-                  <strong style={{ color: "white" }}>Pricing note:</strong> Pricing shown per month (plus VAT) with a 24&#8209;month agreement and an R75 per person enrolment and setup fee. Thereafter month&#8209;to&#8209;month. Debit order available for company accounts.
+                  <strong style={{ color: "white" }}>Pricing note:</strong> Pricing shown per month (plus VAT) with a 24&#8209;month agreement and an R{ENROLMENT_FEE} per person enrolment and setup fee. Thereafter month&#8209;to&#8209;month. Debit order available for company accounts.
                 </p>
               </div>
             )}

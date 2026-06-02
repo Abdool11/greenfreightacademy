@@ -129,7 +129,7 @@ export const PROGRAMMES: Programme[] = [
     pricingModel: "once-off",
     priceLabel: "R999 launch price",
     deliveryModel: "online-self-paced",
-    durationLabel: "Approximately 1 hour — focused and practical",
+    durationLabel: "Approximately 3 hours — focused and practical",
     available: false,
     status: "coming-soon",
   },
