@@ -1,14 +1,11 @@
+"use client";
+
 /**
  * GreenFreightAcademy — Homepage
- *
- * Academy metrics are now fetched live from Supabase via the LiveStats
- * server component with 15-minute ISR revalidation and automatic fallback
- * to DEMO_METRICS if the DB is unreachable.
  *
  * Programme cards: static from lib/constants.ts (PROGRAMMES array)
  */
 
-import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -24,56 +21,10 @@ import {
   BarChart3,
   ChevronRight,
 } from "lucide-react";
-import { PROGRAMMES, CAPABILITY_PILLARS, ECOSYSTEM_URLS } from "@/lib/constants";
-import { LiveStats } from "@/components/LiveStats";
-
-export const metadata: Metadata = {
-  title: "Green Freight Academy | Specialist Training for Road Freight Companies",
-  description:
-    "GreenFreightAcademy is South Africa's specialist capability platform for the road freight sector. Practical training, certification, and development programmes for drivers, fleet managers, and transport leaders — built to reduce risk and increase profits.",
-  keywords: [
-    "green freight academy",
-    "truck driver training South Africa",
-    "fleet management training South Africa",
-    "eco-driving training",
-    "road freight training",
-    "driver certification South Africa",
-    "fleet capability platform",
-    "transport manager training",
-    "green freight training",
-    "professional driver development",
-    "road freight South Africa",
-    "fleet performance improvement",
-    "RTMS training South Africa",
-  ],
-  openGraph: {
-    title: "Green Freight Academy | Specialist Training for Road Freight Companies",
-    description:
-      "South Africa's specialist capability platform for road freight. Practical training and certification programmes for drivers, fleet managers, and transport leaders.",
-    url: "https://www.greenfreightacademy.co.za",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Green Freight Academy — Specialist Training for Road Freight",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Green Freight Academy | Specialist Training for Road Freight Companies",
-    description:
-      "South Africa's specialist capability platform for road freight. Practical training and certification programmes for drivers, fleet managers, and transport leaders.",
-    images: ["/og-image.png"],
-  },
-  alternates: {
-    canonical: "https://www.greenfreightacademy.co.za",
-  },
-};
+import { PROGRAMMES, CAPABILITY_PILLARS, ECOSYSTEM_URLS, DEMO_METRICS } from "@/lib/constants";
 
 // ─── Section 1: Hero ───────────────────────────────────────────────────────────
-async function HeroSection() {
+function HeroSection() {
   return (
     <section
       style={{
@@ -123,8 +74,46 @@ async function HeroSection() {
           </div>
         </div>
 
-        {/* Impact strip — live stats from Supabase, 15-min ISR, fallback to DEMO_METRICS */}
-        <LiveStats />
+        {/* Impact strip — static demo metrics (server component rendering issue workaround) */}
+        <div
+          style={{
+            marginTop: "4rem",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gap: "1.5rem",
+            maxWidth: "600px",
+          }}
+        >
+          {[
+            { value: DEMO_METRICS.seatsBooked.toLocaleString(), label: "Seats booked" },
+            { value: DEMO_METRICS.certificationsCompleted.toLocaleString(), label: "Certifications completed" },
+            { value: `${DEMO_METRICS.companiesEnrolled}+`, label: "Companies enrolled" },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              style={{
+                padding: "1.25rem 1.5rem",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "0.75rem",
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 800,
+                  fontSize: "2rem",
+                  color: "white",
+                  lineHeight: 1,
+                  marginBottom: "0.375rem",
+                }}
+              >
+                {stat.value}
+              </div>
+              <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{stat.label}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
