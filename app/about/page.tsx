@@ -1,15 +1,10 @@
+"use client";
+
 /**
  * GreenFreightAcademy — About GreenFreightAcademy
  */
-import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-
-export const metadata: Metadata = {
-  title: "About GreenFreightAcademy",
-  description:
-    "GreenFreightAcademy is a training and capability platform built for the road freight sector. It helps organisations deploy structured training campaigns, monitor progress, maintain driver records, and build continuous professional development over time.",
-};
 
 export default function Page() {
   return (

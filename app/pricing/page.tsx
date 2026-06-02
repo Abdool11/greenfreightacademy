@@ -1,47 +1,17 @@
+"use client";
+
 /**
  * GreenFreightAcademy — Pricing Page
- *
- * CTA routing:
- * - "Book for your company" / "Book seats" → logged-in company users go to /dashboard
- *                                           → unauthenticated users go to /register
- * - "Individual enrolment"                 → /contact?type=individual-learner (unchanged)
- * - "Contact us"                           → /contact (unchanged)
  */
 
-import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Info } from "lucide-react";
 import { PROGRAMMES } from "@/lib/constants";
-import { getSession } from "@/lib/auth";
 
-export const metadata: Metadata = {
-  title: "Pricing | Fleet Training Programmes",
-  description:
-    "Transparent, adoption-friendly pricing for all Green Freight Academy training programmes. Driver development programmes from R35 per driver per month. Scalable pricing for fleet-wide rollout across South African road freight companies.",
-  keywords: [
-    "fleet training pricing South Africa",
-    "truck driver training cost South Africa",
-    "road freight training pricing",
-    "fleet development programme cost",
-    "driver training per month South Africa",
-    "green freight training fees",
-  ],
-  openGraph: {
-    title: "Pricing | Green Freight Academy",
-    description:
-      "Transparent, scalable pricing for fleet training programmes. Driver development from R35 per driver per month. Built for fleet-wide rollout.",
-    url: "https://www.greenfreightacademy.co.za/pricing",
-  },
-  alternates: {
-    canonical: "https://www.greenfreightacademy.co.za/pricing",
-  },
-};
-
-export default async function PricingPage() {
-  const session = await getSession();
-  const bookHref = session ? "/dashboard" : "/register";
-  const bookLabel = session ? "Go to my dashboard" : "Book for your company";
-  const bookSeatsLabel = session ? "Go to my dashboard" : "Book seats";
+export default function PricingPage() {
+  const bookHref = "/register";
+  const bookLabel = "Book for your company";
+  const bookSeatsLabel = "Book seats";
 
   const monthlyProgrammes = PROGRAMMES.filter((p) => p.pricingModel === "monthly-per-driver");
   const onceOffProgrammes = PROGRAMMES.filter((p) => p.pricingModel === "once-off" && p.slug !== "green-freight-procurement");
@@ -237,9 +207,7 @@ export default async function PricingPage() {
             Ready to get started?
           </h2>
           <p style={{ maxWidth: "500px", margin: "0 auto 2.5rem", color: "var(--text-secondary)" }}>
-            {session
-              ? "Your dashboard is ready. Import your drivers, select a programme, and begin your training campaign."
-              : "Register your company to book seats, import your driver list, and begin your training campaign."}
+            Register your company to book seats, import your driver list, and begin your training campaign.
           </p>
           <div style={{ display: "flex", gap: "0.875rem", justifyContent: "center", flexWrap: "wrap" }}>
             <Link href={bookHref} className="btn-primary">

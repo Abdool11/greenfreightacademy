@@ -1,12 +1,7 @@
-import type { Metadata } from "next";
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, RefreshCw, Bell, BookOpen, Shield, TrendingUp, CheckCircle2, Zap } from "lucide-react";
-
-export const metadata: Metadata = {
-  title: "CPD & Driver Bulletins | GreenFreightAcademy",
-  description:
-    "GreenFreightAcademy extends capability development beyond once-off training through structured CPD and driver bulletins — closing the loop from incident to reduced risk.",
-};
 
 const CPD_FEATURES = [
   {

@@ -1,48 +1,16 @@
+"use client";
+
 /**
  * GreenFreightAcademy — Programmes Page
- *
- * CTA routing:
- * - "Book for your company" → logged-in company users go to /dashboard
- *                           → unauthenticated users go to /register
- * - "Individual enrolment"  → /contact?type=individual-learner (unchanged)
- * - "Contact us"            → /contact (unchanged)
  */
 
-import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, ChevronRight, Info } from "lucide-react";
 import { PROGRAMMES } from "@/lib/constants";
-import { getSession } from "@/lib/auth";
 
-export const metadata: Metadata = {
-  title: "Training Programmes | Road Freight Capability Development",
-  description:
-    "Green Freight Academy offers six specialist training programmes for road freight companies — covering professional truck drivers, eco-driving, fleet management, transport managers, green freight procurement, and electric truck transition planning.",
-  keywords: [
-    "truck driver training programmes South Africa",
-    "eco-driving training programme",
-    "fleet management training programme",
-    "transport manager training South Africa",
-    "green freight procurement training",
-    "electric truck transition training",
-    "road freight training courses",
-    "professional driver development programme",
-  ],
-  openGraph: {
-    title: "Training Programmes | Green Freight Academy",
-    description:
-      "Six specialist training programmes for road freight companies — from professional drivers to transition leaders. Built for fleet-wide rollout.",
-    url: "https://www.greenfreightacademy.co.za/programmes",
-  },
-  alternates: {
-    canonical: "https://www.greenfreightacademy.co.za/programmes",
-  },
-};
-
-export default async function ProgrammesPage() {
-  const session = await getSession();
-  const bookHref = session ? "/dashboard" : "/register";
-  const bookLabel = session ? "Go to my dashboard" : "Book for your company";
+export default function ProgrammesPage() {
+  const bookHref = "/register";
+  const bookLabel = "Book for your company";
 
   const tiers = [
     {
@@ -319,9 +287,7 @@ export default async function ProgrammesPage() {
             Ready to build capability across your business?
           </h2>
           <p style={{ maxWidth: "500px", margin: "0 auto 2.5rem", color: "var(--text-secondary)" }}>
-            {session
-              ? "Your dashboard is ready. Import your drivers, select a programme, and begin your training campaign."
-              : "Register your company to book seats, import your driver list, and begin your training campaign."}
+            Register your company to book seats, import your driver list, and begin your training campaign.
           </p>
           <div style={{ display: "flex", gap: "0.875rem", justifyContent: "center", flexWrap: "wrap" }}>
             <Link href={bookHref} className="btn-primary">
