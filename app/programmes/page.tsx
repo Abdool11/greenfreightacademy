@@ -125,6 +125,27 @@ export default function ProgrammesPage() {
                         <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
                         Active
                       </span>
+                    ) : (prog as { status?: string }).status === "coming-soon" ? (
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "0.3rem",
+                          padding: "0.2rem 0.6rem",
+                          background: "rgba(34,197,94,0.1)",
+                          border: "1px solid rgba(34,197,94,0.25)",
+                          borderRadius: "9999px",
+                          fontSize: "0.7rem",
+                          fontWeight: 700,
+                          fontFamily: "var(--font-display)",
+                          color: "#22c55e",
+                          letterSpacing: "0.04em",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
+                        Coming Soon
+                      </span>
                     ) : (
                       <span
                         style={{
@@ -229,21 +250,34 @@ export default function ProgrammesPage() {
 
                   {/* CTAs */}
                   <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginTop: "auto" }}>
-                    <Link
-                      href={bookHref}
-                      className="btn-primary"
-                      style={{ fontSize: "0.8rem", padding: "0.5rem 1rem" }}
-                    >
-                      {bookLabel}
-                    </Link>
-                    <Link
-                      href={`/contact?type=individual-learner&programme=${prog.slug}`}
-                      className="btn-ghost"
-                      style={{ fontSize: "0.8rem" }}
-                    >
-                      Individual enrolment
-                      <ChevronRight size={13} />
-                    </Link>
+                    {(prog as { status?: string }).status === "coming-soon" ? (
+                      <Link
+                        href={`/contact?type=ev-driver-interest&programme=${prog.slug}`}
+                        className="btn-secondary"
+                        style={{ fontSize: "0.8rem", padding: "0.5rem 1rem" }}
+                      >
+                        Register your interest
+                        <ChevronRight size={13} />
+                      </Link>
+                    ) : (
+                      <>
+                        <Link
+                          href={bookHref}
+                          className="btn-primary"
+                          style={{ fontSize: "0.8rem", padding: "0.5rem 1rem" }}
+                        >
+                          {bookLabel}
+                        </Link>
+                        <Link
+                          href={`/contact?type=individual-learner&programme=${prog.slug}`}
+                          className="btn-ghost"
+                          style={{ fontSize: "0.8rem" }}
+                        >
+                          Individual enrolment
+                          <ChevronRight size={13} />
+                        </Link>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
