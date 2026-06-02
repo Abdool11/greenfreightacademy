@@ -92,7 +92,6 @@ export function Navigation() {
           {/* Desktop Nav */}
           <div
             style={{
-              display: "flex",
               alignItems: "center",
               gap: "2rem",
             }}
@@ -119,7 +118,7 @@ export function Navigation() {
           </div>
 
           {/* Desktop CTAs */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }} className="hidden md:flex">
+          <div style={{ alignItems: "center", gap: "0.75rem" }} className="hidden md:flex">
             <Link href={NAV_CTA_SECONDARY.href} className="btn-secondary" style={{ padding: "0.5rem 1.25rem", fontSize: "0.875rem" }}>
               {NAV_CTA_SECONDARY.label}
             </Link>

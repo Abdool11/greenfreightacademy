@@ -46,7 +46,7 @@ All three platforms connect to the same Supabase project. This allows GFA to dep
 * `/` - Home page
 * `/about` - About TAG
 * `/services` - Services offered
-* `/contact` - Contact form (saves to `enquiries` table, sends email via Resend)
+* `/contact` - Contact form (saves to `enquiries` table, sends email via Brevo)
 * `/tco-calculator` - Total Cost of Ownership calculator (saves to `tco_submissions` table)
 
 ### Admin Portal (`/admin`)

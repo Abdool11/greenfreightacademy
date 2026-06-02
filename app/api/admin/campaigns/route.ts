@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/email";
 import crypto from "crypto";
 
 // POST /api/admin/campaigns — send bulk voucher campaign to selected leads
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   }
 
   const config = await getConfigs(["whatsapp_phone_id", "whatsapp_access_token"]);
-  const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+  const smtpEnabled = !!process.env.BREVO_SMTP_PASSWORD;
 
   const results: { leadId: string; code: string; sent: boolean; error?: string }[] = [];
 
@@ -89,10 +89,11 @@ export async function POST(req: NextRequest) {
       let sent = false;
 
       // Send email
-      if ((sendVia === "email" || sendVia === "both") && lead.email && resend) {
+      if ((sendVia === "email" || sendVia === "both") && lead.email && smtpEnabled) {
         try {
-          await resend.emails.send({
-            from: "GreenFreightAcademy <noreply@greenfreightacademy.co.za>",
+          await sendEmail({
+            from: "noreply@greenfreightacademy.co.za",
+            fromName: "GreenFreightAcademy",
             to: lead.email,
             subject: `Your GFA Trial Access — ${seats} seat${Number(seats) > 1 ? "s" : ""} ready`,
             html: buildCampaignEmail({

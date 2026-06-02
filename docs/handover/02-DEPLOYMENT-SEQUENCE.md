@@ -46,8 +46,8 @@ Run the provided seed SQL scripts (see `07-EXECUTABLES`) to create the first adm
 3. Generate a permanent System User access token.
 4. Submit all required message templates (see `03-CONFIGURATION-REFERENCE.md`) and wait for approval.
 
-### 3. Resend (Email)
-1. Create a Resend account.
+### 3. Brevo (Email)
+1. Create a Brevo account.
 2. Verify the sending domains.
 3. Generate API keys.
 
@@ -56,7 +56,7 @@ Run the provided seed SQL scripts (see `07-EXECUTABLES`) to create the first adm
 - [ ] Moodle token generated and tested via Postman.
 - [ ] Moodle webhook endpoint configured.
 - [ ] WhatsApp templates approved in Meta Business Manager.
-- [ ] Resend domains verified.
+- [ ] Brevo domains verified.
 ---
 
 ## Phase 3: Application Deployment

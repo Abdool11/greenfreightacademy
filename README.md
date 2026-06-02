@@ -129,7 +129,7 @@ npm run dev
 | `ADMIN_JWT_SECRET` | Yes | Secret for signing admin JWT tokens |
 | `PAYSTACK_SECRET_KEY` | Yes | Paystack secret key |
 | `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | Yes | Paystack public key |
-| `RESEND_API_KEY` | Yes | Resend API key for transactional emails |
+| `BREVO_API_KEY` | Yes | Brevo API key for transactional emails |
 | `WHATSAPP_ACCESS_TOKEN` | Optional | Meta Graph API token for WhatsApp nudges |
 | `WHATSAPP_PHONE_NUMBER_ID` | Optional | WhatsApp Business phone number ID |
 | `MOODLE_URL` | Optional | Base URL of the Moodle instance |

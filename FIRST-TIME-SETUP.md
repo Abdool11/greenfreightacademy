@@ -68,7 +68,7 @@ Fill in every value:
 | `SUPABASE_SERVICE_ROLE_KEY` | Your Supabase service role key |
 | `GFA_JWT_SECRET` | Long random string: `openssl rand -hex 32` |
 | `NEXT_PUBLIC_SITE_URL` | `https://greenfreightacademy.co.za` |
-| `RESEND_API_KEY` | Your Resend.com API key (for quote, deploy, and approval emails) |
+| `BREVO_API_KEY` | Your Brevo API key (for quote, deploy, and approval emails) |
 | `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | Your Paystack public key |
 | `PAYSTACK_SECRET_KEY` | Your Paystack secret key |
 | `BD_BASE_URL` | `https://betterdriver.co.za` (or the BD server URL) |
@@ -231,4 +231,4 @@ If no rows appear, the INSERT in Step 5 did not run. Try again.
 Check `SUPABASE_SERVICE_ROLE_KEY` and `GFA_JWT_SECRET` are set in `.env.local`. Restart the app: `pm2 restart gfa-app`.
 
 **Emails not sending**
-Check `RESEND_API_KEY` is set correctly. Verify your Resend domain is verified in the Resend dashboard.
+Check `BREVO_API_KEY` is set correctly. Verify your sender domain is verified in the Brevo dashboard.

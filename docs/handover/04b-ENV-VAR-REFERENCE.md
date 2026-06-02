@@ -61,7 +61,10 @@ The ecosystem uses a single shared Supabase project. These three variables must 
 | `BUNNY_LIBRARY_ID` | Bunny.net Dashboard | ID of the video library |
 | `BUNNY_STREAM_LIBRARY_ID` | Same as `BUNNY_LIBRARY_ID` | Alias used in some routes |
 | `BUNNY_CDN_HOSTNAME` | Bunny.net Dashboard | Hostname for serving videos |
-| `RESEND_API_KEY` | Resend Dashboard | API key for sending emails |
+| `BREVO_SMTP_HOST` | `smtp-relay.brevo.com` | Brevo SMTP relay host |
+| `BREVO_SMTP_PORT` | `587` | Brevo SMTP relay port |
+| `BREVO_SMTP_LOGIN` | Brevo Dashboard → SMTP & API | Brevo SMTP login |
+| `BREVO_SMTP_PASSWORD` | Brevo Dashboard → SMTP & API | Brevo SMTP password (Master Password) |
 | `NEXT_PUBLIC_SITE_URL` | `https://www.greenfreightacademy.co.za` | Public URL of the GFA site |
 | `NEXT_PUBLIC_GFA_URL` | `https://www.greenfreightacademy.co.za` | Public URL of the GFA site |
 | `NEXT_PUBLIC_GFA_LOGO_URL` | `https://www.greenfreightacademy.co.za/logo.png` | URL of the GFA logo |
@@ -82,7 +85,10 @@ The ecosystem uses a single shared Supabase project. These three variables must 
 | `ADMIN_JWT_SECRET` | Generate: `openssl rand -hex 32` | Signs admin session tokens |
 | `ADMIN_EMAIL` | `durbanroadtransport@gmail.com` | Default admin email for first login |
 | `ADMIN_PASSWORD` | `changeme` | Default admin password for first login |
-| `RESEND_API_KEY` | Resend Dashboard | API key for sending emails |
+| `BREVO_SMTP_HOST` | `smtp-relay.brevo.com` | Brevo SMTP relay host |
+| `BREVO_SMTP_PORT` | `587` | Brevo SMTP relay port |
+| `BREVO_SMTP_LOGIN` | Brevo Dashboard → SMTP & API | Brevo SMTP login |
+| `BREVO_SMTP_PASSWORD` | Brevo Dashboard → SMTP & API | Brevo SMTP password (Master Password) |
 | `GFA_PRICING_API_URL` | `https://www.greenfreightacademy.co.za/api/pricing` | Endpoint for fetching live GFA pricing |
 | `NEXT_PUBLIC_SITE_URL` | `https://www.transportactiongroup.com` | Public URL of the TAG site |
 | `NEXT_PUBLIC_GFA_URL` | `https://www.greenfreightacademy.co.za` | Public URL of the GFA site |

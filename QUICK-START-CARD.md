@@ -29,7 +29,7 @@ pm2 save && pm2 startup
 | `NEXT_PUBLIC_SITE_URL` | `https://greenfreightacademy.co.za` |
 | `BD_BASE_URL` | `https://betterdriver.co.za` |
 | `TAG_BASE_URL` | `https://transportactiongroup.co.za` |
-| `RESEND_API_KEY` | resend.com → API Keys |
+| `BREVO_API_KEY` | app.brevo.com/settings/keys/api |
 | `META_WA_API_VERSION` | e.g. `v19.0` |
 | `META_WA_PHONE_NUMBER_ID` | Meta Business → WhatsApp → Phone Numbers |
 | `META_WA_ACCESS_TOKEN` | Meta Business → WhatsApp → API Setup |

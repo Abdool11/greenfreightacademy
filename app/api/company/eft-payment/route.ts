@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/email";
 
 // POST /api/company/eft-payment — client submits EFT payment notification
 export async function POST(req: NextRequest) {
@@ -55,11 +55,11 @@ export async function POST(req: NextRequest) {
   const config = await getConfigs(["email_booking_to", "company_name"]);
   const adminEmail = config["email_booking_to"];
 
-  if (adminEmail && process.env.RESEND_API_KEY) {
+  if (adminEmail && process.env.BREVO_SMTP_PASSWORD) {
     try {
-      const resend = new Resend(process.env.RESEND_API_KEY);
-      await resend.emails.send({
-        from: "GFA Platform <noreply@greenfreightacademy.co.za>",
+      await sendEmail({
+        from: "noreply@greenfreightacademy.co.za",
+        fromName: "GFA Platform",
         to: adminEmail,
         subject: `EFT Payment Notification — ${quote.reference}`,
         html: `

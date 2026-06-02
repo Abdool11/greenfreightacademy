@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
+import { sendEmail } from "@/lib/email";
 import crypto from "crypto";
 
 // ─── Generate a secure magic link token ──────────────────────────────────────
@@ -37,28 +38,22 @@ async function sendWhatsApp(
   }
 }
 
-// ─── Send email via Resend ────────────────────────────────────────────────────
-async function sendEmail(
+// ─── Send driver activation email ────────────────────────────────────────────
+async function sendDriverEmail(
   to: string,
   subject: string,
   html: string
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) return false;
+  if (!process.env.BREVO_SMTP_PASSWORD) return false;
   try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "GreenFreightAcademy <notifications@greenfreightacademy.com>",
-        to,
-        subject,
-        html,
-      }),
+    await sendEmail({
+      from: "notifications@greenfreightacademy.com",
+      fromName: "GreenFreightAcademy",
+      to,
+      subject,
+      html,
     });
-    return res.ok;
+    return true;
   } catch {
     return false;
   }
@@ -268,7 +263,7 @@ export async function POST(req: NextRequest) {
             </div>
           </div>
         `;
-        emailSent = await sendEmail(
+        emailSent = await sendDriverEmail(
           driver.email,
           `Your ${programmeName} training is ready — activate your BetterDriver account`,
           emailHtml
