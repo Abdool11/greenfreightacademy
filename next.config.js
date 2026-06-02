@@ -13,9 +13,6 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
 
-  // Use standalone output for VPS deployment
-  output: 'standalone',
-
   // Image domains will be configured by Asif when real assets are added
   images: {
     remotePatterns: [
