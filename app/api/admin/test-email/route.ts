@@ -3,8 +3,10 @@ import { getAdminSession } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
-  // Allow unauthenticated requests in development for easy testing
-  if (process.env.NODE_ENV !== "development") {
+  // Allow requests with a secret key (for testing) or admin session
+  const secret = req.headers.get("x-test-secret");
+  const bypass = secret && secret === process.env.TEST_EMAIL_SECRET;
+  if (!bypass && process.env.NODE_ENV !== "development") {
     const session = await getAdminSession();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
