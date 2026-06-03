@@ -16,6 +16,9 @@ export async function POST(req: NextRequest) {
             headerReceived: !!secret,
             envVarSet: !!process.env.TEST_EMAIL_SECRET,
             nodeEnv: process.env.NODE_ENV,
+            headerLength: secret?.length ?? 0,
+            envLength: process.env.TEST_EMAIL_SECRET?.length ?? 0,
+            match: secret === process.env.TEST_EMAIL_SECRET,
           },
         },
         { status: 401 }
