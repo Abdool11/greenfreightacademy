@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     }
 
     await sendEmail({
-      from: process.env.BREVO_SMTP_LOGIN || "test@greenfreightacademy.co.za",
+      from: "abdool@transportactiongroup.co.za",
       fromName: "GFA Test",
       to,
       subject: subject || "Brevo test email from GFA",
