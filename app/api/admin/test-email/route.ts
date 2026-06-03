@@ -9,7 +9,17 @@ export async function POST(req: NextRequest) {
   if (!bypass && process.env.NODE_ENV !== "development") {
     const session = await getAdminSession();
     if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        {
+          error: "Unauthorized",
+          debug: {
+            headerReceived: !!secret,
+            envVarSet: !!process.env.TEST_EMAIL_SECRET,
+            nodeEnv: process.env.NODE_ENV,
+          },
+        },
+        { status: 401 }
+      );
     }
   }
 
