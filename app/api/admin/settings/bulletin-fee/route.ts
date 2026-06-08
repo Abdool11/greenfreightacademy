@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getAdminSession } from "@/lib/auth";
 
-const FEE_KEY = "urgent_bulletin_fee";
+const FEE_KEY = "bulletin_urgent_fee";
 const DEFAULT_FEE = 1000;
 
 // GET /api/admin/settings/bulletin-fee

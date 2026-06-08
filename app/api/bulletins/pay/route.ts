@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const { data: feeConfig } = await supabaseAdmin
       .from("site_config")
       .select("value")
-      .eq("key", "urgent_bulletin_fee")
+      .eq("key", "bulletin_urgent_fee")
       .single();
     const fee = feeConfig?.value ? Number(feeConfig.value) : 1000;
 

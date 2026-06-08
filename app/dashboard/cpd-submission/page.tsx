@@ -1,33 +1,32 @@
 /**
  * GreenFreightAcademy — CPD Submission Page
  *
- * DATA REQUIREMENTS:
- * - Form submission: Server Action → POST /api/cpd-submission
- *   Payload: {
- *     companyId: string,
- *     incidentTitle: string,
- *     incidentDescription: string,
- *     mitigation: string,
- *     visibility: "anonymous" | "confidential",
- *     dispatch: "urgent" | "standard",
- *     urgentFeePaid?: boolean,
- *   }
- * - If dispatch === "urgent": redirect to Paystack payment for URGENT_CPD_FEE_ZAR
- *   TODO: Asif to implement Paystack payment flow
- * - Supabase table: cpd_submissions
- *   Fields: id, company_id, incident_title, incident_description, mitigation,
- *           visibility, dispatch, status (submitted|under_review|accepted|in_development|published),
- *           urgent_fee_paid, created_at
- * - Email notification to admin on new submission
- *   TODO: Asif to implement edge function trigger
+ * This page creates a bulletin via the existing /api/bulletins/submit endpoint
+ * and reuses the fully-wired Paystack payment flow for urgent dispatch.
+ *
+ * Flow:
+ * 1. User fills form (title, category, description, mitigation, visibility, dispatch)
+ * 2. POST /api/bulletins/submit → creates bulletin
+ * 3. If urgent: POST /api/bulletins/pay → initializes Paystack → redirect to auth URL
+ * 4. Paystack redirects to /dashboard/bulletins/payment-complete for verification
+ * 5. If standard: bulletin is saved and added to the CPD library queue
  */
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, AlertTriangle, Info } from "lucide-react";
-// URGENT_CPD_FEE_LABEL removed — fee to be confirmed by Asif when Paystack is integrated
+import { ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
+
+const CATEGORIES = [
+  { value: "safety", label: "Safety" },
+  { value: "quality", label: "Quality" },
+  { value: "process", label: "Process" },
+  { value: "operational", label: "Operational" },
+  { value: "compliance", label: "Compliance" },
+  { value: "behaviour", label: "Behaviour / Conduct" },
+  { value: "other", label: "Other" },
+];
 
 type Visibility = "anonymous" | "confidential";
 type Dispatch = "urgent" | "standard";
@@ -37,28 +36,76 @@ export default function CPDSubmissionPage() {
   const [submitting, setSubmitting] = useState(false);
   const [visibility, setVisibility] = useState<Visibility>("anonymous");
   const [dispatch, setDispatch] = useState<Dispatch>("standard");
+  const [category, setCategory] = useState("other");
+  const [urgentFee, setUrgentFee] = useState<number>(1000);
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState({
     incidentTitle: "",
     incidentDescription: "",
     mitigation: "",
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  useEffect(() => {
+    fetch("/api/admin/settings/bulletin-fee")
+      .then((r) => r.json())
+      .then((d) => { if (typeof d.fee === "number") setUrgentFee(d.fee); })
+      .catch(() => {});
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setError("");
 
-    // TODO: Asif to implement:
-    // 1. Server Action that POSTs to /api/cpd-submission
-    // 2. If dispatch === "urgent", redirect to Paystack payment
-    // 3. On payment success, mark urgent_fee_paid = true and notify admin
-    // 4. If dispatch === "standard", save to Supabase and notify admin
-    await new Promise((r) => setTimeout(r, 800));
-    setSubmitting(false);
-    setSubmitted(true);
+    try {
+      // 1. Create bulletin via the existing bulletin API
+      const submitRes = await fetch("/api/bulletins/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: formData.incidentTitle,
+          category,
+          description: formData.incidentDescription,
+          mitigation_message: formData.mitigation,
+          urgency: dispatch,
+          confidential: visibility === "confidential",
+          waive_fee: false, // urgent always requires payment; standard is free via cpd_library
+          audience_type: "all",
+          image_urls: [],
+          understanding_questions: [],
+        }),
+      });
+      const submitData = await submitRes.json();
+      if (!submitRes.ok) throw new Error(submitData.error || "Submission failed");
+
+      // 2. If urgent dispatch needs payment, initialize Paystack immediately
+      if (submitData.needs_payment && submitData.bulletin_id) {
+        const payRes = await fetch("/api/bulletins/pay", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bulletin_id: submitData.bulletin_id,
+            method: "paystack",
+          }),
+        });
+        const payData = await payRes.json();
+        if (!payRes.ok) throw new Error(payData.error || "Payment initialization failed");
+        if (payData.authorization_url) {
+          window.location.href = payData.authorization_url;
+          return; // redirecting — don't reset state
+        }
+      }
+
+      setSubmitting(false);
+      setSubmitted(true);
+    } catch (err: any) {
+      setSubmitting(false);
+      setError(err.message || "Something went wrong. Please try again.");
+    }
   };
 
   if (submitted) {
@@ -78,7 +125,7 @@ export default function CPDSubmissionPage() {
             <h3 style={{ marginBottom: "0.75rem" }}>CPD submission received</h3>
             <p style={{ color: "var(--text-secondary)", marginBottom: "0.5rem" }}>
               {dispatch === "urgent"
-                ? "Your urgent CPD request has been submitted. Our team will be in touch to confirm dispatch within your driver cohort this month."
+                ? "Your urgent CPD bulletin has been submitted. If you completed payment, it is ready to disseminate to your driver cohort immediately."
                 : "Your contribution has been added to the CPD library for consideration in the next quarterly cycle."}
             </p>
             <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", marginBottom: "2rem" }}>
@@ -133,6 +180,19 @@ export default function CPDSubmissionPage() {
             {/* Incident details */}
             <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
               <h3 style={{ fontSize: "1rem", color: "white" }}>Incident or challenge</h3>
+              <div>
+                <label className="form-label">Category <span style={{ color: "#f87171" }}>*</span></label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="form-input"
+                  required
+                >
+                  {CATEGORIES.map((c) => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="form-label">Title</label>
                 <input
@@ -244,7 +304,7 @@ export default function CPDSubmissionPage() {
                       value: "urgent",
                       label: "Urgent — push to my drivers this month",
                       description: "A priority CPD intervention will be prepared and dispatched to your driver cohort within the current month.",
-                      fee: "Fee to be confirmed", // TODO: Asif — set price once Paystack is integrated
+                      fee: `R ${Math.round(urgentFee * 1.15).toLocaleString()} inc. VAT`,
                     },
                   ] as { value: Dispatch; label: string; description: string; fee: string | null }[]
                 ).map((option) => (
@@ -328,11 +388,16 @@ export default function CPDSubmissionPage() {
                   <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
                     After submitting, you will be directed to complete payment via Paystack. The urgent CPD
                     intervention will be dispatched to your driver cohort once payment is confirmed.
-                    {/* TODO: Asif to implement Paystack redirect on urgent dispatch */}
                   </p>
                 </div>
               )}
             </div>
+
+            {error && (
+              <div style={{ padding: "0.875rem 1rem", background: "rgba(248, 113, 113, 0.05)", border: "1px solid rgba(248, 113, 113, 0.2)", borderRadius: "0.625rem", color: "#f87171", fontSize: "0.875rem" }}>
+              {error}
+            </div>
+            )}
 
             {/* Submit */}
             <div style={{ paddingTop: "0.5rem" }}>
