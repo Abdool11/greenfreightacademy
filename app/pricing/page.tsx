@@ -6,7 +6,7 @@
  */
 
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Info, Zap } from "lucide-react";
+import { ArrowRight, CheckCircle2, Info, Play, Zap } from "lucide-react";
 import { PROGRAMMES } from "@/lib/constants";
 
 export default function PricingPage() {
@@ -336,6 +336,9 @@ export default function PricingPage() {
             <Link href={bookHref} className="btn-primary">
               {bookLabel}
               <ArrowRight size={16} />
+            </Link>
+            <Link href="/demo" className="btn-secondary" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <Play size={15} /> Take a guided tour
             </Link>
             <Link href="/contact" className="btn-secondary">
               Contact us
