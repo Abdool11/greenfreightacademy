@@ -1,0 +1,750 @@
+(node:4256) ExperimentalWarning: Support for loading ES Module in require() is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+   ▲ Next.js 15.3.1
+   - Local:        http://localhost:3001
+   - Network:      http://10.0.0.105:3001
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 8s
+ ○ Compiling / ...
+ ✓ Compiled / in 6.4s (845 modules)
+[LiveStats] Supabase errors: { message: '' } { message: '' } { message: '' }
+ GET / 200 in 11119ms
+[LiveStats] Supabase errors: { message: '' } { message: '' } { message: '' }
+ GET / 200 in 639ms
+ ○ Compiling /register ...
+ ✓ Compiled /register in 1445ms (875 modules)
+ GET /register 200 in 2140ms
+ ○ Compiling /login ...
+(node:13388) ExperimentalWarning: Support for loading ES Module in require() is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ Compiled /login in 4.8s (905 modules)
+ ✓ Compiled in 1046ms (372 modules)
+ GET /login 200 in 5928ms
+ ○ Compiling /about ...
+ ✓ Compiled /about in 870ms (901 modules)
+ GET /about 200 in 1175ms
+ ○ Compiling /pricing ...
+ ✓ Compiled /pricing in 2.1s (983 modules)
+ GET /pricing 200 in 3097ms
+ ○ Compiling /programmes ...
+ ✓ Compiled /programmes in 1504ms (993 modules)
+ GET /programmes 200 in 2084ms
+ ○ Compiling /publications ...
+ ✓ Compiled /publications in 735ms (1009 modules)
+ GET /publications 200 in 1278ms
+ ○ Compiling /registry ...
+ ✓ Compiled /registry in 1302ms (1033 modules)
+ GET /registry 200 in 1763ms
+ ○ Compiling /contact ...
+ ✓ Compiled /contact in 3s (1054 modules)
+ GET /contact 200 in 3484ms
+ ○ Compiling /privacy ...
+ ✓ Compiled /privacy in 1006ms (1056 modules)
+ GET /privacy 200 in 2173ms
+ ○ Compiling /terms ...
+ ✓ Compiled /terms in 1464ms (1058 modules)
+ GET /terms 200 in 1875ms
+ ○ Compiling /trial ...
+ ✓ Compiled /trial in 918ms (1069 modules)
+ GET /trial 200 in 1297ms
+ ○ Compiling /cpd-bulletins ...
+ ✓ Compiled /cpd-bulletins in 1075ms (1074 modules)
+Each child in a list should have a unique "key" prop. See https://react.dev/link/warning-keys for more information.
+ GET /cpd-bulletins 200 in 1441ms
+ ○ Compiling /admin/login ...
+ ✓ Compiled /admin/login in 1100ms (1081 modules)
+ GET /admin/login 200 in 1489ms
+ ○ Compiling /admin/dashboard ...
+ ✓ Compiled /admin/dashboard in 1921ms (1083 modules)
+ GET /admin/dashboard 200 in 2347ms
+ ○ Compiling /admin/cohorts ...
+ ✓ Compiled /admin/cohorts in 1677ms (1091 modules)
+ GET /admin/cohorts 200 in 2288ms
+ ○ Compiling /admin/companies ...
+ ✓ Compiled /admin/companies in 2.8s (1093 modules)
+ GET /admin/companies 200 in 3302ms
+ ○ Compiling /admin/leads ...
+ ✓ Compiled /admin/leads in 1604ms (1112 modules)
+ GET /admin/leads 200 in 2075ms
+ ○ Compiling /admin/pricing ...
+ ✓ Compiled /admin/pricing in 2.8s (1133 modules)
+ GET /admin/pricing 200 in 3121ms
+ ○ Compiling /admin/stats ...
+ ✓ Compiled /admin/stats in 2.9s (1144 modules)
+ GET /admin/stats 200 in 3223ms
+ ○ Compiling /admin/funnel ...
+ ✓ Compiled /admin/funnel in 2.9s (1149 modules)
+ GET /admin/funnel 200 in 3317ms
+ ○ Compiling /admin/data ...
+ ✓ Compiled /admin/data in 4s (1166 modules)
+ GET /admin/data 200 in 4220ms
+ ○ Compiling /admin/email-settings ...
+ ✓ Compiled /admin/email-settings in 2.9s (1174 modules)
+ GET /admin/email-settings 200 in 3490ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 4.5s (1175 modules)
+ GET /admin/settings-messaging 404 in 4786ms
+ ○ Compiling /admin/super ...
+ ✓ Compiled /admin/super in 3.6s (1194 modules)
+ GET /admin/super 200 in 4869ms
+ ○ Compiling /admin/cpd-queue ...
+ ✓ Compiled /admin/cpd-queue in 5.1s (1211 modules)
+ GET /admin/cpd-queue 200 in 6186ms
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 3.6s (1245 modules)
+ GET /dashboard 200 in 4227ms
+ ○ Compiling /dashboard/import ...
+ ✓ Compiled /dashboard/import in 2.1s (1261 modules)
+ GET /dashboard/import 200 in 2471ms
+ ○ Compiling /dashboard/training-campaigns ...
+ ✓ Compiled /dashboard/training-campaigns in 1977ms (1188 modules)
+ GET /dashboard/training-campaigns 200 in 2607ms
+ ○ Compiling /dashboard/cpd-library ...
+ ✓ Compiled /dashboard/cpd-library in 1185ms (1195 modules)
+ GET /dashboard/cpd-library 200 in 1657ms
+ ○ Compiling /dashboard/reports ...
+ ✓ Compiled /dashboard/reports in 1336ms (1204 modules)
+ GET /dashboard/reports 200 in 1690ms
+ ○ Compiling /dashboard/career-planner ...
+ ✓ Compiled /dashboard/career-planner in 1767ms (1215 modules)
+ GET /dashboard/career-planner 200 in 2303ms
+ ○ Compiling /dashboard/campaigns ...
+ ✓ Compiled /dashboard/campaigns in 1469ms (1222 modules)
+ GET /dashboard/campaigns 200 in 1961ms
+ ○ Compiling /dashboard/cpd-submission ...
+ ✓ Compiled /dashboard/cpd-submission in 2.4s (1238 modules)
+ GET /dashboard/cpd-submission 200 in 2841ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 3.8s (780 modules)
+ GET /login 200 in 4331ms
+ GET /admin/login 200 in 313ms
+ ○ Compiling /api/admin/auth/login ...
+ ✓ Compiled /api/admin/auth/login in 6.3s (1178 modules)
+ POST /api/admin/auth/login 401 in 8618ms
+ POST /api/admin/auth/login 401 in 439ms
+ POST /api/admin/auth/login 401 in 451ms
+ POST /api/admin/auth/login 400 in 25ms
+ ○ Compiling /api/auth/register ...
+ ✓ Compiled /api/auth/register in 3.7s (1142 modules)
+ POST /api/auth/register 200 in 5975ms
+ POST /api/auth/register 200 in 1023ms
+ POST /api/auth/register 409 in 1866ms
+ POST /api/auth/register 400 in 26ms
+ POST /api/auth/register 409 in 246ms
+ POST /api/auth/register 200 in 1382ms
+ POST /api/auth/register 200 in 943ms
+ POST /api/auth/register 200 in 816ms
+ ○ Compiling /api/auth/login ...
+ ✓ Compiled /api/auth/login in 823ms (1085 modules)
+ POST /api/auth/login 200 in 1727ms
+ POST /api/auth/login 401 in 236ms
+ POST /api/auth/login 400 in 36ms
+ POST /api/auth/login 401 in 240ms
+ ○ Compiling /api/company/drivers ...
+ ✓ Compiled /api/company/drivers in 2.2s (1087 modules)
+ GET /api/company/drivers 401 in 3010ms
+ DELETE /api/company/drivers 401 in 23ms
+ POST /api/auth/register 200 in 974ms
+ POST /api/auth/login 200 in 768ms
+ DELETE /api/company/drivers 200 in 320ms
+ ○ Compiling /api/company/quote ...
+ ✓ Compiled /api/company/quote in 5.1s (935 modules)
+ POST /api/company/quote 401 in 5766ms
+ POST /api/auth/register 200 in 2598ms
+ POST /api/auth/login 200 in 916ms
+ POST /api/company/quote 400 in 43ms
+ POST /api/auth/register 200 in 1047ms
+ POST /api/auth/login 200 in 903ms
+ POST /api/company/quote 400 in 24ms
+ ○ Compiling /api/admin/stats ...
+ ✓ Compiled /api/admin/stats in 3s (937 modules)
+ GET /api/admin/stats 401 in 3282ms
+ ○ Compiling /api/admin/cohorts/approve ...
+ ⨯ ./lib/email.ts:1:1
+Module not found: Can't resolve 'nodemailer'
+> 1 | import nodemailer from "nodemailer";
+    | ^
+  2 |
+  3 | const transporter = nodemailer.createTransport({
+  4 |   host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/api/admin/cohorts/approve/route.ts
+ ⨯ ./lib/email.ts:1:1
+Module not found: Can't resolve 'nodemailer'
+> 1 | import nodemailer from "nodemailer";
+    | ^
+  2 |
+  3 | const transporter = nodemailer.createTransport({
+  4 |   host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/api/admin/cohorts/approve/route.ts
+ ⨯ ./lib/email.ts:1:1
+Module not found: Can't resolve 'nodemailer'
+> 1 | import nodemailer from "nodemailer";
+    | ^
+  2 |
+  3 | const transporter = nodemailer.createTransport({
+  4 |   host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/api/admin/cohorts/approve/route.ts
+ POST /api/admin/cohorts/approve 500 in 31405ms
+ POST /api/admin/cohorts/approve 500 in 268ms
+ ⨯ ./lib/email.ts:1:1
+Module not found: Can't resolve 'nodemailer'
+> 1 | import nodemailer from "nodemailer";
+    | ^
+  2 |
+  3 | const transporter = nodemailer.createTransport({
+  4 |   host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/api/admin/cohorts/approve/route.ts
+ POST /api/admin/campaigns 500 in 4879ms
+ POST /api/admin/campaigns 500 in 102ms
+ GET /api/admin/campaigns 500 in 43ms
+ GET /api/admin/campaigns 500 in 50ms
+ ⨯ ./lib/email.ts:1:1
+Module not found: Can't resolve 'nodemailer'
+> 1 | import nodemailer from "nodemailer";
+    | ^
+  2 |
+  3 | const transporter = nodemailer.createTransport({
+  4 |   host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/api/admin/cohorts/approve/route.ts
+ GET /api/admin/pricing 500 in 2037ms
+ GET /api/admin/pricing 500 in 40ms
+ ⨯ ./lib/email.ts:1:1
+Module not found: Can't resolve 'nodemailer'
+> 1 | import nodemailer from "nodemailer";
+    | ^
+  2 |
+  3 | const transporter = nodemailer.createTransport({
+  4 |   host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/api/admin/cohorts/approve/route.ts
+ POST /api/admin/config 500 in 1180ms
+ POST /api/admin/config 500 in 38ms
+ ⨯ ./lib/email.ts:1:1
+Module not found: Can't resolve 'nodemailer'
+> 1 | import nodemailer from "nodemailer";
+    | ^
+  2 |
+  3 | const transporter = nodemailer.createTransport({
+  4 |   host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/api/admin/cohorts/approve/route.ts
+ GET /api/admin/data 500 in 4506ms
+ GET /api/admin/data 500 in 39ms
+ POST /api/admin/data 500 in 37ms
+ POST /api/admin/data 500 in 49ms
+ ⨯ ./lib/email.ts:1:1
+Module not found: Can't resolve 'nodemailer'
+> 1 | import nodemailer from "nodemailer";
+    | ^
+  2 |
+  3 | const transporter = nodemailer.createTransport({
+  4 |   host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/api/admin/cohorts/approve/route.ts
+ GET /api/pricing 500 in 1395ms
+ GET /api/pricing 500 in 47ms
+ GET /api/pricing 500 in 39ms
+ ⨯ ./lib/email.ts:1:1
+Module not found: Can't resolve 'nodemailer'
+> 1 | import nodemailer from "nodemailer";
+    | ^
+  2 |
+  3 | const transporter = nodemailer.createTransport({
+  4 |   host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/api/admin/cohorts/approve/route.ts
+ GET /api/stats 500 in 3070ms
+ GET /api/stats 500 in 49ms
+ GET /api/stats 500 in 49ms
+ GET /api/stats 500 in 47ms
+ ⨯ ./lib/email.ts:1:1
+Module not found: Can't resolve 'nodemailer'
+> 1 | import nodemailer from "nodemailer";
+    | ^
+  2 |
+  3 | const transporter = nodemailer.createTransport({
+  4 |   host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/api/admin/campaigns/route.ts
+ GET /api/trial/validate 500 in 1279ms
+ GET /api/trial/validate 500 in 38ms
+ GET /api/trial/validate?code=NONEXISTENT-CODE-999 500 in 45ms
+ GET /api/trial/validate?code=NONEXISTENT-CODE-999 500 in 41ms
+ ⨯ ./lib/email.ts:1:1
+Module not found: Can't resolve 'nodemailer'
+> 1 | import nodemailer from "nodemailer";
+    | ^
+  2 |
+  3 | const transporter = nodemailer.createTransport({
+  4 |   host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/api/admin/campaigns/route.ts
+ POST /api/trial/activate 500 in 2083ms
+ POST /api/trial/activate 500 in 41ms
+ POST /api/trial/activate 500 in 41ms
+ POST /api/trial/activate 500 in 39ms
+ POST /api/trial/activate 500 in 46ms
+ POST /api/trial/activate 500 in 39ms
+ ✓ Compiled /api/company/training-campaigns in 3.9s (1343 modules)
+ GET /api/company/training-campaigns 401 in 5210ms
+ POST /api/company/training-campaigns 401 in 58ms
+ ○ Compiling /api/auth/register ...
+ ✓ Compiled /api/auth/register in 1549ms (626 modules)
+ POST /api/auth/register 200 in 3250ms
+ ○ Compiling /api/auth/login ...
+ ✓ Compiled /api/auth/login in 2.6s (626 modules)
+ POST /api/auth/login 200 in 3983ms
+ POST /api/company/training-campaigns 400 in 69ms
+ ○ Compiling /api/company/deploy ...
+ ✓ Compiled /api/company/deploy in 7.9s (1599 modules)
+ POST /api/company/deploy 401 in 11087ms
+ POST /api/auth/register 200 in 2161ms
+ POST /api/auth/login 200 in 1249ms
+ POST /api/company/deploy 400 in 224ms
+ ○ Compiling /api/company/nudge ...
+ ✓ Compiled /api/company/nudge in 11.1s (1597 modules)
+ POST /api/company/nudge 401 in 11553ms
+ POST /api/auth/register 200 in 919ms
+ POST /api/auth/login 200 in 1504ms
+ POST /api/company/nudge 400 in 26ms
+ ○ Compiling /api/company/eft-payment ...
+ ⨯ ./lib/email.ts:1:1
+Module not found: Can't resolve 'nodemailer'
+> 1 | import nodemailer from "nodemailer";
+    | ^
+  2 |
+  3 | const transporter = nodemailer.createTransport({
+  4 |   host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/api/company/eft-payment/route.ts
+ POST /api/company/eft-payment 500 in 6701ms
+ POST /api/company/eft-payment 500 in 49ms
+ POST /api/auth/register 500 in 44ms
+ POST /api/auth/login 500 in 39ms
+ POST /api/company/eft-payment 500 in 43ms
+ POST /api/auth/register 500 in 40ms
+ POST /api/auth/login 500 in 39ms
+ POST /api/company/eft-payment 500 in 41ms
+ ⨯ ./lib/email.ts:1:1
+Module not found: Can't resolve 'nodemailer'
+> 1 | import nodemailer from "nodemailer";
+    | ^
+  2 |
+  3 | const transporter = nodemailer.createTransport({
+  4 |   host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/api/company/eft-payment/route.ts
+ POST /api/company/confirm-payment 500 in 1453ms
+ POST /api/company/confirm-payment 500 in 45ms
+ POST /api/auth/register 500 in 38ms
+ POST /api/auth/login 500 in 38ms
+ POST /api/company/confirm-payment 500 in 34ms
+ POST /api/auth/register 500 in 671ms
+ POST /api/auth/login 500 in 46ms
+ POST /api/company/confirm-payment 500 in 44ms
+ ⨯ ./lib/email.ts:1:1
+Module not found: Can't resolve 'nodemailer'
+> 1 | import nodemailer from "nodemailer";
+    | ^
+  2 |
+  3 | const transporter = nodemailer.createTransport({
+  4 |   host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/api/company/eft-payment/route.ts
+ GET /api/company/quotes 500 in 2180ms
+ GET /api/company/quotes 500 in 50ms
+ ⨯ ./lib/email.ts:1:1
+Module not found: Can't resolve 'nodemailer'
+> 1 | import nodemailer from "nodemailer";
+    | ^
+  2 |
+  3 | const transporter = nodemailer.createTransport({
+  4 |   host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/api/company/eft-payment/route.ts
+ POST /api/company/import 500 in 2220ms
+ POST /api/company/import 500 in 48ms
+ ⨯ ./lib/email.ts:1:1
+Module not found: Can't resolve 'nodemailer'
+> 1 | import nodemailer from "nodemailer";
+    | ^
+  2 |
+  3 | const transporter = nodemailer.createTransport({
+  4 |   host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/api/company/eft-payment/route.ts
+ GET /api/admin/leads 500 in 751ms
+ GET /api/admin/leads 500 in 42ms
+ POST /api/admin/leads 500 in 56ms
+ POST /api/admin/leads 500 in 43ms
+ PATCH /api/admin/leads 500 in 48ms
+ PATCH /api/admin/leads 500 in 53ms
+ ⨯ ./lib/email.ts:1:1
+Module not found: Can't resolve 'nodemailer'
+> 1 | import nodemailer from "nodemailer";
+    | ^
+  2 |
+  3 | const transporter = nodemailer.createTransport({
+  4 |   host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/api/company/eft-payment/route.ts
+ GET /api/admin/funnel 500 in 1396ms
+ GET /api/admin/funnel 500 in 67ms
+ ✓ Compiled /api/admin/programmes in 5.2s (1346 modules)
+ GET /api/admin/programmes 307 in 7425ms
+ ○ Compiling /api/admin/vouchers ...
+ ✓ Compiled /api/admin/vouchers in 1837ms (1600 modules)
+ GET /api/admin/vouchers 307 in 2178ms
+ ○ Compiling /api/admin/cpd-queue ...
+ ✓ Compiled /api/admin/cpd-queue in 2.3s (1602 modules)
+ GET /api/admin/cpd-queue 401 in 2523ms
+ ○ Compiling /api/admin/video-library ...
+ ✓ Compiled /api/admin/video-library in 1604ms (1604 modules)
+ GET /api/admin/video-library 500 in 1756ms
+ ○ Compiling /api/admin/super ...
+ ✓ Compiled /api/admin/super in 3.2s (1606 modules)
+ GET /api/admin/super 307 in 3342ms
+ ○ Compiling /api/admin/settings/bulletin-fee ...
+ ✓ Compiled /api/admin/settings/bulletin-fee in 2.5s (1608 modules)
+ GET /api/admin/settings/bulletin-fee 200 in 3177ms
+ POST /api/admin/settings/bulletin-fee 401 in 23ms
+ ○ Compiling /api/admin/settings/messaging ...
+ ✓ Compiled /api/admin/settings/messaging in 8.9s (1624 modules)
+ GET /api/admin/settings/messaging 401 in 9225ms
+ ○ Compiling /api/admin/leads/template ...
+ ✓ Compiled /api/admin/leads/template in 2.8s (1612 modules)
+ GET /api/admin/leads/template 307 in 5083ms
+ ○ Compiling /api/admin/auth/logout ...
+ ✓ Compiled /api/admin/auth/logout in 1646ms (1604 modules)
+ POST /api/admin/auth/logout 200 in 2370ms
+ ○ Compiling /api/auth/logout ...
+ ✓ Compiled /api/auth/logout in 2.7s (1606 modules)
+ POST /api/auth/logout 200 in 2838ms
+ ○ Compiling /api/bulletins/submit ...
+ ✓ Compiled /api/bulletins/submit in 3.1s (1608 modules)
+ POST /api/bulletins/submit 401 in 3455ms
+ ○ Compiling /api/bulletins/cpd-library ...
+ ✓ Compiled /api/bulletins/cpd-library in 5.5s (1624 modules)
+ GET /api/bulletins/cpd-library 401 in 5836ms
+ ○ Compiling /api/bulletins/campaign ...
+ ✓ Compiled /api/bulletins/campaign in 4.7s (1612 modules)
+ GET /api/bulletins/campaign 401 in 4676ms
+ ○ Compiling /api/driver/hr-feedback ...
+ ✓ Compiled /api/driver/hr-feedback in 1710ms (1614 modules)
+ POST /api/driver/hr-feedback 400 in 1844ms
+ POST /api/driver/hr-feedback 400 in 27ms
+ ○ Compiling /api/company/training-campaigns/close ...
+ ✓ Compiled /api/company/training-campaigns/close in 2.6s (1616 modules)
+ POST /api/company/training-campaigns/close 401 in 2761ms
+ ○ Compiling /api/company/training-campaigns/nudge ...
+ ✓ Compiled /api/company/training-campaigns/nudge in 1482ms (1248 modules)
+ POST /api/company/training-campaigns/nudge 401 in 2397ms
+ ○ Compiling / ...
+ ✓ Compiled / in 4.1s (544 modules)
+[LiveStats] Supabase errors: { message: '' } { message: '' } { message: '' }
+ GET / 200 in 5902ms
+ ○ Compiling /register ...
+ ✓ Compiled /register in 2.4s (562 modules)
+ GET /register 200 in 3007ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 2s (573 modules)
+ GET /login 200 in 2421ms
+ ○ Compiling /about ...
+ ✓ Compiled /about in 2.6s (581 modules)
+ GET /about 200 in 4087ms
+ ○ Compiling /pricing ...
+ ✓ Compiled /pricing in 1713ms (661 modules)
+ GET /pricing 200 in 3365ms
+ ○ Compiling /programmes ...
+ ✓ Compiled /programmes in 2.5s (669 modules)
+ GET /programmes 200 in 3408ms
+ ○ Compiling /publications ...
+ ✓ Compiled /publications in 670ms (684 modules)
+ GET /publications 200 in 1657ms
+ ○ Compiling /registry ...
+ ✓ Compiled /registry in 847ms (700 modules)
+ GET /registry 200 in 2126ms
+ ○ Compiling /contact ...
+ ✓ Compiled /contact in 1475ms (714 modules)
+ GET /contact 200 in 3121ms
+ ○ Compiling /privacy ...
+ ✓ Compiled /privacy in 1482ms (716 modules)
+ GET /privacy 200 in 2262ms
+ ○ Compiling /terms ...
+ ✓ Compiled /terms in 567ms (718 modules)
+ GET /terms 200 in 819ms
+ ○ Compiling /trial ...
+ ✓ Compiled /trial in 535ms (725 modules)
+ GET /trial 200 in 862ms
+ ○ Compiling /cpd-bulletins ...
+ ✓ Compiled /cpd-bulletins in 1023ms (730 modules)
+Each child in a list should have a unique "key" prop. See https://react.dev/link/warning-keys for more information.
+ GET /cpd-bulletins 200 in 1734ms
+ ○ Compiling /admin/login ...
+ ✓ Compiled /admin/login in 537ms (735 modules)
+ GET /admin/login 200 in 1829ms
+ ○ Compiling /admin/dashboard ...
+ ✓ Compiled /admin/dashboard in 512ms (737 modules)
+ GET /admin/dashboard 200 in 4547ms
+ ○ Compiling /admin/cohorts ...
+ ✓ Compiled /admin/cohorts in 595ms (743 modules)
+ GET /admin/cohorts 200 in 1249ms
+ ○ Compiling /admin/companies ...
+ ✓ Compiled /admin/companies in 961ms (745 modules)
+ GET /admin/companies 200 in 2315ms
+ ○ Compiling /admin/leads ...
+ ✓ Compiled /admin/leads in 836ms (756 modules)
+ GET /admin/leads 200 in 1176ms
+ ○ Compiling /admin/pricing ...
+ ✓ Compiled /admin/pricing in 971ms (768 modules)
+ GET /admin/pricing 200 in 1378ms
+ ○ Compiling /admin/stats ...
+ ✓ Compiled /admin/stats in 988ms (775 modules)
+ GET /admin/stats 200 in 1489ms
+ ○ Compiling /admin/funnel ...
+ ✓ Compiled /admin/funnel in 4.2s (780 modules)
+ GET /admin/funnel 200 in 7201ms
+ ○ Compiling /admin/data ...
+ ✓ Compiled /admin/data in 10.3s (790 modules)
+ GET /admin/data 200 in 11580ms
+ ○ Compiling /admin/email-settings ...
+ ✓ Compiled /admin/email-settings in 2.3s (796 modules)
+ GET /admin/email-settings 200 in 3740ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 4.9s (797 modules)
+ GET /admin/settings-messaging 404 in 7723ms
+ ○ Compiling /admin/super ...
+ ✓ Compiled /admin/super in 3.4s (808 modules)
+ GET /admin/super 200 in 4927ms
+ ○ Compiling /admin/cpd-queue ...
+ ✓ Compiled /admin/cpd-queue in 3.7s (818 modules)
+ GET /admin/cpd-queue 200 in 4198ms
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 1812ms (838 modules)
+ GET /dashboard 200 in 2320ms
+ ○ Compiling /dashboard/import ...
+ ✓ Compiled /dashboard/import in 2.9s (849 modules)
+ GET /dashboard/import 200 in 3697ms
+ ○ Compiling /dashboard/training-campaigns ...
+ ✓ Compiled /dashboard/training-campaigns in 9.6s (857 modules)
+ GET /dashboard/training-campaigns 200 in 11345ms
+ ○ Compiling /dashboard/cpd-library ...
+ ✓ Compiled /dashboard/cpd-library in 3.5s (862 modules)
+ GET /dashboard/cpd-library 200 in 4395ms
+ ○ Compiling /dashboard/reports ...
+ ✓ Compiled /dashboard/reports in 1532ms (869 modules)
+ GET /dashboard/reports 200 in 1896ms
+ ○ Compiling /dashboard/career-planner ...
+ ✓ Compiled /dashboard/career-planner in 1367ms (878 modules)
+ GET /dashboard/career-planner 200 in 1866ms
+ ○ Compiling /dashboard/campaigns ...
+ ✓ Compiled /dashboard/campaigns in 1387ms (883 modules)
+ GET /dashboard/campaigns 200 in 1745ms
+ ○ Compiling /dashboard/cpd-submission ...
+ ✓ Compiled /dashboard/cpd-submission in 1831ms (894 modules)
+ GET /dashboard/cpd-submission 200 in 2454ms
+ GET /login 200 in 268ms
+ GET /admin/login 200 in 236ms
+ ○ Compiling /api/auth/register ...
+ ✓ Compiled /api/auth/register in 1077ms (737 modules)
+ POST /api/auth/register 200 in 3367ms
+ ○ Compiling /api/company/import ...
+ ✓ Compiled /api/company/import in 6.6s (713 modules)
+ POST /api/company/import 200 in 16081ms
+ ○ Compiling /api/company/training-campaigns ...
+ ✓ Compiled /api/company/training-campaigns in 1956ms (688 modules)
+ POST /api/company/training-campaigns 400 in 2224ms
+ ○ Compiling /api/admin/auth/login ...
+ ✓ Compiled /api/admin/auth/login in 610ms (690 modules)
+ POST /api/admin/auth/login 401 in 1482ms
+ POST /api/admin/auth/login 401 in 5573ms
+Admin login error: SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)
+    at JSON.parse (<anonymous>)
+    at async POST (app\api\admin\auth\login\route.ts:6:32)
+  4 | export async function POST(req: NextRequest) {
+  5 |   try {
+> 6 |     const { email, password } = await req.json();
+    |                                ^
+  7 |     if (!email || !password) {
+  8 |       return NextResponse.json({ error: "Email and password required" }, { status: 400 });
+  9 |     }
+ POST /api/admin/auth/login 500 in 517ms
+ POST /api/admin/auth/login 401 in 964ms
+ ○ Compiling / ...
+ ✓ Compiled / in 8.3s (544 modules)
+[LiveStats] Supabase errors: { message: '' } { message: '' } { message: '' }
+ GET / 200 in 9597ms
+ ○ Compiling /register ...
+ ✓ Compiled /register in 5s (562 modules)
+ GET /register 200 in 6982ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 1795ms (573 modules)
+ GET /login 200 in 2390ms
+ ○ Compiling /about ...
+ ✓ Compiled /about in 2.1s (581 modules)
+ GET /about 200 in 2493ms
+ ○ Compiling /pricing ...
+ ✓ Compiled /pricing in 2.3s (661 modules)
+ GET /pricing 200 in 6729ms
+ ○ Compiling /programmes ...
+ ✓ Compiled /programmes in 18.2s (669 modules)
+ GET /programmes 200 in 34071ms
+ ○ Compiling /publications ...
+ ✓ Compiled /publications in 626ms (684 modules)
+ GET /publications 200 in 1608ms
+ ○ Compiling /registry ...
+ ✓ Compiled /registry in 877ms (700 modules)
+ GET /registry 200 in 1502ms
+ ○ Compiling /contact ...
+ ✓ Compiled /contact in 963ms (714 modules)
+ GET /contact 200 in 1842ms
+ ○ Compiling /privacy ...
+ ✓ Compiled /privacy in 1300ms (716 modules)
+ GET /privacy 200 in 2098ms
+ ○ Compiling /terms ...
+ ✓ Compiled /terms in 870ms (718 modules)
+ GET /terms 200 in 1187ms
+ ○ Compiling /trial ...
+ ✓ Compiled /trial in 944ms (725 modules)
+ GET /trial 200 in 1435ms
+ ○ Compiling /cpd-bulletins ...
+ ✓ Compiled /cpd-bulletins in 806ms (730 modules)
+Each child in a list should have a unique "key" prop. See https://react.dev/link/warning-keys for more information.
+ GET /cpd-bulletins 200 in 1523ms
+ ○ Compiling /admin/login ...
+ ✓ Compiled /admin/login in 1084ms (735 modules)
+ GET /admin/login 200 in 1772ms
+ ○ Compiling /admin/dashboard ...
+ ✓ Compiled /admin/dashboard in 1200ms (737 modules)
+ GET /admin/dashboard 200 in 1829ms
+ ○ Compiling /admin/cohorts ...
+ ✓ Compiled /admin/cohorts in 1092ms (743 modules)
+ GET /admin/cohorts 200 in 1545ms
+ ○ Compiling /admin/companies ...
+ ✓ Compiled /admin/companies in 1375ms (745 modules)
+ GET /admin/companies 200 in 2044ms
+ ○ Compiling /admin/leads ...
+ ✓ Compiled /admin/leads in 1066ms (721 modules)
+ GET /admin/leads 200 in 2212ms
+ ○ Compiling /admin/pricing ...
+ ✓ Compiled /admin/pricing in 1474ms (733 modules)
+ GET /admin/pricing 200 in 3260ms
+ ○ Compiling /admin/stats ...
+ ✓ Compiled /admin/stats in 869ms (725 modules)
+ GET /admin/stats 200 in 1242ms
+ ○ Compiling /admin/funnel ...
+ ✓ Compiled /admin/funnel in 3.2s (731 modules)
+ GET /admin/funnel 200 in 4420ms
+ ○ Compiling /admin/data ...
+ ✓ Compiled /admin/data in 4.1s (742 modules)
+ GET /admin/data 200 in 4677ms
+ ○ Compiling /admin/email-settings ...
+ ✓ Compiled /admin/email-settings in 1683ms (748 modules)
+ GET /admin/email-settings 200 in 2221ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 4.3s (749 modules)
+ GET /admin/settings-messaging 404 in 5027ms
+ ○ Compiling /admin/super ...
+ ✓ Compiled /admin/super in 2.7s (760 modules)
+ GET /admin/super 200 in 3667ms
+ ○ Compiling /admin/cpd-queue ...
+ ✓ Compiled /admin/cpd-queue in 3.3s (770 modules)
+ GET /admin/cpd-queue 200 in 3847ms
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 1792ms (780 modules)
+ GET /dashboard 200 in 2216ms
+ ○ Compiling /dashboard/import ...
+ ✓ Compiled /dashboard/import in 3.7s (791 modules)
+ GET /dashboard/import 200 in 4179ms
+ ○ Compiling /dashboard/training-campaigns ...
+ ✓ Compiled /dashboard/training-campaigns in 2.5s (799 modules)
+ GET /dashboard/training-campaigns 200 in 3040ms
+ ○ Compiling /dashboard/cpd-library ...
+ ✓ Compiled /dashboard/cpd-library in 1479ms (804 modules)
+ GET /dashboard/cpd-library 200 in 1839ms
+ ○ Compiling /dashboard/reports ...
+ ✓ Compiled /dashboard/reports in 1161ms (811 modules)
+ GET /dashboard/reports 200 in 1495ms
+ ○ Compiling /dashboard/career-planner ...
+ ✓ Compiled /dashboard/career-planner in 1154ms (820 modules)
+ GET /dashboard/career-planner 200 in 1567ms
+ ○ Compiling /dashboard/campaigns ...
+ ✓ Compiled /dashboard/campaigns in 1475ms (825 modules)
+ GET /dashboard/campaigns 200 in 1788ms
+ ○ Compiling /dashboard/cpd-submission ...
+ ✓ Compiled /dashboard/cpd-submission in 1328ms (836 modules)
+ GET /dashboard/cpd-submission 200 in 1672ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 1472ms (806 modules)
+ GET /login 200 in 2069ms
+ GET /admin/login 200 in 347ms
+ ○ Compiling /api/auth/register ...
+ ✓ Compiled /api/auth/register in 740ms (710 modules)
+ POST /api/auth/register 200 in 2773ms
+ ○ Compiling /api/company/import ...
+ ✓ Compiled /api/company/import in 2.2s (713 modules)
+ POST /api/company/import 200 in 2719ms
+ ○ Compiling /api/company/training-campaigns ...
+ ✓ Compiled /api/company/training-campaigns in 2.2s (715 modules)
+ POST /api/company/training-campaigns 400 in 2359ms
+ ○ Compiling /api/admin/auth/login ...
+ ✓ Compiled /api/admin/auth/login in 766ms (717 modules)
+ POST /api/admin/auth/login 401 in 1341ms
