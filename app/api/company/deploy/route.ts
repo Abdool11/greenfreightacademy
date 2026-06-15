@@ -303,21 +303,78 @@ export async function POST(req: NextRequest) {
       .update({ activation_status: "invited", updated_at: new Date().toISOString() })
       .eq("id", driver.id);
 
+    // Upsert company_employee record (required for enrolments.employee_id FK)
+    const driverName = `${driver.first_name ?? ""} ${driver.last_name ?? ""}`.trim() || "Driver";
+    const employeeEmail = driver.email ?? `driver-${driver.id.slice(0, 8)}@placeholder.local`;
+
+    // Find existing employee by email + company (no unique constraint, so we select first)
+    let employeeId: string | null = null;
+    const { data: existingEmp } = await supabaseAdmin
+      .from("company_employees")
+      .select("id")
+      .eq("company_id", session.companyId)
+      .eq("email", employeeEmail)
+      .maybeSingle();
+
+    if (existingEmp) {
+      employeeId = existingEmp.id;
+    } else {
+      const { data: newEmp, error: empErr } = await supabaseAdmin
+        .from("company_employees")
+        .insert({
+          company_id: session.companyId,
+          name: driverName,
+          email: employeeEmail,
+          mobile: driver.mobile,
+          role: "Driver",
+        })
+        .select("id")
+        .single();
+
+      if (empErr || !newEmp) {
+        console.error("[GFA deploy] Failed to create company_employee:", empErr);
+      } else {
+        employeeId = newEmp.id;
+      }
+    }
+
     // Create enrolment records (one per course)
     for (const courseId of item.courseIds) {
-      await supabaseAdmin.from("enrolments").upsert(
-        {
-          driver_id: driver.id,
-          company_id: session.companyId,
-          course_id: courseId,
-          quote_id: quoteId,
-          campaign_id: campaignId ?? null,
-          status: "enrolled",
-          enrolled_at: new Date().toISOString(),
-          progress_percent: 0,
-        },
-        { onConflict: "driver_id,course_id", ignoreDuplicates: true }
-      );
+      // Look up course slug for programme_id
+      const { data: course } = await supabaseAdmin
+        .from("courses")
+        .select("slug")
+        .eq("id", courseId)
+        .single();
+
+      const programmeSlug = course?.slug ?? "professional-truck-driver";
+
+      const enrolmentPayload: Record<string, unknown> = {
+        employee_id: employeeId,
+        programme_id: programmeSlug,
+        programme_slug: programmeSlug,
+        driver_id: driver.id,
+        company_id: session.companyId,
+        campaign_id: campaignId ?? null,
+        status: "enrolled",
+        progress_percent: 0,
+      };
+
+      // Only insert if we have a valid employee_id; otherwise log and skip
+      if (!employeeId) {
+        console.warn(`[GFA deploy] Skipping enrolment for driver ${driver.id} / course ${courseId}: no employee_id`);
+        continue;
+      }
+
+      const { error: enrolErr } = await supabaseAdmin.from("enrolments").insert(enrolmentPayload);
+      if (enrolErr) {
+        // 23505 = unique_violation — driver already enrolled in this programme
+        if (enrolErr.code === "23505") {
+          console.log(`[GFA deploy] Enrolment already exists for driver ${driver.id} / ${programmeSlug}`);
+        } else {
+          console.error("[GFA deploy] Enrolment insert failed:", enrolErr);
+        }
+      }
     }
 
     // Resolve programme name and slug from the first course
@@ -336,7 +393,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate / reuse BD invitation token
-    const driverName = `${driver.first_name ?? ""} ${driver.last_name ?? ""}`.trim() || "Driver";
     const defaultExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const { token } = await getOrCreateInvitation({
       driverId: driver.id,
