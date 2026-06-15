@@ -23,12 +23,13 @@ interface Course {
 
 interface DriverEnrolment {
   id: string;
-  programme_id: string;
-  programme_slug: string;
+  course_id: string;
+  quote_id?: string;
   status: string;
   progress_percent: number;
-  modules_completed: number;
-  started_at: string | null;
+  link_activated: boolean;
+  certified: boolean;
+  enrolled_at: string | null;
   completed_at: string | null;
   campaign_id: string | null;
 }
@@ -121,7 +122,7 @@ export default function DashboardPage() {
       const [driversRes, quotesRes, coursesRes] = await Promise.all([
         fetch("/api/company/drivers"),
         fetch("/api/company/quotes"),
-        fetch("/api/admin/programmes"),
+        fetch("/api/company/programmes"),
       ]);
       if (driversRes.status === 401) { window.location.href = "/login"; return; }
 
@@ -157,7 +158,7 @@ export default function DashboardPage() {
   const selectAllForDriver = (driverId: string) => {
     const driver = drivers.find(d => d.id === driverId);
     if (!driver) return;
-    const enrolledIds = new Set(driver.enrolments.map(e => e.programme_id));
+    const enrolledIds = new Set(driver.enrolments.map(e => e.course_id));
     const unenrolled = courses.filter(c => !enrolledIds.has(c.id)).map(c => c.id);
     setSelectedEnrolments(prev => ({ ...prev, [driverId]: new Set(unenrolled) }));
   };
@@ -166,7 +167,7 @@ export default function DashboardPage() {
     setSelectedEnrolments(prev => {
       const next = { ...prev };
       drivers.forEach(driver => {
-        const isEnrolled = driver.enrolments.some(e => e.programme_id === courseId);
+        const isEnrolled = driver.enrolments.some(e => e.course_id === courseId);
         if (!isEnrolled) {
           const set = new Set(next[driver.id] || []);
           set.add(courseId);
@@ -463,7 +464,7 @@ export default function DashboardPage() {
                               <div style={{ color: "#9ca3af", fontSize: "0.8125rem" }}>{driver.mobile}</div>
                             </td>
                             {courses.map(c => {
-                              const enrolment = driver.enrolments.find(e => e.programme_id === c.id);
+                              const enrolment = driver.enrolments.find(e => e.course_id === c.id);
                               const isEnrolled = !!enrolment;
                               const isSelected = selected.has(c.id);
                               const moduleTotal = c.module_count || 12;
@@ -477,14 +478,14 @@ export default function DashboardPage() {
                                   </td>
                                   {/* Link Activated */}
                                   <td key={`${driver.id}-${c.id}-l`} style={{ padding: "0.75rem 0.375rem", textAlign: "center" }}>
-                                    {isEnrolled && enrolment.started_at
+                                    {isEnrolled && enrolment.enrolled_at
                                       ? <CheckCircle2 size={15} style={{ color: "#22c55e", margin: "0 auto", display: "block" }} />
                                       : <span style={{ color: "#1f2937", fontSize: "0.75rem" }}>—</span>}
                                   </td>
                                   {/* Progress */}
                                   <td key={`${driver.id}-${c.id}-p`} style={{ padding: "0.75rem 0.375rem", textAlign: "center" }}>
                                     {isEnrolled
-                                      ? <ProgressBar done={enrolment.modules_completed || 0} total={moduleTotal} />
+                                      ? <ProgressBar done={Math.round((enrolment.progress_percent || 0) / 100 * moduleTotal)} total={moduleTotal} />
                                       : <span style={{ color: "#1f2937", fontSize: "0.75rem" }}>—</span>}
                                   </td>
                                   {/* Certified */}
