@@ -90,11 +90,19 @@ async function sendMagicLinkWhatsApp(params: {
   const { mobile, driverFirstName, companyName, programmeName, magicLinkToken, magicLinkFull, phoneId, accessToken, templateName } = params;
   const to = normaliseSAMobile(mobile);
 
+  console.log("[GFA deploy] WhatsApp send start:", {
+    to,
+    driverFirstName,
+    phoneId: phoneId ? `${phoneId.slice(0, 4)}...` : "missing",
+    accessTokenSet: !!accessToken,
+    templateName: templateName || "(none — plain text fallback)",
+  });
+
   try {
     let body: Record<string, unknown>;
 
     if (templateName) {
-      // ── Approved Meta template (production) ───────────────────────────────
+      console.log("[GFA deploy] Using Meta template:", templateName);
       body = {
         messaging_product: "whatsapp",
         to,
@@ -109,7 +117,6 @@ async function sendMagicLinkWhatsApp(params: {
                 { type: "text", text: driverFirstName },
                 { type: "text", text: companyName },
                 { type: "text", text: programmeName },
-                // Pass only the token — base URL is hardcoded in the Meta template
                 { type: "text", text: magicLinkToken },
               ],
             },
@@ -117,7 +124,7 @@ async function sendMagicLinkWhatsApp(params: {
         },
       };
     } else {
-      // ── Plain-text fallback (staging / pre-approval) ────────────────────────────────────
+      console.log("[GFA deploy] Using plain-text fallback (no template name configured)");
       const text =
         `Hi ${driverFirstName}, ${companyName} has enrolled you in the ${programmeName} programme on BetterDriver. ` +
         `Tap the link below to start your training — no password needed:\n\n${magicLinkFull}`;
@@ -129,24 +136,29 @@ async function sendMagicLinkWhatsApp(params: {
       };
     }
 
-    const res = await fetch(
-      `https://graph.facebook.com/v19.0/${phoneId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
+    const url = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
+    console.log("[GFA deploy] POST to Meta:", url);
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const responseBody = await res.json().catch(() => ({}));
+    console.log("[GFA deploy] Meta response status:", res.status, res.statusText);
+    console.log("[GFA deploy] Meta response body:", JSON.stringify(responseBody));
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      console.error("[GFA deploy] WhatsApp send failed:", JSON.stringify(err));
+      console.error("[GFA deploy] WhatsApp send FAILED:", JSON.stringify(responseBody));
+      return false;
     }
 
-    return res.ok;
+    console.log("[GFA deploy] WhatsApp send SUCCESS");
+    return true;
   } catch (e) {
     console.error("[GFA deploy] WhatsApp exception:", e);
     return false;
@@ -187,6 +199,14 @@ export async function POST(req: NextRequest) {
     "email_booking_to",
     "company_name",
   ]);
+
+  console.log("[GFA deploy] Config loaded:", {
+    whatsapp_phone_id: config.whatsapp_phone_id ? "SET" : "NOT SET",
+    whatsapp_access_token: config.whatsapp_access_token ? "SET" : "NOT SET",
+    whatsapp_magic_link_template: config.whatsapp_magic_link_template || "(none)",
+    bd_base_url: config.bd_base_url,
+    email_booking_to: config.email_booking_to,
+  });
 
   const bdBaseUrl = (config.bd_base_url || "https://betterdriver.co.za").replace(/\/$/, "");
   const phoneId = config.whatsapp_phone_id;
@@ -303,10 +323,11 @@ export async function POST(req: NextRequest) {
     // Send WhatsApp magic link message
     let whatsappSent = false;
     if (!phoneId || !accessToken) {
-      console.warn("[GFA deploy] WhatsApp skipped: phone_id or access_token not configured in site_config");
+      console.warn("[GFA deploy] WhatsApp skipped: phone_id or access_token not configured");
     } else if (!driver.mobile) {
       console.warn(`[GFA deploy] WhatsApp skipped: driver ${driver.id} has no mobile number`);
     } else {
+      console.log(`[GFA deploy] Sending WhatsApp to driver ${driver.id} (${driver.first_name}) at ${driver.mobile}`);
       whatsappSent = await sendMagicLinkWhatsApp({
         mobile: driver.mobile,
         driverFirstName: driver.first_name,
@@ -367,6 +388,13 @@ export async function POST(req: NextRequest) {
       warnings.push(`${driversWithoutMobile.length} driver(s) have no mobile number.`);
     }
   }
+
+  console.log("[GFA deploy] DONE. Results:", {
+    deployed: results.length,
+    whatsappSent: results.filter((r) => r.whatsapp).length,
+    warnings,
+    results: results.map((r) => ({ driverId: r.driverId, whatsapp: r.whatsapp })),
+  });
 
   return NextResponse.json({
     ok: true,
