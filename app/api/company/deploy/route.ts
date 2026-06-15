@@ -337,6 +337,7 @@ export async function POST(req: NextRequest) {
 
     // Generate / reuse BD invitation token
     const driverName = `${driver.first_name ?? ""} ${driver.last_name ?? ""}`.trim() || "Driver";
+    const defaultExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const { token } = await getOrCreateInvitation({
       driverId: driver.id,
       deploymentId,
@@ -346,7 +347,7 @@ export async function POST(req: NextRequest) {
       driverMobile: driver.mobile,
       driverEmail: driver.email,
       programAssignment: "p1",
-      expiresAt: campaignExpiresAt,
+      expiresAt: campaignExpiresAt ?? defaultExpiresAt,
       inviteVideoUrl: campaignInviteVideoUrl,
     });
 
