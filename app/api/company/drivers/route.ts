@@ -59,31 +59,32 @@ export async function GET() {
       id,
       first_name,
       last_name,
+      full_name,
       mobile,
       alt_mobile,
+      phone,
       email,
       branch,
       region,
       status,
+      activation_status,
+      is_active,
       created_at,
+      company_id,
       enrolments(
         id,
-        course_id,
-        quote_id,
-        campaign_id,
+        programme_id,
+        programme_slug,
         status,
         progress_percent,
-        progress_modules,
-        link_activated,
-        certified,
-        nudge_sent_at,
-        enrolled_at,
+        modules_completed,
+        started_at,
         completed_at,
-        courses(id, name, slug, module_count, status)
+        campaign_id
       )
     `)
     .eq("company_id", session.companyId)
-    .order("last_name", { ascending: true });
+    .order("last_name", { ascending: true, nullsFirst: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ drivers: drivers ?? [], companyName: company?.name ?? "" });
@@ -152,10 +153,17 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
-    // Email validation (if provided)
-    if (d.email?.trim() && !validateEmail(d.email.trim())) {
-      errors.push({ index: idx, field: "email", message: "Invalid email address" });
-      continue;
+    // Email validation (required in actual schema)
+    let email: string;
+    if (d.email?.trim()) {
+      if (!validateEmail(d.email.trim())) {
+        errors.push({ index: idx, field: "email", message: "Invalid email address" });
+        continue;
+      }
+      email = d.email.trim().toLowerCase();
+    } else {
+      // Generate placeholder email since email is NOT NULL in the actual schema
+      email = `driver_${normalisedMobile}@placeholder.local`;
     }
 
     // Insert driver
@@ -166,9 +174,10 @@ export async function POST(req: NextRequest) {
         first_name: d.first_name.trim(),
         last_name: d.last_name.trim(),
         mobile: normalisedMobile,
-        email: d.email?.trim().toLowerCase() || null,
+        email,
         id_number: d.id_number?.trim() || null,
-        activation_status: "pending",
+        activation_status: "invited", // default in actual schema
+        status: "active",
       })
       .select("id")
       .single();

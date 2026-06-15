@@ -67,6 +67,7 @@ function getFieldError(row: DriverRow, field: keyof DriverRow): string | null {
     if (!check.ok) return check.error;
   }
   if (field === "email") {
+    // Email is optional; if provided, validate format
     if (row.email.trim() && !validateEmail(row.email)) return "Invalid email";
   }
   return null;
@@ -320,7 +321,7 @@ export default function AddDriversModal({ onClose, onSuccess }: AddDriversModalP
                     {result.errors > 0 ? ` · ${result.errors} error${result.errors !== 1 ? "s" : ""}` : ""}
                   </p>
                   <p style={{ margin: "0.25rem 0 0", fontSize: "0.8125rem", color: "#9ca3af" }}>
-                    All mobile numbers have been normalised to E.164 format for WhatsApp delivery.
+                    Mobile numbers normalised to E.164 format. Placeholder emails generated where not provided.
                   </p>
                 </div>
               </div>
@@ -441,7 +442,7 @@ export default function AddDriversModal({ onClose, onSuccess }: AddDriversModalP
                 <span style={labelStyle}>First name *</span>
                 <span style={labelStyle}>Last name *</span>
                 <span style={labelStyle}>Mobile *</span>
-                <span style={labelStyle}>Email</span>
+                <span style={labelStyle}>Email (optional)</span>
                 <span style={labelStyle}>ID Number</span>
                 <span />
               </div>
@@ -512,7 +513,7 @@ export default function AddDriversModal({ onClose, onSuccess }: AddDriversModalP
                     <div style={fieldWrapperStyle}>
                       <input
                         type="email"
-                        placeholder="john@company.co.za"
+                        placeholder="Optional: john@company.co.za"
                         value={row.email}
                         onChange={(e) => updateRow(i, "email", e.target.value)}
                         style={inputStyle(eErr)}
