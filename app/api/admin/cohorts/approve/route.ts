@@ -188,18 +188,24 @@ export async function POST(req: NextRequest) {
       const programmeName = courseNames[0] ?? "Training Programme";
 
       // Create driver_invitation record
-      await supabaseAdmin.from("driver_invitations").insert({
+      const driverName = `${driver.first_name ?? ""} ${driver.last_name ?? ""}`.trim() || "Driver";
+      const { error: inviteErr } = await supabaseAdmin.from("driver_invitations").insert({
         token,
         driver_id: driverId,
         company_id: deployment.company_id,
         deployment_id: deploymentId,
-        programme_slug: courses[0] ?? "",
-        driver_name: `${driver.first_name} ${driver.last_name}`,
+        programme_slug: courses[0] || "professional-truck-driver",
+        driver_name: driverName,
         driver_mobile: driver.mobile,
         driver_email: driver.email,
         status: "pending",
+        program_assignment: "p1",
         expires_at: expiresAt.toISOString(),
       });
+      if (inviteErr) {
+        console.error("[GFA approve] Failed to create driver_invitation:", inviteErr);
+        throw new Error(`driver_invitations insert failed: ${inviteErr.message}`);
+      }
 
       // Update enrolment status to active
       await supabaseAdmin

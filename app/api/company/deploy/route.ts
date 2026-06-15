@@ -26,11 +26,16 @@ function generateOpaqueToken(): string {
 async function getOrCreateInvitation(params: {
   driverId: string;
   deploymentId: string;
+  companyId: string;
+  programmeSlug: string;
+  driverName: string;
+  driverMobile: string | null;
+  driverEmail: string | null;
   programAssignment: "p1" | "p2" | "p1_p2";
   expiresAt: string | null;
   inviteVideoUrl: string | null;
 }): Promise<{ token: string }> {
-  const { driverId, deploymentId, programAssignment, expiresAt, inviteVideoUrl } = params;
+  const { driverId, deploymentId, companyId, programmeSlug, driverName, driverMobile, driverEmail, programAssignment, expiresAt, inviteVideoUrl } = params;
 
   // Check for an existing active (non-revoked, non-expired) invitation
   const { data: existing } = await supabaseAdmin
@@ -48,15 +53,26 @@ async function getOrCreateInvitation(params: {
 
   // Create a fresh invitation
   const token = generateOpaqueToken();
-  await supabaseAdmin.from("driver_invitations").insert({
+  const { error } = await supabaseAdmin.from("driver_invitations").insert({
     driver_id: driverId,
     deployment_id: deploymentId,
+    company_id: companyId,
     token,
+    programme_slug: programmeSlug,
+    driver_name: driverName,
+    driver_mobile: driverMobile,
+    driver_email: driverEmail,
+    status: "pending",
     program_assignment: programAssignment,
     expires_at: expiresAt,
     invite_video_url: inviteVideoUrl,
     created_at: new Date().toISOString(),
   });
+
+  if (error) {
+    console.error("[GFA deploy] Failed to create driver_invitation:", error);
+    throw new Error(`driver_invitations insert failed: ${error.message}`);
+  }
 
   return { token };
 }
@@ -275,11 +291,17 @@ export async function POST(req: NextRequest) {
   for (const item of items) {
     const { data: driver } = await supabaseAdmin
       .from("drivers")
-      .select("id, first_name, last_name, mobile")
+      .select("id, first_name, last_name, mobile, email")
       .eq("id", item.driverId)
       .single();
 
     if (!driver) continue;
+
+    // Ensure driver activation status is 'invited' for BD tracking
+    await supabaseAdmin
+      .from("drivers")
+      .update({ activation_status: "invited", updated_at: new Date().toISOString() })
+      .eq("id", driver.id);
 
     // Create enrolment records (one per course)
     for (const courseId of item.courseIds) {
@@ -298,21 +320,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Resolve programme name from the first course
+    // Resolve programme name and slug from the first course
     let programmeName = "The Professional Truck Driver";
+    let programmeSlug = "professional-truck-driver";
     if (item.courseIds.length > 0) {
       const { data: course } = await supabaseAdmin
         .from("courses")
-        .select("*")
+        .select("slug, title")
         .eq("id", item.courseIds[0])
         .single();
-      if (course) programmeName = course.name || course.title || programmeName;
+      if (course) {
+        programmeName = course.title || programmeName;
+        programmeSlug = course.slug || programmeSlug;
+      }
     }
 
     // Generate / reuse BD invitation token
+    const driverName = `${driver.first_name ?? ""} ${driver.last_name ?? ""}`.trim() || "Driver";
     const { token } = await getOrCreateInvitation({
       driverId: driver.id,
       deploymentId,
+      companyId: session.companyId,
+      programmeSlug,
+      driverName,
+      driverMobile: driver.mobile,
+      driverEmail: driver.email,
       programAssignment: "p1",
       expiresAt: campaignExpiresAt,
       inviteVideoUrl: campaignInviteVideoUrl,
