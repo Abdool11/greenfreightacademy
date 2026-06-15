@@ -178,9 +178,8 @@ export default function AddDriversModal({ onClose, onSuccess }: AddDriversModalP
         errors: data.errors ?? 0,
         errorDetails: data.errorDetails ?? [],
       });
-      if (data.created > 0) {
-        onSuccess();
-      }
+      // Refresh parent dashboard regardless of how many were created
+      onSuccess();
     } catch {
       setSubmitError("Network error. Please check your connection and try again.");
     } finally {

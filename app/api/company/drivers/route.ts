@@ -59,26 +59,28 @@ export async function GET() {
       id,
       first_name,
       last_name,
+      full_name,
       mobile,
+      alt_mobile,
+      phone,
       email,
-      id_number,
+      branch,
+      region,
+      status,
       activation_status,
-      profile_complete,
-      language_preference,
+      is_active,
       created_at,
       company_id,
       enrolments(
         id,
-        course_id,
-        quote_id,
-        campaign_id,
+        programme_id,
+        programme_slug,
         status,
         progress_percent,
-        link_activated,
-        certified,
-        nudge_sent_at,
-        enrolled_at,
-        completed_at
+        modules_completed,
+        started_at,
+        completed_at,
+        campaign_id
       )
     `)
     .eq("company_id", session.companyId)
@@ -175,7 +177,8 @@ export async function POST(req: NextRequest) {
         mobile: normalisedMobile,
         email,
         id_number: d.id_number?.trim() || null,
-        activation_status: "invited",
+        activation_status: "invited", // default in actual schema
+        status: "active",
       })
       .select("id")
       .single();
