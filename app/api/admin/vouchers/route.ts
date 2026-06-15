@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/email";
 import crypto from "crypto";
 
 // GET /api/admin/vouchers — list all vouchers
@@ -84,11 +84,11 @@ export async function POST(req: NextRequest) {
   const activationUrl = `${process.env.NEXT_PUBLIC_GFA_URL ?? ""}/trial?code=${code}`;
 
   // Send via email
-  if ((sendVia === "email" || sendVia === "both") && prospectEmail && process.env.RESEND_API_KEY) {
+  if ((sendVia === "email" || sendVia === "both") && prospectEmail) {
     try {
-      const resend = new Resend(process.env.RESEND_API_KEY);
-      await resend.emails.send({
-        from: "GreenFreightAcademy <noreply@greenfreightacademy.co.za>",
+      await sendEmail({
+        from: "info@greenfreightacademy.co.za",
+        fromName: "GreenFreightAcademy",
         to: prospectEmail,
         subject: `Your GFA Trial Access — ${seats} seat${seats > 1 ? "s" : ""} ready`,
         html: buildVoucherEmail({

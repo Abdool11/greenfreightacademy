@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   Users, Award, Upload, CheckCircle2, Loader2, Send,
   CreditCard, BarChart3, FileText, LogOut, RefreshCw, Bell, BookOpen, Zap, Target,
-  UserPlus,
+  UserPlus, AlertTriangle,
 } from "lucide-react";
 import CampaignSetupModal from "@/components/CampaignSetupModal";
 import AddDriversModal from "@/components/AddDriversModal";
@@ -103,6 +103,7 @@ export default function DashboardPage() {
   const [selectedNudges, setSelectedNudges] = useState<Set<string>>(new Set());
   const [quoting, setQuoting] = useState(false);
   const [quoteSent, setQuoteSent] = useState(false);
+  const [quoteEmailError, setQuoteEmailError] = useState(false);
   const [confirmingPayment, setConfirmingPayment] = useState<string | null>(null);
   const [deploying, setDeploying] = useState<string | null>(null);
   const [sendingNudge, setSendingNudge] = useState(false);
@@ -192,6 +193,8 @@ export default function DashboardPage() {
   const handleGetQuote = async () => {
     if (totalSelected === 0) return;
     setQuoting(true);
+    setQuoteSent(false);
+    setQuoteEmailError(false);
     try {
       const items = Object.entries(selectedEnrolments)
         .filter(([, s]) => s.size > 0)
@@ -202,7 +205,13 @@ export default function DashboardPage() {
       const res = await fetch("/api/company/quote", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }),
       });
-      if (res.ok) { setQuoteSent(true); setSelectedEnrolments({}); await fetchData(); }
+      if (res.ok) {
+        const data = await res.json();
+        setQuoteSent(true);
+        if (data.emailError) setQuoteEmailError(true);
+        setSelectedEnrolments({});
+        await fetchData();
+      }
     } finally { setQuoting(false); }
   };
 
@@ -358,7 +367,13 @@ export default function DashboardPage() {
             {quoteSent && (
               <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "0.875rem", padding: "1rem 1.25rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.75rem", color: "#22c55e" }}>
                 <CheckCircle2 size={18} />
-                <span>Quote emailed to you. Once payment is made, click <strong>Confirm Payment</strong> below, then <strong>Deploy Training</strong>.</span>
+                <span>Quote created successfully. Once payment is made, click <strong>Confirm Payment</strong> below, then <strong>Deploy Training</strong>.</span>
+              </div>
+            )}
+            {quoteEmailError && (
+              <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "0.875rem", padding: "1rem 1.25rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.75rem", color: "#f59e0b" }}>
+                <AlertTriangle size={18} />
+                <span>Quote was saved but the confirmation email could not be sent. Please contact <a href="mailto:info@greenfreightacademy.co.za" style={{ color: "#f59e0b", textDecoration: "underline" }}>info@greenfreightacademy.co.za</a> for assistance.</span>
               </div>
             )}
             {nudgeSent && (

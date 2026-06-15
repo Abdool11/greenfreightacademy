@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/email";
 import { randomBytes } from "crypto";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -327,10 +327,11 @@ export async function POST(req: NextRequest) {
 
   // ── 7. Notify GFA admin by email ───────────────────────────────────────────
   const adminEmail = config.email_booking_to || "durbanroadtransport@gmail.com";
-  if (process.env.RESEND_API_KEY) {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    await resend.emails.send({
-      from: `GreenFreightAcademy <notifications@greenfreightacademy.co.za>`,
+  try {
+    const fromAddress = config.company_email || "info@greenfreightacademy.co.za";
+    await sendEmail({
+      from: fromAddress,
+      fromName: "GreenFreightAcademy",
       to: adminEmail,
       subject: `Training deployed — ${session.companyName} — Ref: ${quote.reference}`,
       html: `
@@ -346,6 +347,8 @@ export async function POST(req: NextRequest) {
         </p>
       `,
     });
+  } catch (e) {
+    console.error("Deploy admin email error:", e);
   }
 
   return NextResponse.json({

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/email";
 
 interface QuoteLineItem {
   driverId: string;
@@ -172,28 +172,28 @@ export async function POST(req: NextRequest) {
 
   // Send quote email to company
   let emailError = false;
-  if (process.env.RESEND_API_KEY) {
-    try {
-      const resend = new Resend(process.env.RESEND_API_KEY);
-      await resend.emails.send({
-        from: `GreenFreightAcademy <quotes@greenfreightacademy.com>`,
-        to: session.email,
-        subject: `Your GFA Training Quotation — ${ref}`,
-        html: emailHtml,
-      });
+  try {
+    const fromAddress = config.company_email || "info@greenfreightacademy.co.za";
+    await sendEmail({
+      from: fromAddress,
+      fromName: "GreenFreightAcademy",
+      to: session.email,
+      subject: `Your GFA Training Quotation — ${ref}`,
+      html: emailHtml,
+    });
 
-      // Also notify GFA admin
-      const adminEmail = config.email_booking_to || "durbanroadtransport@gmail.com";
-      await resend.emails.send({
-        from: `GreenFreightAcademy <quotes@greenfreightacademy.com>`,
-        to: adminEmail,
-        subject: `New quote generated — ${session.companyName} — ${ref}`,
-        html: `<p>A new quote has been generated for <strong>${session.companyName}</strong>.</p><p>Reference: <strong>${ref}</strong></p><p>Total: <strong>R ${total.toFixed(2)}</strong></p><p>Drivers: ${items.length}</p>`,
-      });
-    } catch (e) {
-      console.error("Quote email error:", e);
-      emailError = true;
-    }
+    // Also notify GFA admin
+    const adminEmail = config.email_booking_to || "durbanroadtransport@gmail.com";
+    await sendEmail({
+      from: fromAddress,
+      fromName: "GreenFreightAcademy",
+      to: adminEmail,
+      subject: `New quote generated — ${session.companyName} — ${ref}`,
+      html: `<p>A new quote has been generated for <strong>${session.companyName}</strong>.</p><p>Reference: <strong>${ref}</strong></p><p>Total: <strong>R ${total.toFixed(2)}</strong></p><p>Drivers: ${items.length}</p>`,
+    });
+  } catch (e) {
+    console.error("Quote email error:", e);
+    emailError = true;
   }
 
   return NextResponse.json({ ok: true, reference: ref, total, quoteId: quote.id, emailError });
