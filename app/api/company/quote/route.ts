@@ -57,22 +57,37 @@ export async function POST(req: NextRequest) {
   const ref = `GFA-${Date.now().toString(36).toUpperCase()}`;
 
   // Save quote to DB
-  const { data: quote, error } = await supabaseAdmin
+  let quotePayload: any = {
+    company_id: session.companyId,
+    reference: ref,
+    line_items: lineItems,
+    subtotal,
+    vat,
+    total,
+    status: "pending",
+    items_json: items,
+  };
+
+  let { data: quote, error } = await supabaseAdmin
     .from("quotes")
-    .insert({
-      company_id: session.companyId,
-      reference: ref,
-      line_items: lineItems,
-      subtotal,
-      vat,
-      total,
-      status: "pending",
-      items_json: items,
-    })
+    .insert(quotePayload)
     .select()
     .single();
 
-  if (error) {
+  // Retry without line_items if the column is missing (migration not yet run)
+  if (error && (error.message?.includes("line_items") || error.code === "42703")) {
+    console.warn("line_items column missing, retrying insert without it:", error.message);
+    const { line_items: _, ...fallbackPayload } = quotePayload;
+    const retry = await supabaseAdmin
+      .from("quotes")
+      .insert(fallbackPayload)
+      .select()
+      .single();
+    quote = retry.data;
+    error = retry.error;
+  }
+
+  if (error || !quote) {
     console.error("Quote save error:", error);
     return NextResponse.json({ error: "Failed to save quote" }, { status: 500 });
   }
@@ -156,24 +171,30 @@ export async function POST(req: NextRequest) {
   `;
 
   // Send quote email to company
+  let emailError = false;
   if (process.env.RESEND_API_KEY) {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    await resend.emails.send({
-      from: `GreenFreightAcademy <quotes@greenfreightacademy.com>`,
-      to: session.email,
-      subject: `Your GFA Training Quotation — ${ref}`,
-      html: emailHtml,
-    });
+    try {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      await resend.emails.send({
+        from: `GreenFreightAcademy <quotes@greenfreightacademy.com>`,
+        to: session.email,
+        subject: `Your GFA Training Quotation — ${ref}`,
+        html: emailHtml,
+      });
 
-    // Also notify GFA admin
-    const adminEmail = config.email_booking_to || "durbanroadtransport@gmail.com";
-    await resend.emails.send({
-      from: `GreenFreightAcademy <quotes@greenfreightacademy.com>`,
-      to: adminEmail,
-      subject: `New quote generated — ${session.companyName} — ${ref}`,
-      html: `<p>A new quote has been generated for <strong>${session.companyName}</strong>.</p><p>Reference: <strong>${ref}</strong></p><p>Total: <strong>R ${total.toFixed(2)}</strong></p><p>Drivers: ${items.length}</p>`,
-    });
+      // Also notify GFA admin
+      const adminEmail = config.email_booking_to || "durbanroadtransport@gmail.com";
+      await resend.emails.send({
+        from: `GreenFreightAcademy <quotes@greenfreightacademy.com>`,
+        to: adminEmail,
+        subject: `New quote generated — ${session.companyName} — ${ref}`,
+        html: `<p>A new quote has been generated for <strong>${session.companyName}</strong>.</p><p>Reference: <strong>${ref}</strong></p><p>Total: <strong>R ${total.toFixed(2)}</strong></p><p>Drivers: ${items.length}</p>`,
+      });
+    } catch (e) {
+      console.error("Quote email error:", e);
+      emailError = true;
+    }
   }
 
-  return NextResponse.json({ ok: true, reference: ref, total, quoteId: quote.id });
+  return NextResponse.json({ ok: true, reference: ref, total, quoteId: quote.id, emailError });
 }
