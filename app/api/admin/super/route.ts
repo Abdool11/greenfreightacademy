@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
         // Monthly revenue for last 12 months
         supabaseAdmin.from("quotes").select("total, paid_at").eq("status", "paid").gte("paid_at", yearStart.toISOString()).order("paid_at"),
         // Revenue by course
-        supabaseAdmin.from("enrolments").select("course_id, courses(name, price_corporate), status").eq("status", "active"),
+        supabaseAdmin.from("enrolments").select("course_id, courses(*), status").eq("status", "active"),
       ]);
 
       const totalRevenue = (paidQuotes ?? []).reduce((sum: number, q: Record<string, unknown>) => sum + (Number(q.total) || 0), 0);

@@ -35,16 +35,16 @@ export async function POST(req: NextRequest) {
   const allCourseIds = [...new Set(items.flatMap(i => i.courseIds))];
   const { data: courses } = await supabaseAdmin
     .from("courses")
-    .select("id, name, price_corporate")
+    .select("*")
     .in("id", allCourseIds);
 
-  const courseMap = Object.fromEntries((courses ?? []).map(c => [c.id, c]));
+  const courseMap = Object.fromEntries((courses ?? []).map((c: any) => [c.id, c]));
 
   // Build line items
   const lineItems = items.flatMap(item =>
     item.courseIds.map(courseId => ({
       driverName: item.driverName,
-      courseName: courseMap[courseId]?.name ?? courseId,
+      courseName: courseMap[courseId]?.name || courseMap[courseId]?.title || courseId,
       price: courseMap[courseId]?.price_corporate ?? 0,
     }))
   );

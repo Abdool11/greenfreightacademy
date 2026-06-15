@@ -283,10 +283,10 @@ export async function POST(req: NextRequest) {
     if (item.courseIds.length > 0) {
       const { data: course } = await supabaseAdmin
         .from("courses")
-        .select("name")
+        .select("*")
         .eq("id", item.courseIds[0])
         .single();
-      if (course?.name) programmeName = course.name;
+      if (course) programmeName = course.name || course.title || programmeName;
     }
 
     // Generate / reuse BD invitation token

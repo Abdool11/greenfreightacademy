@@ -26,7 +26,7 @@ export async function GET() {
           hr_feedback_understanding, hr_feedback_enjoyment, hr_feedback_more_learning,
           hr_feedback_submitted_at,
           drivers(id, first_name, last_name, mobile, email),
-          courses(id, name, slug)
+          courses(*)
         `)
         .eq("campaign_id", campaign.id);
 

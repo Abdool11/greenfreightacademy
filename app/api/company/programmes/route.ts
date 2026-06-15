@@ -9,10 +9,20 @@ export async function GET(_req: NextRequest) {
 
   const { data, error } = await supabaseAdmin
     .from("courses")
-    .select("id, name, slug, module_count, status")
-    .eq("status", "active")
+    .select("*")
     .order("created_at", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ programmes: data });
+
+  const programmes = (data ?? [])
+    .filter((row: any) => row.status === "active" || row.is_active === true)
+    .map((row: any) => ({
+      id: row.id,
+      name: row.name || row.title || "",
+      slug: row.slug,
+      module_count: row.module_count ?? 12,
+      status: row.status || (row.is_active ? "active" : "archived"),
+    }));
+
+  return NextResponse.json({ programmes });
 }

@@ -7,19 +7,30 @@ export const dynamic = "force-dynamic";
 // This is consumed by TAG to display centralised GFA pricing on the Academy page.
 export async function GET() {
   try {
-    const { data: courses, error } = await supabaseAdmin
+    const { data: coursesRaw, error } = await supabaseAdmin
       .from("courses")
-      .select("id, name, slug, price_corporate, price_individual, available, description")
-      .eq("available", true)
-      .order("name");
+      .select("*")
+      .eq("available", true);
 
     if (error) {
       console.error("[Public Pricing API]", error);
       return NextResponse.json({ error: "Failed to load pricing" }, { status: 500 });
     }
 
+    const courses = (coursesRaw ?? [])
+      .map((c: any) => ({
+        id: c.id,
+        name: c.name || c.title || "",
+        slug: c.slug,
+        price_corporate: c.price_corporate ?? 0,
+        price_individual: c.price_individual ?? 0,
+        available: c.available ?? c.is_active ?? true,
+        description: c.description || "",
+      }))
+      .sort((a: any, b: any) => a.name.localeCompare(b.name));
+
     return NextResponse.json(
-      { courses: courses ?? [] },
+      { courses },
       {
         headers: {
           // Allow TAG (or any origin) to read this endpoint via CORS

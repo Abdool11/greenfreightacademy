@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     .from("enrolments")
     .select(`
       id, status, certified, progress_percent,
-      courses(id, name, price_corporate)
+      courses(*)
     `)
     .eq("campaign_id", campaign_id)
     .eq("company_id", session.companyId)

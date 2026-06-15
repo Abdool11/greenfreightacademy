@@ -104,20 +104,28 @@ export default async function AdminCompanyDetailPage({ params }: { params: { id:
         certified,
         nudge_sent_at,
         enrolled_at,
-        courses(id, name, slug, module_count, status)
+        courses(*)
       )
     `)
     .eq("company_id", params.id)
     .order("last_name", { ascending: true }) as { data: Driver[] | null };
 
-  const { data: courses } = await supabaseAdmin
+  const { data: coursesRaw } = await supabaseAdmin
     .from("courses")
-    .select("id, name, slug, module_count, status")
-    .eq("status", "active")
-    .order("name") as { data: Course[] | null };
+    .select("*")
+    .eq("status", "active") as { data: any[] | null };
+
+  const courseList = (coursesRaw ?? [])
+    .map((c: any) => ({
+      id: c.id,
+      name: c.name || c.title || "",
+      slug: c.slug,
+      module_count: c.module_count ?? 12,
+      status: c.status || (c.is_active ? "active" : "archived"),
+    }))
+    .sort((a: any, b: any) => a.name.localeCompare(b.name));
 
   const driverList = drivers ?? [];
-  const courseList = courses ?? [];
 
   const totalDrivers = driverList.length;
   const activatedDrivers = driverList.filter(d => d.enrolments.some(e => e.link_activated)).length;
