@@ -26,9 +26,6 @@ export async function POST(req: NextRequest) {
     "company_address",
     "company_phone",
     "company_email",
-    "company_bank_name",
-    "company_bank_account",
-    "company_bank_branch",
   ]);
 
   // Fetch course prices from DB
@@ -154,9 +151,11 @@ export async function POST(req: NextRequest) {
 
         <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
           <p style="margin: 0 0 8px; font-weight: 600; font-size: 0.875rem;">Payment Details</p>
-          <p style="margin: 0; color: #374151; font-size: 0.875rem;">Bank: ${config.company_bank_name || "TBC"}</p>
-          <p style="margin: 4px 0 0; color: #374151; font-size: 0.875rem;">Account: ${config.company_bank_account || "TBC"}</p>
-          <p style="margin: 4px 0 0; color: #374151; font-size: 0.875rem;">Branch Code: ${config.company_bank_branch || "TBC"}</p>
+          <p style="margin: 0; color: #374151; font-size: 0.875rem;">Bank: Nedbank</p>
+          <p style="margin: 4px 0 0; color: #374151; font-size: 0.875rem;">Account Holder: TRANSPORT ACTION GROUP (PTY) LTD</p>
+          <p style="margin: 4px 0 0; color: #374151; font-size: 0.875rem;">Account Number: 1316890422</p>
+          <p style="margin: 4px 0 0; color: #374151; font-size: 0.875rem;">Account Type: Current account</p>
+          <p style="margin: 4px 0 0; color: #374151; font-size: 0.875rem;">Branch Code: 198765</p>
           <p style="margin: 4px 0 0; color: #374151; font-size: 0.875rem;">Reference: <strong>${ref}</strong></p>
         </div>
 
