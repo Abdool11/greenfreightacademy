@@ -121,7 +121,7 @@ export default function DashboardPage() {
       const [driversRes, quotesRes, coursesRes] = await Promise.all([
         fetch("/api/company/drivers"),
         fetch("/api/company/quotes"),
-        fetch("/api/admin/programmes"),
+        fetch("/api/company/programmes"),
       ]);
       if (driversRes.status === 401) { window.location.href = "/login"; return; }
 
