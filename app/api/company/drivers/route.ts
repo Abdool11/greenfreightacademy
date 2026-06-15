@@ -93,11 +93,12 @@ export async function GET() {
 // ─── POST (add multiple drivers) ────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
-  const drivers: DriverInput[] = body.drivers ?? [];
+    const body = await req.json();
+    const drivers: DriverInput[] = body.drivers ?? [];
 
   if (!Array.isArray(drivers) || drivers.length === 0) {
     return NextResponse.json({ error: "drivers array is required" }, { status: 400 });
@@ -195,16 +196,23 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({
-    ok: true,
-    created: created.length,
-    total: drivers.length,
-    drivers: created,
-    duplicates: duplicates.length,
-    duplicateDetails: duplicates,
-    errors: errors.length,
-    errorDetails: errors,
-  });
+    return NextResponse.json({
+      ok: true,
+      created: created.length,
+      total: drivers.length,
+      drivers: created,
+      duplicates: duplicates.length,
+      duplicateDetails: duplicates,
+      errors: errors.length,
+      errorDetails: errors,
+    });
+  } catch (err: any) {
+    console.error("[POST /api/company/drivers] unexpected error:", err);
+    return NextResponse.json({
+      error: "Internal server error",
+      detail: err?.message || String(err),
+    }, { status: 500 });
+  }
 }
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────

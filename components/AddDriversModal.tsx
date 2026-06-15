@@ -117,6 +117,8 @@ export default function AddDriversModal({ onClose, onSuccess }: AddDriversModalP
   );
 
   const allRowsValid = rows.every((row) => {
+    const isPopulated = row.first_name.trim() || row.last_name.trim() || row.mobile.trim();
+    if (!isPopulated) return true; // empty rows are ignored by handleSubmit
     return (
       !getFieldError(row, "first_name") &&
       !getFieldError(row, "last_name") &&

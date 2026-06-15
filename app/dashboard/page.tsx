@@ -124,15 +124,20 @@ export default function DashboardPage() {
         fetch("/api/admin/programmes"),
       ]);
       if (driversRes.status === 401) { window.location.href = "/login"; return; }
-      const driversData = await driversRes.json();
-      const quotesData = quotesRes.ok ? await quotesRes.json() : { quotes: [] };
+
+      // Parse each response independently so one failure doesn't break the others
+      let driversData: any = { drivers: [] };
+      let quotesData: any = { quotes: [] };
+      let coursesData: any = { programmes: [] };
+
+      try { if (driversRes.ok) driversData = await driversRes.json(); } catch (e) { console.error("Failed to parse drivers:", e); }
+      try { if (quotesRes.ok) quotesData = await quotesRes.json(); } catch (e) { console.error("Failed to parse quotes:", e); }
+      try { if (coursesRes.ok) coursesData = await coursesRes.json(); } catch (e) { console.error("Failed to parse courses:", e); }
+
       setDrivers(driversData.drivers ?? []);
       setQuotes(quotesData.quotes ?? []);
       if (driversData.companyName) setCompanyName(driversData.companyName);
-      if (coursesRes.ok) {
-        const cData = await coursesRes.json();
-        setCourses((cData.programmes ?? []).filter((p: Course) => p.status === "active"));
-      }
+      setCourses((coursesData.programmes ?? []).filter((p: Course) => p.status === "active"));
     } catch { /* silently fail */ } finally { setLoading(false); }
   }, []);
 
