@@ -23,13 +23,14 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const {
-    name, slug, description, price_corporate, price_model,
+    name, title, slug, description, price_corporate, price_model,
     duration_weeks, module_count, cpd_frequency, audience,
     moodle_course_id, status,
   } = body;
 
-  if (!name || !slug) {
-    return NextResponse.json({ error: "name and slug are required" }, { status: 400 });
+  const displayName = title || name;
+  if (!displayName || !slug) {
+    return NextResponse.json({ error: "name (or title) and slug are required" }, { status: 400 });
   }
 
   // Validate slug format
@@ -37,21 +38,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "slug must be lowercase letters, numbers, and hyphens only" }, { status: 400 });
   }
 
+  const insertPayload: Record<string, unknown> = {
+    title: displayName,
+    slug,
+    description: description || null,
+    price_corporate: price_corporate ? Number(price_corporate) : null,
+    price_model: price_model || "per_driver_per_month",
+    duration_weeks: duration_weeks ? Number(duration_weeks) : null,
+    module_count: module_count ? Number(module_count) : 12,
+    cpd_frequency: cpd_frequency || "quarterly",
+    audience: audience || "drivers",
+    moodle_course_id: moodle_course_id || null,
+    status: status || "active",
+  };
+
   const { data, error } = await supabaseAdmin
     .from("courses")
-    .insert({
-      name,
-      slug,
-      description: description || null,
-      price_corporate: price_corporate ? Number(price_corporate) : null,
-      price_model: price_model || "per_driver_per_month",
-      duration_weeks: duration_weeks ? Number(duration_weeks) : null,
-      module_count: module_count ? Number(module_count) : 12,
-      cpd_frequency: cpd_frequency || "quarterly",
-      audience: audience || "drivers",
-      moodle_course_id: moodle_course_id || null,
-      status: status || "active",
-    })
+    .insert(insertPayload)
     .select()
     .single();
 
@@ -66,7 +69,7 @@ export async function POST(req: NextRequest) {
   await supabaseAdmin.from("admin_audit_log").insert({
     admin_id: session.adminId,
     action: "programme_created",
-    details: { programme_id: data.id, name: data.name },
+    details: { programme_id: data.id, title: data.title },
   }).catch(() => {});
 
   return NextResponse.json({ programme: data }, { status: 201 });
