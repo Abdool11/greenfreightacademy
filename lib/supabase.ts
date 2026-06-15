@@ -32,6 +32,25 @@ export async function getConfig(key: string): Promise<string> {
   }
 }
 
+// Map site_config keys → common env-var fallbacks
+const CONFIG_ENV_FALLBACKS: Record<string, string[]> = {
+  whatsapp_access_token: ["WHATSAPP_ACCESS_TOKEN", "META_WA_TOKEN"],
+  whatsapp_phone_id: ["WHATSAPP_PHONE_NUMBER_ID", "META_WA_PHONE_NUMBER_ID"],
+  bd_base_url: ["BD_BASE_URL", "BETTERDRIVER_URL", "NEXT_PUBLIC_BD_URL"],
+  email_booking_to: ["EMAIL_BOOKING_TO"],
+  company_name: ["COMPANY_NAME"],
+  company_email: ["COMPANY_EMAIL"],
+};
+
+function envFallback(key: string): string | undefined {
+  const candidates = CONFIG_ENV_FALLBACKS[key] ?? [];
+  for (const envKey of candidates) {
+    const val = process.env[envKey];
+    if (val && val.trim() !== "") return val.trim();
+  }
+  return undefined;
+}
+
 export async function getConfigs(keys: string[]): Promise<Record<string, string>> {
   try {
     const { data } = await supabaseAdmin
@@ -42,9 +61,21 @@ export async function getConfigs(keys: string[]): Promise<Record<string, string>
     (data ?? []).forEach((row: { key: string; value: string }) => {
       result[row.key] = row.value ?? "";
     });
+    // Fallback to env vars for any missing keys
+    for (const key of keys) {
+      if (!result[key] || result[key].trim() === "") {
+        const fallback = envFallback(key);
+        if (fallback) result[key] = fallback;
+      }
+    }
     return result;
   } catch {
-    return {};
+    const result: Record<string, string> = {};
+    for (const key of keys) {
+      const fallback = envFallback(key);
+      if (fallback) result[key] = fallback;
+    }
+    return result;
   }
 }
 

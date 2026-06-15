@@ -1256,3 +1256,31 @@ CREATE POLICY "deny_anon_trial_vouchers"
 --
 -- Expected result: 0 rows.
 -- ============================================================
+
+-- ============================================================
+-- 2026-06-15: Fix deployments schema gaps
+-- ============================================================
+ALTER TABLE deployments
+  ADD COLUMN IF NOT EXISTS quote_id UUID REFERENCES quotes(id) ON DELETE SET NULL;
+
+ALTER TABLE deployments
+  ADD COLUMN IF NOT EXISTS deployed_at TIMESTAMPTZ;
+
+ALTER TABLE deployments
+  ADD COLUMN IF NOT EXISTS campaign_id UUID;
+
+ALTER TABLE deployments
+  ALTER COLUMN programme_id DROP NOT NULL;
+ALTER TABLE deployments
+  ALTER COLUMN seats DROP NOT NULL;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'deployments_campaign_id_fkey'
+  ) THEN
+    ALTER TABLE deployments
+      ADD CONSTRAINT deployments_campaign_id_fkey
+      FOREIGN KEY (campaign_id) REFERENCES training_campaigns(id) ON DELETE SET NULL;
+  END IF;
+END $$;

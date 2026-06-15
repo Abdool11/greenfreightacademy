@@ -302,7 +302,11 @@ export async function POST(req: NextRequest) {
 
     // Send WhatsApp magic link message
     let whatsappSent = false;
-    if (phoneId && accessToken && driver.mobile) {
+    if (!phoneId || !accessToken) {
+      console.warn("[GFA deploy] WhatsApp skipped: phone_id or access_token not configured in site_config");
+    } else if (!driver.mobile) {
+      console.warn(`[GFA deploy] WhatsApp skipped: driver ${driver.id} has no mobile number`);
+    } else {
       whatsappSent = await sendMagicLinkWhatsApp({
         mobile: driver.mobile,
         driverFirstName: driver.first_name,
@@ -351,9 +355,23 @@ export async function POST(req: NextRequest) {
     console.error("Deploy admin email error:", e);
   }
 
+  const warnings: string[] = [];
+  if (!phoneId) warnings.push("WhatsApp Phone ID not configured.");
+  if (!accessToken) warnings.push("WhatsApp Access Token not configured.");
+  if (phoneId && accessToken) {
+    const driversWithoutMobile = items.filter((item) => {
+      const r = results.find((res) => res.driverId === item.driverId);
+      return !r?.whatsapp;
+    });
+    if (driversWithoutMobile.length > 0) {
+      warnings.push(`${driversWithoutMobile.length} driver(s) have no mobile number.`);
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     deployed: results.length,
     whatsappSent: results.filter((r) => r.whatsapp).length,
+    warnings: warnings.length > 0 ? warnings : undefined,
   });
 }
