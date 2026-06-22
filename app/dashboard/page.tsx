@@ -104,7 +104,7 @@ export default function DashboardPage() {
   const [quoting, setQuoting] = useState(false);
   const [quoteSent, setQuoteSent] = useState(false);
   const [quoteEmailError, setQuoteEmailError] = useState(false);
-  const [confirmingPayment, setConfirmingPayment] = useState<string | null>(null);
+  const [payingQuote, setPayingQuote] = useState<string | null>(null);
   const [deploying, setDeploying] = useState<string | null>(null);
   const [sendingNudge, setSendingNudge] = useState(false);
   const [nudgeSent, setNudgeSent] = useState(false);
@@ -215,12 +215,36 @@ export default function DashboardPage() {
     } finally { setQuoting(false); }
   };
 
-  const handleConfirmPayment = async (quoteId: string) => {
-    setConfirmingPayment(quoteId);
+  const handlePayNow = async (quoteId: string) => {
+    setPayingQuote(quoteId);
     try {
-      await fetch("/api/company/confirm-payment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quoteId }) });
-      await fetchData();
-    } finally { setConfirmingPayment(null); }
+      const res = await fetch("/api/company/paygate/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quoteId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Create and auto-submit a form to redirect to Paygate PayWeb3 process.trans
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = "https://secure.paygate.co.za/payweb3/process.trans";
+        const addField = (name: string, value: string) => {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = name;
+          input.value = value;
+          form.appendChild(input);
+        };
+        addField("PAY_REQUEST_ID", data.payRequestId);
+        addField("CHECKSUM", data.checksum);
+        document.body.appendChild(form);
+        form.submit();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        console.error("Paygate initiate failed:", errData);
+      }
+    } finally { setPayingQuote(null); }
   };
 
   const handleDeploy = async (quoteId: string) => {
@@ -367,7 +391,7 @@ export default function DashboardPage() {
             {quoteSent && (
               <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "0.875rem", padding: "1rem 1.25rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.75rem", color: "#22c55e" }}>
                 <CheckCircle2 size={18} />
-                <span>Quote created successfully. Once payment is made, click <strong>Confirm Payment</strong> below, then <strong>Deploy Training</strong>.</span>
+                <span>Quote created successfully. Click <strong>Pay Now</strong> below to pay securely via Paygate, then <strong>Deploy Training</strong>.</span>
               </div>
             )}
             {quoteEmailError && (
@@ -532,7 +556,7 @@ export default function DashboardPage() {
 
             <div>
               <h2 style={{ margin: "0 0 0.5rem", fontSize: "1.125rem", color: "#f9fafb" }}>Deployment</h2>
-              <p style={{ margin: "0 0 1.25rem", color: "#6b7280", fontSize: "0.875rem" }}>Confirm payment, then deploy training to send WhatsApp welcome messages to each driver.</p>
+              <p style={{ margin: "0 0 1.25rem", color: "#6b7280", fontSize: "0.875rem" }}>Pay for your quote via Paygate, then deploy training to send WhatsApp welcome messages to each driver.</p>
               {quotes.length === 0 ? (
                 <div style={{ background: "#0d1520", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: "0.875rem", padding: "2.5rem", textAlign: "center", color: "#4b5563" }}>
                   <FileText size={32} style={{ margin: "0 auto 0.75rem", display: "block" }} />
@@ -554,9 +578,9 @@ export default function DashboardPage() {
                         </div>
                         <div style={{ display: "flex", gap: "0.625rem" }}>
                           {quote.status === "pending" && (
-                            <button onClick={() => handleConfirmPayment(quote.id)} disabled={confirmingPayment === quote.id} style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.3)", borderRadius: "0.5rem", padding: "0.5rem 0.875rem", color: "#60a5fa", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}>
-                              {confirmingPayment === quote.id ? <Loader2 size={13} className="animate-spin" /> : <CreditCard size={13} />}
-                              Confirm Payment
+                            <button onClick={() => handlePayNow(quote.id)} disabled={payingQuote === quote.id} style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.3)", borderRadius: "0.5rem", padding: "0.5rem 0.875rem", color: "#60a5fa", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}>
+                              {payingQuote === quote.id ? <Loader2 size={13} className="animate-spin" /> : <CreditCard size={13} />}
+                              Pay Now
                             </button>
                           )}
                           {quote.status === "paid" && !quote.deployed_at && (
