@@ -6,8 +6,10 @@ import Link from "next/link";
 import {
   Users, Award, Upload, CheckCircle2, Loader2, Send,
   CreditCard, BarChart3, FileText, LogOut, RefreshCw, Bell, BookOpen, Zap, Target,
+  UserPlus,
 } from "lucide-react";
 import CampaignSetupModal from "@/components/CampaignSetupModal";
+import AddDriversModal from "@/components/AddDriversModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -110,6 +112,8 @@ export default function DashboardPage() {
   const [pendingDeployQuoteId, setPendingDeployQuoteId] = useState<string | null>(null);
   const [pendingEnrolmentIds, setPendingEnrolmentIds] = useState<string[]>([]);
   const [campaignCreated, setCampaignCreated] = useState<string | null>(null);
+  // Add drivers modal
+  const [showAddDriversModal, setShowAddDriversModal] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -286,6 +290,17 @@ export default function DashboardPage() {
 
   return (
     <div style={{ paddingTop: "5rem", background: "var(--color-slate-900)", minHeight: "100vh" }}>
+      {/* Add Drivers Modal */}
+      {showAddDriversModal && (
+        <AddDriversModal
+          onClose={() => setShowAddDriversModal(false)}
+          onSuccess={() => {
+            setShowAddDriversModal(false);
+            fetchData();
+          }}
+        />
+      )}
+
       {/* Campaign Setup Modal */}
       {showCampaignModal && pendingDeployQuoteId && (
         <CampaignSetupModal
@@ -310,7 +325,10 @@ export default function DashboardPage() {
             <button onClick={fetchData} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.5rem", padding: "0.5rem", color: "#6b7280", cursor: "pointer" }}>
               <RefreshCw size={16} />
             </button>
-            <Link href="/dashboard/import" style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "0.5rem", padding: "0.5rem 1rem", color: "#22c55e", fontSize: "0.8125rem", fontWeight: 600, textDecoration: "none" }}>
+            <button onClick={() => setShowAddDriversModal(true)} style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "0.5rem", padding: "0.5rem 1rem", color: "#22c55e", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}>
+              <UserPlus size={14} /> Add Drivers
+            </button>
+            <Link href="/dashboard/import" style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.15)", borderRadius: "0.5rem", padding: "0.5rem 1rem", color: "#4ade80", fontSize: "0.8125rem", fontWeight: 600, textDecoration: "none" }}>
               <Upload size={14} /> Import Drivers
             </Link>
             <Link href="/dashboard/bulletins" style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "0.5rem", padding: "0.5rem 1rem", color: "#f59e0b", fontSize: "0.8125rem", fontWeight: 600, textDecoration: "none" }}>
@@ -407,7 +425,15 @@ export default function DashboardPage() {
               {drivers.length === 0 ? (
                 <div style={{ background: "#0d1520", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: "0.875rem", padding: "3rem", textAlign: "center", color: "#4b5563" }}>
                   <Users size={36} style={{ margin: "0 auto 1rem", display: "block" }} />
-                  <p style={{ margin: 0 }}>No drivers yet. <Link href="/dashboard/import" style={{ color: "#22c55e" }}>Import your driver list</Link> to get started.</p>
+                  <p style={{ margin: "0 0 0.75rem" }}>No drivers yet.</p>
+                  <div style={{ display: "flex", gap: "0.625rem", justifyContent: "center" }}>
+                    <button onClick={() => setShowAddDriversModal(true)} style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "0.5rem", padding: "0.5rem 1rem", color: "#22c55e", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}>
+                      <UserPlus size={14} /> Add drivers
+                    </button>
+                    <Link href="/dashboard/import" style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem", background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.15)", borderRadius: "0.5rem", padding: "0.5rem 1rem", color: "#4ade80", fontSize: "0.8125rem", fontWeight: 600, textDecoration: "none" }}>
+                      <Upload size={14} /> Import CSV
+                    </Link>
+                  </div>
                 </div>
               ) : courses.length === 0 ? (
                 <div style={{ background: "#0d1520", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: "0.875rem", padding: "3rem", textAlign: "center", color: "#4b5563" }}>
