@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
         }
         email = d.email.trim().toLowerCase();
       } else {
-        email = `driver_${normalisedMobile}@placeholder.local`;
+        email = `driver_${session.companyId}_${normalisedMobile}@placeholder.local`;
       }
 
       const { data, error } = await supabaseAdmin
