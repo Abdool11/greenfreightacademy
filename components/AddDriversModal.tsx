@@ -323,7 +323,7 @@ export default function AddDriversModal({ onClose, onSuccess }: AddDriversModalP
                     {result.errors > 0 ? ` · ${result.errors} error${result.errors !== 1 ? "s" : ""}` : ""}
                   </p>
                   <p style={{ margin: "0.25rem 0 0", fontSize: "0.8125rem", color: "#9ca3af" }}>
-                    Mobile numbers normalised to E.164 format. Placeholder emails generated where not provided.
+                    Mobile numbers normalised to E.164 format.
                   </p>
                 </div>
               </div>

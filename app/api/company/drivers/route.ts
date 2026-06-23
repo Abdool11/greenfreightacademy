@@ -154,8 +154,8 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
-    // Email validation (required in actual schema)
-    let email: string;
+    // Email is optional; validate format if provided
+    let email: string | null;
     if (d.email?.trim()) {
       if (!validateEmail(d.email.trim())) {
         errors.push({ index: idx, field: "email", message: "Invalid email address" });
@@ -163,8 +163,7 @@ export async function POST(req: NextRequest) {
       }
       email = d.email.trim().toLowerCase();
     } else {
-      // Generate placeholder email since email is NOT NULL in the actual schema
-      email = `driver_${normalisedMobile}@placeholder.local`;
+      email = null;
     }
 
     // Insert driver
