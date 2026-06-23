@@ -79,25 +79,13 @@ export async function POST(req: NextRequest) {
       })
       .eq("paystack_reference", paystackReference);
 
-    // Update quote status to "paid"
+    // Update quote status to "paid" (Paystack payments are instant)
     await supabaseAdmin
       .from("quotes")
       .update({
         status: "paid",
         paid_at: new Date().toISOString(),
         payment_method: "paystack",
-      })
-      .eq("id", quoteId)
-      .eq("company_id", companyId);
-
-    // Auto-approve: for Paystack payments, immediately mark as approved
-    // (EFT requires manual admin verification; Paystack is instant)
-    await supabaseAdmin
-      .from("quotes")
-      .update({
-        status: "approved",
-        approved_at: new Date().toISOString(),
-        approved_by: "paystack_auto",
       })
       .eq("id", quoteId)
       .eq("company_id", companyId);

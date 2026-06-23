@@ -580,7 +580,7 @@ export default function DashboardPage() {
                               Pay Now
                             </button>
                           )}
-                          {(quote.status === "paid" || quote.status === "approved") && !quote.deployed_at && (
+                          {quote.status === "paid" && !quote.deployed_at && (
                             <button onClick={() => handleDeploy(quote.id)} disabled={deploying === quote.id} style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "#22c55e", border: "none", borderRadius: "0.5rem", padding: "0.5rem 0.875rem", color: "#000", fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer" }}>
                               {deploying === quote.id ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
                               Deploy Training

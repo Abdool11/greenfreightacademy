@@ -94,15 +94,13 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Payment reference mismatch" }, { status: 403 });
       }
 
-      // Update quote to paid + approved (Paystack payments auto-approve)
+      // Update quote to paid (Paystack payments are instant)
       await supabaseAdmin
         .from("quotes")
         .update({
-          status: "approved",
+          status: "paid",
           paid_at: new Date().toISOString(),
-          approved_at: new Date().toISOString(),
           payment_method: "paystack",
-          approved_by: "paystack_auto",
         })
         .eq("id", quoteId)
         .eq("company_id", session.companyId);
@@ -125,7 +123,7 @@ export async function POST(req: NextRequest) {
     .eq("company_id", session.companyId)
     .single();
 
-  if (quote?.status === "paid" || quote?.status === "approved" || quote?.status === "deployed") {
+  if (quote?.status === "paid" || quote?.status === "deployed") {
     return NextResponse.json({ ok: true });
   }
 
