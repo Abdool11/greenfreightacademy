@@ -6,6 +6,7 @@ import { Resend } from "resend";
 interface QuoteLineItem {
   driverId: string;
   driverName: string;
+  driverMobile?: string;
   courseIds: string[];
 }
 
@@ -40,10 +41,19 @@ export async function POST(req: NextRequest) {
 
   const courseMap = Object.fromEntries((courses ?? []).map(c => [c.id, c]));
 
+  // Fetch driver mobile numbers
+  const driverIds = items.map(i => i.driverId);
+  const { data: driversData } = await supabaseAdmin
+    .from("drivers")
+    .select("id, mobile")
+    .in("id", driverIds);
+  const driverMobileMap = Object.fromEntries((driversData ?? []).map(d => [d.id, d.mobile]));
+
   // Build line items
   const lineItems = items.flatMap(item =>
     item.courseIds.map(courseId => ({
       driverName: item.driverName,
+      driverMobile: driverMobileMap[item.driverId] ?? "",
       courseName: courseMap[courseId]?.name ?? courseId,
       price: courseMap[courseId]?.price_corporate ?? 0,
     }))

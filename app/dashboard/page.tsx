@@ -51,7 +51,7 @@ interface Quote {
   created_at: string;
   paid_at?: string;
   deployed_at?: string;
-  line_items: Array<{ driverName: string; courseName: string; price: number }>;
+  line_items: Array<{ driverName: string; driverMobile?: string; courseName: string; price: number }>;
 }
 
 // ─── Progress bar ─────────────────────────────────────────────────────────────
@@ -559,6 +559,22 @@ export default function DashboardPage() {
                           <div style={{ color: "#6b7280", fontSize: "0.8125rem" }}>
                             {quote.line_items?.length ?? 0} enrolments · R {quote.total?.toFixed(2)} incl. VAT · {new Date(quote.created_at).toLocaleDateString("en-ZA")}
                           </div>
+                          {quote.line_items && quote.line_items.length > 0 && (
+                            <div style={{ marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+                              {[...new Set(quote.line_items.map(l => l.driverName))].map((name, i) => {
+                                const item = quote.line_items.find(l => l.driverName === name);
+                                return (
+                                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8125rem", color: "#9ca3af" }}>
+                                    <Users size={12} style={{ color: "#6b7280" }} />
+                                    <span>{name}</span>
+                                    {item?.driverMobile && (
+                                      <span style={{ color: "#6b7280" }}>· {item.driverMobile}</span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                         <div style={{ display: "flex", gap: "0.625rem" }}>
                           {quote.status === "pending" && (
