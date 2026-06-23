@@ -267,14 +267,15 @@ export async function POST(req: NextRequest) {
         {
           driver_id: driver.id,
           company_id: session.companyId,
-          course_id: courseId,
-          quote_id: quoteId,
+          programme_id: courseId,
+          programme_slug: "",
           campaign_id: campaignId ?? null,
           status: "enrolled",
-          enrolled_at: new Date().toISOString(),
+          started_at: new Date().toISOString(),
           progress_percent: 0,
+          modules_completed: 0,
         },
-        { onConflict: "driver_id,course_id", ignoreDuplicates: true }
+        { onConflict: "driver_id,programme_id", ignoreDuplicates: true }
       );
     }
 

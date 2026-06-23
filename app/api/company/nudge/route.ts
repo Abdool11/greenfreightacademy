@@ -18,15 +18,14 @@ export async function POST(req: NextRequest) {
     .select(`
       id,
       status,
-      certified,
+      completed_at,
       drivers!inner(
         id,
         first_name,
         last_name,
         mobile,
         company_id
-      ),
-      courses(name)
+      )
     `)
     .in("id", enrolmentIds)
     .eq("drivers.company_id", session.companyId);
@@ -51,14 +50,14 @@ export async function POST(req: NextRequest) {
     const driver = Array.isArray(enrolment.drivers) ? enrolment.drivers[0] : enrolment.drivers as {
       id: string; first_name: string; last_name: string; mobile: string; company_id: string;
     } | null;
-    const course = enrolment.courses as { name: string } | null;
+    const programmeName = "training";
 
     if (!driver) {
       results.push({ enrolmentId: enrolment.id, sent: false, error: "Driver not found" });
       continue;
     }
 
-    const message = `Hi ${driver.first_name}, this is a reminder to continue your ${course?.name ?? "training"} programme. Keep up the great work! 🚛`;
+    const message = `Hi ${driver.first_name}, this is a reminder to continue your ${programmeName} programme. Keep up the great work! 🚛`;
 
     let sent = false;
     let sendError: string | undefined;

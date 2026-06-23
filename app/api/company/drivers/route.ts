@@ -65,22 +65,18 @@ export async function GET() {
       created_at,
       enrolments(
         id,
-        course_id,
-        quote_id,
+        programme_id,
+        programme_slug,
         campaign_id,
         status,
         progress_percent,
-        progress_modules,
-        link_activated,
-        certified,
-        nudge_sent_at,
-        enrolled_at,
-        completed_at,
-        courses(id, name, slug, module_count, status)
+        modules_completed,
+        started_at,
+        completed_at
       )
     `)
     .eq("company_id", session.companyId)
-    .order("last_name", { ascending: true });
+    .order("last_name", { ascending: true, nullsFirst: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ drivers: drivers ?? [], companyName: company?.name ?? "" });
@@ -166,6 +162,8 @@ export async function POST(req: NextRequest) {
           last_name: d.last_name.trim(),
           mobile: normalisedMobile,
           email,
+          id_number: d.id_number?.trim() || null,
+          activation_status: "invited",
           status: "active",
         })
         .select("id")

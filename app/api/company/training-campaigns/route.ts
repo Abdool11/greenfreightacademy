@@ -21,21 +21,19 @@ export async function GET() {
       const { data: enrolments } = await supabaseAdmin
         .from("enrolments")
         .select(`
-          id, status, progress_percent, link_activated, certified,
-          nudge_sent_at, enrolled_at, completed_at,
+          id, status, progress_percent, modules_completed, started_at, completed_at,
           hr_feedback_understanding, hr_feedback_enjoyment, hr_feedback_more_learning,
           hr_feedback_submitted_at,
-          drivers(id, first_name, last_name, mobile, email),
-          courses(id, name, slug)
+          drivers(id, first_name, last_name, mobile, email)
         `)
         .eq("campaign_id", campaign.id);
 
       const all = enrolments ?? [];
       const total = all.length;
-      const notStarted = all.filter((e) => !e.link_activated).length;
-      const inProgress = all.filter((e) => e.link_activated && !e.certified && e.status !== "completed").length;
-      const completed = all.filter((e) => e.certified || e.status === "completed").length;
-      const outstanding = all.filter((e) => !e.certified && e.status !== "completed");
+      const notStarted = all.filter((e) => !e.started_at).length;
+      const inProgress = all.filter((e) => e.started_at && !e.completed_at && e.status !== "completed").length;
+      const completed = all.filter((e) => e.completed_at || e.status === "completed").length;
+      const outstanding = all.filter((e) => !e.completed_at && e.status !== "completed");
 
       // Average HR feedback scores (only from those who submitted)
       const withFeedback = all.filter((e) => e.hr_feedback_submitted_at);

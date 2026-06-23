@@ -30,9 +30,8 @@ export async function POST(req: NextRequest) {
   const { data: enrolments, error: fetchErr } = await supabaseAdmin
     .from("enrolments")
     .select(`
-      id, status, progress_percent, link_activated,
-      drivers!inner(id, first_name, last_name, mobile, company_id),
-      courses(name)
+      id, status, progress_percent, started_at,
+      drivers!inner(id, first_name, last_name, mobile, company_id)
     `)
     .in("id", enrolment_ids)
     .eq("campaign_id", campaign_id)
@@ -61,18 +60,18 @@ export async function POST(req: NextRequest) {
     const driver = Array.isArray(enrolment.drivers)
       ? enrolment.drivers[0]
       : (enrolment.drivers as { id: string; first_name: string; last_name: string; mobile: string } | null);
-    const course = enrolment.courses as { name: string } | null;
+    const programmeName = "training";
 
     if (!driver) {
       results.push({ enrolmentId: enrolment.id, sent: false, error: "Driver not found" });
       continue;
     }
 
-    const isNotStarted = !enrolment.link_activated;
+    const isNotStarted = !enrolment.started_at;
     const nudgeType = isNotStarted ? "not started" : "in progress";
     const message = isNotStarted
-      ? `Hi ${driver.first_name}, your ${course?.name ?? "training"} programme as part of the "${campaign.name}" campaign hasn't started yet. Please log in to BetterDriver to begin. ${deadlineText} 🚛`
-      : `Hi ${driver.first_name}, you're making progress on your ${course?.name ?? "training"} but haven't completed it yet. Keep going — you're part of the "${campaign.name}" campaign. ${deadlineText} 💪`;
+      ? `Hi ${driver.first_name}, your ${programmeName} programme as part of the "${campaign.name}" campaign hasn't started yet. Please log in to BetterDriver to begin. ${deadlineText} 🚛`
+      : `Hi ${driver.first_name}, you're making progress on your ${programmeName} but haven't completed it yet. Keep going — you're part of the "${campaign.name}" campaign. ${deadlineText} 💪`;
 
     let sent = false;
     let sendError: string | undefined;

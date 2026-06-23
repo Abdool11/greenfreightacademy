@@ -15,14 +15,14 @@ interface Course {
 
 interface Enrolment {
   id: string;
-  course_id: string;
+  programme_id: string;
+  programme_slug: string;
   status: string;
-  progress_modules: number;
-  link_activated: boolean;
-  certified: boolean;
-  nudge_sent_at: string | null;
-  enrolled_at: string;
-  courses: Course | null;
+  progress_percent: number;
+  modules_completed: number;
+  started_at: string | null;
+  completed_at: string | null;
+  campaign_id: string | null;
 }
 
 interface Driver {
@@ -97,14 +97,14 @@ export default async function AdminCompanyDetailPage({ params }: { params: { id:
       created_at,
       enrolments(
         id,
-        course_id,
+        programme_id,
+        programme_slug,
         status,
-        progress_modules,
-        link_activated,
-        certified,
-        nudge_sent_at,
-        enrolled_at,
-        courses(id, name, slug, module_count, status)
+        progress_percent,
+        modules_completed,
+        started_at,
+        completed_at,
+        campaign_id
       )
     `)
     .eq("company_id", params.id)
@@ -120,8 +120,8 @@ export default async function AdminCompanyDetailPage({ params }: { params: { id:
   const courseList = courses ?? [];
 
   const totalDrivers = driverList.length;
-  const activatedDrivers = driverList.filter(d => d.enrolments.some(e => e.link_activated)).length;
-  const certifiedDrivers = driverList.filter(d => d.enrolments.some(e => e.certified)).length;
+  const activatedDrivers = driverList.filter(d => d.enrolments.some(e => e.started_at)).length;
+  const certifiedDrivers = driverList.filter(d => d.enrolments.some(e => e.completed_at)).length;
   const enrolledDrivers = driverList.filter(d => d.enrolments.length > 0).length;
 
   const statusColor: Record<string, string> = {
@@ -231,7 +231,7 @@ export default async function AdminCompanyDetailPage({ params }: { params: { id:
                         {driver.email && <div style={{ color: "#64748b", fontSize: "0.75rem" }}>{driver.email}</div>}
                       </td>
                       {courseList.map(c => {
-                        const enrolment = driver.enrolments.find(e => e.course_id === c.id);
+                        const enrolment = driver.enrolments.find(e => e.programme_id === c.id);
                         const moduleTotal = c.module_count || 12;
                         return (
                           <>
@@ -243,19 +243,19 @@ export default async function AdminCompanyDetailPage({ params }: { params: { id:
                             </td>
                             {/* Link Activated */}
                             <td key={`${driver.id}-${c.id}-l`} style={{ padding: "0.75rem 0.375rem", textAlign: "center" }}>
-                              {enrolment?.link_activated
+                              {enrolment?.started_at
                                 ? <span style={{ color: "#22c55e", fontSize: "1rem" }}>✓</span>
                                 : <span style={{ color: "#1e293b", fontSize: "0.75rem" }}>—</span>}
                             </td>
                             {/* Progress */}
                             <td key={`${driver.id}-${c.id}-p`} style={{ padding: "0.75rem 0.375rem", textAlign: "center" }}>
                               {enrolment
-                                ? <ProgressBar done={enrolment.progress_modules || 0} total={moduleTotal} />
+                                ? <ProgressBar done={enrolment.modules_completed || 0} total={moduleTotal} />
                                 : <span style={{ color: "#1e293b", fontSize: "0.75rem" }}>—</span>}
                             </td>
                             {/* Certified */}
                             <td key={`${driver.id}-${c.id}-c`} style={{ padding: "0.75rem 0.375rem", textAlign: "center" }}>
-                              {enrolment?.certified
+                              {enrolment?.completed_at
                                 ? <span style={{ color: "#a78bfa", fontSize: "1rem" }}>★</span>
                                 : <span style={{ color: "#1e293b", fontSize: "0.75rem" }}>—</span>}
                             </td>

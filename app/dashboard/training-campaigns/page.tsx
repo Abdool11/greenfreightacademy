@@ -14,10 +14,9 @@ interface OutstandingEnrolment {
   id: string;
   status: string;
   progress_percent: number;
-  link_activated: boolean;
+  started_at: string | null;
   nudge_sent_at: string | null;
   drivers: { id: string; first_name: string; last_name: string; mobile: string } | null;
-  courses: { id: string; name: string } | null;
 }
 
 interface CampaignStats {
@@ -380,8 +379,7 @@ export default function TrainingCampaignsPage() {
                             <tbody>
                               {s.outstanding.map((e, i) => {
                                 const driver = e.drivers;
-                                const course = e.courses;
-                                const isNotStarted = !e.link_activated;
+                                const isNotStarted = !e.started_at;
                                 return (
                                   <tr
                                     key={e.id}
@@ -407,7 +405,7 @@ export default function TrainingCampaignsPage() {
                                         <div className="text-xs text-gray-500">{driver.mobile}</div>
                                       )}
                                     </td>
-                                    <td className="p-3 text-gray-300 text-sm">{course?.name ?? "—"}</td>
+                                    <td className="p-3 text-gray-300 text-sm">—</td>
                                     <td className="p-3">
                                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                                         isNotStarted ? "bg-red-500/20 text-red-400" : "bg-amber-500/20 text-amber-400"
