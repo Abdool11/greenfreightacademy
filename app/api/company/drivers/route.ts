@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      let email: string;
+      let email: string | null;
       if (d.email?.trim()) {
         if (!validateEmail(d.email.trim())) {
           errors.push({ index: idx, field: "email", message: "Invalid email address" });
@@ -155,19 +155,21 @@ export async function POST(req: NextRequest) {
         }
         email = d.email.trim().toLowerCase();
       } else {
-        email = `driver_${normalisedMobile}@placeholder.local`;
+        email = null;
       }
 
       const { data, error } = await supabaseAdmin
         .from("drivers")
-        .insert({
+        .upsert({
           company_id: session.companyId,
           first_name: d.first_name.trim(),
           last_name: d.last_name.trim(),
           mobile: normalisedMobile,
           email,
-          id_number: d.id_number?.trim() || null,
           status: "active",
+        }, {
+          onConflict: "company_id,mobile",
+          ignoreDuplicates: false,
         })
         .select("id")
         .single();

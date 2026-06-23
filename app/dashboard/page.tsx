@@ -295,7 +295,6 @@ export default function DashboardPage() {
         <AddDriversModal
           onClose={() => setShowAddDriversModal(false)}
           onSuccess={() => {
-            setShowAddDriversModal(false);
             fetchData();
           }}
         />
