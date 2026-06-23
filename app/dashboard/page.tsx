@@ -221,76 +221,21 @@ export default function DashboardPage() {
     setPayingQuote(quoteId);
     setPaymentMessage(null);
     try {
-      const res = await fetch("/api/company/paystack/initiate", {
+      const res = await fetch("/api/paystack/initialize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quoteId }),
       });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        console.error("Paystack initiate failed:", errData);
-        setPaymentMessage({ type: "error", text: errData.error || "Failed to start payment. Please try again." });
-        return;
-      }
-
       const data = await res.json();
-
-      // Dynamically load the Paystack inline script
-      const loadPaystackScript = (): Promise<void> => {
-        return new Promise((resolve, reject) => {
-          if ((window as any).PaystackPop) { resolve(); return; }
-          const script = document.createElement("script");
-          script.src = "https://js.paystack.co/v1/inline.js";
-          script.onload = () => resolve();
-          script.onerror = () => reject(new Error("Failed to load Paystack"));
-          document.head.appendChild(script);
-        });
-      };
-
-      await loadPaystackScript();
-
-      const handler = (window as any).PaystackPop.setup({
-        key: data.publicKey,
-        email: data.email,
-        amount: data.amount,
-        currency: "ZAR",
-        ref: data.reference,
-        onClose: () => {
-          setPayingQuote(null);
-        },
-        callback: async (response: any) => {
-          // Verify the payment on the server
-          try {
-            const verifyRes = await fetch("/api/company/paystack/verify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ reference: response.reference }),
-            });
-            const verifyData = await verifyRes.json();
-            if (verifyData.ok && verifyData.paid) {
-              setPaymentMessage({ type: "success", text: "Payment successful! You can now deploy training." });
-              await fetchData();
-            } else if (verifyData.alreadyPaid) {
-              await fetchData();
-            } else {
-              setPaymentMessage({ type: "error", text: "Payment could not be verified. Please contact support." });
-            }
-          } catch (err) {
-            console.error("Paystack verify error:", err);
-            setPaymentMessage({ type: "error", text: "Payment verification failed. Please contact support." });
-          } finally {
-            setPayingQuote(null);
-          }
-        },
-      });
-
-      handler.openIframe();
-    } catch (err: any) {
-      console.error("Paystack error:", err);
-      setPaymentMessage({ type: "error", text: err.message || "Payment failed to start." });
+      if (res.ok && data.authorization_url) {
+        window.location.href = data.authorization_url;
+      } else {
+        setPaymentMessage({ type: "error", text: data.error || "Payment initialization failed. Please try again or contact support." });
+      }
+    } catch {
+      setPaymentMessage({ type: "error", text: "Network error. Please try again." });
     } finally {
-      // Don't clear payingQuote here — the callback/onClose handles it
+      setPayingQuote(null);
     }
   };
 
@@ -635,7 +580,7 @@ export default function DashboardPage() {
                               Pay Now
                             </button>
                           )}
-                          {quote.status === "paid" && !quote.deployed_at && (
+                          {(quote.status === "paid" || quote.status === "approved") && !quote.deployed_at && (
                             <button onClick={() => handleDeploy(quote.id)} disabled={deploying === quote.id} style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "#22c55e", border: "none", borderRadius: "0.5rem", padding: "0.5rem 0.875rem", color: "#000", fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer" }}>
                               {deploying === quote.id ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
                               Deploy Training
