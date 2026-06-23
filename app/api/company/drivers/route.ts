@@ -160,16 +160,13 @@ export async function POST(req: NextRequest) {
 
       const { data, error } = await supabaseAdmin
         .from("drivers")
-        .upsert({
+        .insert({
           company_id: session.companyId,
           first_name: d.first_name.trim(),
           last_name: d.last_name.trim(),
           mobile: normalisedMobile,
           email,
           status: "active",
-        }, {
-          onConflict: "company_id,mobile",
-          ignoreDuplicates: false,
         })
         .select("id")
         .single();

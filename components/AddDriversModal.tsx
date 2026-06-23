@@ -166,9 +166,9 @@ export default function AddDriversModal({ onClose, onSuccess }: AddDriversModalP
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ drivers: populatedRows }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setSubmitError(data.error ?? "Failed to add drivers. Please try again.");
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        setSubmitError(data?.error ?? data?.detail ?? "Failed to add drivers. Please try again.");
         return;
       }
       setResult({
