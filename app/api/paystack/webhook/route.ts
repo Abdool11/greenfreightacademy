@@ -40,14 +40,13 @@ export async function POST(req: NextRequest) {
       }
 
       // Mark bulletin payment as paid
-      await supabaseAdmin
+      const { error: bullPayErr } = await supabaseAdmin
         .from("bulletin_payments")
         .update({
           status: "paid",
-          paid_at: new Date().toISOString(),
-          paystack_data: JSON.stringify(data),
         })
         .eq("paystack_reference", paystackReference);
+      if (bullPayErr) console.error("[paystack/webhook] Bulletin payment update FAILED:", bullPayErr);
 
       // Update bulletin status to submitted so it can be disseminated
       await supabaseAdmin
@@ -69,18 +68,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true }); // Acknowledge but skip
     }
 
-    // Update payment record
-    await supabaseAdmin
+    // Update payment record (payments table uses confirmed_at, not paid_at)
+    const { error: payErr } = await supabaseAdmin
       .from("payments")
       .update({
-        status: "paid",
-        paid_at: new Date().toISOString(),
-        paystack_data: JSON.stringify(data),
+        status: "confirmed",
+        confirmed_at: new Date().toISOString(),
       })
       .eq("paystack_reference", paystackReference);
+    if (payErr) console.error("[paystack/webhook] Payment record update FAILED:", payErr);
 
     // Update quote status to "paid" (Paystack payments are instant)
-    await supabaseAdmin
+    const { error: quoteErr } = await supabaseAdmin
       .from("quotes")
       .update({
         status: "paid",
@@ -89,6 +88,7 @@ export async function POST(req: NextRequest) {
       })
       .eq("id", quoteId)
       .eq("company_id", companyId);
+    if (quoteErr) console.error("[paystack/webhook] Quote update FAILED:", quoteErr);
 
     console.log(`Paystack payment confirmed for quote ${quoteId}, company ${companyId}`);
   }
