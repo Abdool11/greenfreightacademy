@@ -23,27 +23,41 @@ function PaymentResultContent() {
       return;
     }
 
-    // Verify payment with Paystack
-    fetch("/api/paystack/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quoteId, paystackReference: paystackRef }),
-    })
-      .then((r) => r.json())
-      .then((d) => {
+    let attempts = 0;
+    const maxAttempts = 4;
+
+    const verify = async () => {
+      attempts++;
+      try {
+        const res = await fetch("/api/paystack/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quoteId, paystackReference: paystackRef }),
+        });
+        const d = await res.json();
         if (d.ok) {
           setStatus("success");
           setMessage("Your payment has been confirmed. Redirecting to your dashboard...");
           setTimeout(() => router.push("/dashboard"), 4000);
-        } else {
-          setStatus("error");
-          setMessage(d.error ?? "Payment verification failed. Please contact support.");
+          return;
         }
-      })
-      .catch(() => {
+        if (attempts < maxAttempts) {
+          setTimeout(verify, 3000);
+          return;
+        }
+        setStatus("error");
+        setMessage(d.error ?? "Payment verification failed. Please contact support.");
+      } catch {
+        if (attempts < maxAttempts) {
+          setTimeout(verify, 3000);
+          return;
+        }
         setStatus("error");
         setMessage("Could not verify payment. Please contact support if you were charged.");
-      });
+      }
+    };
+
+    verify();
   }, [quoteId, paystackRef, router]);
 
   return (

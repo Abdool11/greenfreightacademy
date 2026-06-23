@@ -115,9 +115,9 @@ export default function DashboardPage() {
     setLoading(true);
     try {
       const [driversRes, quotesRes, coursesRes] = await Promise.all([
-        fetch("/api/company/drivers"),
-        fetch("/api/company/quotes"),
-        fetch("/api/admin/programmes"),
+        fetch("/api/company/drivers", { cache: "no-store" }),
+        fetch("/api/company/quotes", { cache: "no-store" }),
+        fetch("/api/admin/programmes", { cache: "no-store" }),
       ]);
       if (driversRes.status === 401) { window.location.href = "/login"; return; }
       const driversData = await driversRes.json();
@@ -133,6 +133,26 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Poll quotes for 30s after load to catch payment status updates
+  useEffect(() => {
+    const hasPending = quotes.some(q => q.status === "pending");
+    if (!hasPending) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/company/quotes", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          const newQuotes = data.quotes ?? [];
+          const stillPending = newQuotes.some((q: Quote) => q.status === "pending");
+          setQuotes(newQuotes);
+          if (!stillPending) clearInterval(interval);
+        }
+      } catch { /* ignore */ }
+    }, 5000);
+    const timeout = setTimeout(() => clearInterval(interval), 30000);
+    return () => { clearInterval(interval); clearTimeout(timeout); };
+  }, [quotes]);
 
   // ── Enrolment selection ──────────────────────────────────────────────────────
   const toggleEnrol = (driverId: string, courseId: string) => {
