@@ -78,9 +78,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Paystack not configured" }, { status: 503 });
   }
 
+  // If no paystackReference in the URL, look it up from the payments table
+  let referenceToVerify = paystackReference;
+  if (!referenceToVerify) {
+    const { data: paymentRecord } = await supabaseAdmin
+      .from("payments")
+      .select("paystack_reference")
+      .eq("quote_id", quoteId)
+      .eq("payment_method", "paystack")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    if (paymentRecord?.paystack_reference) {
+      referenceToVerify = paymentRecord.paystack_reference;
+    }
+  }
+
   // Verify with Paystack API
-  if (paystackReference) {
-    const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${paystackReference}`, {
+  if (referenceToVerify) {
+    const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${referenceToVerify}`, {
       headers: { Authorization: `Bearer ${paystackSecretKey}` },
     });
     const verifyData = await verifyRes.json();
@@ -90,7 +106,7 @@ export async function POST(req: NextRequest) {
       const metaQuoteId = metadata.quote_id;
 
       // Security: ensure the quote in metadata matches the requested quoteId
-      if (metaQuoteId !== quoteId) {
+      if (metaQuoteId && metaQuoteId !== quoteId) {
         return NextResponse.json({ error: "Payment reference mismatch" }, { status: 403 });
       }
 
@@ -111,10 +127,11 @@ export async function POST(req: NextRequest) {
       await supabaseAdmin
         .from("payments")
         .update({ status: "paid", paid_at: new Date().toISOString() })
-        .eq("paystack_reference", paystackReference);
+        .eq("paystack_reference", referenceToVerify);
 
       return NextResponse.json({ ok: true });
     }
+    console.error("[paystack/verify] Paystack verification did not succeed:", verifyData);
   }
 
   // Fallback: check if quote was already marked paid (via webhook)

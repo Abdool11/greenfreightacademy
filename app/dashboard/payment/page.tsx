@@ -2,7 +2,7 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
 
@@ -12,6 +12,7 @@ function PaymentResultContent() {
   const ref = searchParams?.get("ref");
   const paystackRef = searchParams?.get("reference"); // Paystack appends this
 
+  const router = useRouter();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
 
@@ -32,7 +33,8 @@ function PaymentResultContent() {
       .then((d) => {
         if (d.ok) {
           setStatus("success");
-          setMessage("Your payment has been confirmed. Your training cohort is now being activated.");
+          setMessage("Your payment has been confirmed. Redirecting to your dashboard...");
+          setTimeout(() => router.push("/dashboard"), 4000);
         } else {
           setStatus("error");
           setMessage(d.error ?? "Payment verification failed. Please contact support.");
@@ -42,7 +44,7 @@ function PaymentResultContent() {
         setStatus("error");
         setMessage("Could not verify payment. Please contact support if you were charged.");
       });
-  }, [quoteId, paystackRef]);
+  }, [quoteId, paystackRef, router]);
 
   return (
     <div

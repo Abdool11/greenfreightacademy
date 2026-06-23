@@ -37,7 +37,8 @@ export async function POST(req: NextRequest) {
 
   const amountKobo = Math.round(quote.total * 100); // Paystack uses kobo (cents)
 
-  const callbackUrl = `${process.env.NEXT_PUBLIC_GFA_URL ?? ""}/dashboard/payment?quoteId=${quoteId}&ref=${quote.reference}`;
+  const siteUrl = process.env.NEXT_PUBLIC_GFA_URL || process.env.NEXT_PUBLIC_SITE_URL || `https://${req.headers.get("host")}`;
+  const callbackUrl = `${siteUrl}/dashboard/payment?quoteId=${quoteId}&ref=${quote.reference}`;
 
   const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
     method: "POST",
