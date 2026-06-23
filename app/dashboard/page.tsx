@@ -76,6 +76,7 @@ function StatusBadge({ status }: { status: string }) {
     overdue:       { color: "#ef4444", label: "Overdue" },
     pending:       { color: "#6b7280", label: "Pending" },
     paid:          { color: "#3b82f6", label: "Paid" },
+    approved:      { color: "#3b82f6", label: "Paid" },
     deployed:      { color: "#22c55e", label: "Deployed" },
   };
   const s = map[status] ?? { color: "#6b7280", label: status };
@@ -100,7 +101,7 @@ export default function DashboardPage() {
   const [selectedNudges, setSelectedNudges] = useState<Set<string>>(new Set());
   const [quoting, setQuoting] = useState(false);
   const [quoteSent, setQuoteSent] = useState(false);
-  const [confirmingPayment, setConfirmingPayment] = useState<string | null>(null);
+  const [payingQuote, setPayingQuote] = useState<string | null>(null);
   const [deploying, setDeploying] = useState<string | null>(null);
   const [sendingNudge, setSendingNudge] = useState(false);
   const [nudgeSent, setNudgeSent] = useState(false);
@@ -196,12 +197,23 @@ export default function DashboardPage() {
     } finally { setQuoting(false); }
   };
 
-  const handleConfirmPayment = async (quoteId: string) => {
-    setConfirmingPayment(quoteId);
+  const handlePayNow = async (quoteId: string) => {
+    setPayingQuote(quoteId);
     try {
-      await fetch("/api/company/confirm-payment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quoteId }) });
-      await fetchData();
-    } finally { setConfirmingPayment(null); }
+      const res = await fetch("/api/paystack/initialize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quoteId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.authorization_url) {
+        window.location.href = data.authorization_url;
+      } else {
+        alert(data.error || "Payment initialization failed. Please try again or contact support.");
+      }
+    } catch {
+      alert("Network error. Please try again.");
+    } finally { setPayingQuote(null); }
   };
 
   const handleDeploy = async (quoteId: string) => {
@@ -331,7 +343,7 @@ export default function DashboardPage() {
             {quoteSent && (
               <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "0.875rem", padding: "1rem 1.25rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.75rem", color: "#22c55e" }}>
                 <CheckCircle2 size={18} />
-                <span>Quote emailed to you. Once payment is made, click <strong>Confirm Payment</strong> below, then <strong>Deploy Training</strong>.</span>
+                <span>Quote emailed to you. Click <strong>Pay Now</strong> below to pay securely via Paystack, then <strong>Deploy Training</strong>.</span>
               </div>
             )}
             {nudgeSent && (
@@ -482,7 +494,7 @@ export default function DashboardPage() {
 
             <div>
               <h2 style={{ margin: "0 0 0.5rem", fontSize: "1.125rem", color: "#f9fafb" }}>Deployment</h2>
-              <p style={{ margin: "0 0 1.25rem", color: "#6b7280", fontSize: "0.875rem" }}>Confirm payment, then deploy training to send WhatsApp welcome messages to each driver.</p>
+              <p style={{ margin: "0 0 1.25rem", color: "#6b7280", fontSize: "0.875rem" }}>Pay for your quote via Paystack, then deploy training to send WhatsApp welcome messages to each driver.</p>
               {quotes.length === 0 ? (
                 <div style={{ background: "#0d1520", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: "0.875rem", padding: "2.5rem", textAlign: "center", color: "#4b5563" }}>
                   <FileText size={32} style={{ margin: "0 auto 0.75rem", display: "block" }} />
@@ -504,12 +516,12 @@ export default function DashboardPage() {
                         </div>
                         <div style={{ display: "flex", gap: "0.625rem" }}>
                           {quote.status === "pending" && (
-                            <button onClick={() => handleConfirmPayment(quote.id)} disabled={confirmingPayment === quote.id} style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.3)", borderRadius: "0.5rem", padding: "0.5rem 0.875rem", color: "#60a5fa", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}>
-                              {confirmingPayment === quote.id ? <Loader2 size={13} className="animate-spin" /> : <CreditCard size={13} />}
-                              Confirm Payment
+                            <button onClick={() => handlePayNow(quote.id)} disabled={payingQuote === quote.id} style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "0.5rem", padding: "0.5rem 0.875rem", color: "#22c55e", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}>
+                              {payingQuote === quote.id ? <Loader2 size={13} className="animate-spin" /> : <CreditCard size={13} />}
+                              Pay Now
                             </button>
                           )}
-                          {quote.status === "paid" && !quote.deployed_at && (
+                          {(quote.status === "paid" || quote.status === "approved") && !quote.deployed_at && (
                             <button onClick={() => handleDeploy(quote.id)} disabled={deploying === quote.id} style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "#22c55e", border: "none", borderRadius: "0.5rem", padding: "0.5rem 0.875rem", color: "#000", fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer" }}>
                               {deploying === quote.id ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
                               Deploy Training
