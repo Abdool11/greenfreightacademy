@@ -14,34 +14,31 @@ function PaymentReturnContent() {
 
   useEffect(() => {
     if (!searchParams) return;
-    const payRequestId = searchParams.get("PAY_REQUEST_ID");
-    const reference = searchParams.get("REFERENCE");
-    const transactionStatus = searchParams.get("TRANSACTION_STATUS");
+    const reference = searchParams.get("reference");
+    const trxref = searchParams.get("trxref");
 
-    // If Paygate returned a status in the redirect, use it directly
-    if (transactionStatus === "1") {
-      setStatus("paid");
-      setMessage("Payment successful! You can now deploy training to your drivers.");
-      return;
-    }
-
-    if (transactionStatus === "2" || transactionStatus === "3" || transactionStatus === "4") {
+    // Paystack redirects back with reference (and sometimes trxref)
+    const paystackRef = reference || trxref;
+    if (!paystackRef) {
       setStatus("failed");
-      setMessage("Payment was not completed. Please try again or contact us for assistance.");
+      setMessage("No payment reference found. Please return to your dashboard and try again.");
       return;
     }
 
-    // No status in redirect — poll the quotes API to check if the ITN webhook marked it paid
+    // Verify the payment via our server
     let attempts = 0;
     const maxAttempts = 10;
     const interval = setInterval(async () => {
       attempts++;
       try {
-        const res = await fetch("/api/company/quotes");
+        const res = await fetch("/api/company/paystack/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reference: paystackRef }),
+        });
         if (res.ok) {
           const data = await res.json();
-          const quote = (data.quotes ?? []).find((q: any) => q.reference === reference);
-          if (quote && quote.status === "paid") {
+          if (data.ok && (data.paid || data.alreadyPaid)) {
             setStatus("paid");
             setMessage("Payment successful! You can now deploy training to your drivers.");
             clearInterval(interval);
@@ -53,7 +50,6 @@ function PaymentReturnContent() {
       }
 
       if (attempts >= maxAttempts) {
-        // Couldn't confirm via polling — show a generic message
         setStatus("checking");
         setMessage("We're confirming your payment. This may take a moment. If you don't see your quote marked as paid shortly, please refresh your dashboard or contact us.");
         clearInterval(interval);
@@ -70,7 +66,7 @@ function PaymentReturnContent() {
           <>
             <Loader2 size={48} className="animate-spin" style={{ margin: "0 auto 1.5rem", display: "block", color: "#3b82f6" }} />
             <h1 style={{ fontSize: "1.5rem", color: "#f9fafb", marginBottom: "0.75rem" }}>Confirming Payment...</h1>
-            <p style={{ color: "#6b7280", maxWidth: "480px", margin: "0 auto 2rem" }}>{message || "Please wait while we confirm your payment with Paygate."}</p>
+            <p style={{ color: "#6b7280", maxWidth: "480px", margin: "0 auto 2rem" }}>{message || "Please wait while we confirm your payment with Paystack."}</p>
           </>
         )}
 

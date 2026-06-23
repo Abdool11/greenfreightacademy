@@ -215,36 +215,83 @@ export default function DashboardPage() {
     } finally { setQuoting(false); }
   };
 
+  const [paymentMessage, setPaymentMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   const handlePayNow = async (quoteId: string) => {
     setPayingQuote(quoteId);
+    setPaymentMessage(null);
     try {
-      const res = await fetch("/api/company/paygate/initiate", {
+      const res = await fetch("/api/company/paystack/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quoteId }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        // Create and auto-submit a form to redirect to Paygate PayWeb3 process.trans
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = "https://secure.paygate.co.za/payweb3/process.trans";
-        const addField = (name: string, value: string) => {
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = name;
-          input.value = value;
-          form.appendChild(input);
-        };
-        addField("PAY_REQUEST_ID", data.payRequestId);
-        addField("CHECKSUM", data.checksum);
-        document.body.appendChild(form);
-        form.submit();
-      } else {
+
+      if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        console.error("Paygate initiate failed:", errData);
+        console.error("Paystack initiate failed:", errData);
+        setPaymentMessage({ type: "error", text: errData.error || "Failed to start payment. Please try again." });
+        return;
       }
-    } finally { setPayingQuote(null); }
+
+      const data = await res.json();
+
+      // Dynamically load the Paystack inline script
+      const loadPaystackScript = (): Promise<void> => {
+        return new Promise((resolve, reject) => {
+          if ((window as any).PaystackPop) { resolve(); return; }
+          const script = document.createElement("script");
+          script.src = "https://js.paystack.co/v1/inline.js";
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error("Failed to load Paystack"));
+          document.head.appendChild(script);
+        });
+      };
+
+      await loadPaystackScript();
+
+      const handler = (window as any).PaystackPop.setup({
+        key: data.publicKey,
+        email: data.email,
+        amount: data.amount,
+        currency: "ZAR",
+        ref: data.reference,
+        onClose: () => {
+          setPayingQuote(null);
+        },
+        callback: async (response: any) => {
+          // Verify the payment on the server
+          try {
+            const verifyRes = await fetch("/api/company/paystack/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ reference: response.reference }),
+            });
+            const verifyData = await verifyRes.json();
+            if (verifyData.ok && verifyData.paid) {
+              setPaymentMessage({ type: "success", text: "Payment successful! You can now deploy training." });
+              await fetchData();
+            } else if (verifyData.alreadyPaid) {
+              await fetchData();
+            } else {
+              setPaymentMessage({ type: "error", text: "Payment could not be verified. Please contact support." });
+            }
+          } catch (err) {
+            console.error("Paystack verify error:", err);
+            setPaymentMessage({ type: "error", text: "Payment verification failed. Please contact support." });
+          } finally {
+            setPayingQuote(null);
+          }
+        },
+      });
+
+      handler.openIframe();
+    } catch (err: any) {
+      console.error("Paystack error:", err);
+      setPaymentMessage({ type: "error", text: err.message || "Payment failed to start." });
+    } finally {
+      // Don't clear payingQuote here — the callback/onClose handles it
+    }
   };
 
   const handleDeploy = async (quoteId: string) => {
@@ -556,7 +603,12 @@ export default function DashboardPage() {
 
             <div>
               <h2 style={{ margin: "0 0 0.5rem", fontSize: "1.125rem", color: "#f9fafb" }}>Deployment</h2>
-              <p style={{ margin: "0 0 1.25rem", color: "#6b7280", fontSize: "0.875rem" }}>Pay for your quote via Paygate, then deploy training to send WhatsApp welcome messages to each driver.</p>
+              <p style={{ margin: "0 0 1.25rem", color: "#6b7280", fontSize: "0.875rem" }}>Pay for your quote via Paystack, then deploy training to send WhatsApp welcome messages to each driver.</p>
+              {paymentMessage && (
+                <div style={{ marginBottom: "1rem", padding: "0.75rem 1rem", borderRadius: "0.5rem", fontSize: "0.8125rem", fontWeight: 600, background: paymentMessage.type === "success" ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)", border: `1px solid ${paymentMessage.type === "success" ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`, color: paymentMessage.type === "success" ? "#22c55e" : "#ef4444" }}>
+                  {paymentMessage.text}
+                </div>
+              )}
               {quotes.length === 0 ? (
                 <div style={{ background: "#0d1520", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: "0.875rem", padding: "2.5rem", textAlign: "center", color: "#4b5563" }}>
                   <FileText size={32} style={{ margin: "0 auto 0.75rem", display: "block" }} />
