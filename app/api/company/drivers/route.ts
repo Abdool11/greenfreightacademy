@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      let email: string | null;
+      let email: string;
       if (d.email?.trim()) {
         if (!validateEmail(d.email.trim())) {
           errors.push({ index: idx, field: "email", message: "Invalid email address" });
@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
         }
         email = d.email.trim().toLowerCase();
       } else {
-        email = null;
+        email = `driver_${normalisedMobile}@placeholder.local`;
       }
 
       const { data, error } = await supabaseAdmin
