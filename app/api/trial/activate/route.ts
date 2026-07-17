@@ -8,7 +8,7 @@ import { cookies } from "next/headers";
 async function sendWelcomeEmail(to: string, contactName: string, companyName: string, trialSeats: number, trialExpiresAt: string) {
   if (!process.env.BREVO_SMTP_PASSWORD) return;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://greenfreightacademy.co.za";
-  const loginUrl = `${siteUrl}/login`;
+  const dashboardUrl = `${siteUrl}/dashboard`;
   const expiryDate = new Date(trialExpiresAt).toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" });
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -24,15 +24,15 @@ async function sendWelcomeEmail(to: string, contactName: string, companyName: st
         </p>
         <h3 style="color: white; margin: 24px 0 12px; font-size: 18px;">Getting Started</h3>
         <ol style="color: #94a3b8; line-height: 1.8; padding-left: 20px;">
-          <li>Log in to your dashboard using the button below.</li>
+          <li>Go to your dashboard using the button below.</li>
           <li>Add your drivers to the platform (up to ${trialSeats} driver${trialSeats === 1 ? "" : "s"}).</li>
           <li>Browse the training catalogue and enrol drivers in courses.</li>
           <li>Track driver progress and completion from your dashboard.</li>
         </ol>
         <div style="text-align: center; margin: 32px 0;">
-          <a href="${loginUrl}"
+          <a href="${dashboardUrl}"
              style="background: #2ecc71; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">
-            Log In to Your Dashboard →
+            Go to Your Dashboard →
           </a>
         </div>
         <p style="color: #64748b; font-size: 12px; text-align: center;">
@@ -41,7 +41,7 @@ async function sendWelcomeEmail(to: string, contactName: string, companyName: st
       </div>
     </div>
   `;
-  const text = `Welcome to GreenFreightAcademy!\n\nYour trial account for ${companyName} has been activated.\nYou have ${trialSeats} driver seat(s) available until ${expiryDate}.\n\nGetting started:\n1. Log in to your dashboard at ${loginUrl}\n2. Add your drivers (up to ${trialSeats})\n3. Browse the training catalogue and enrol drivers\n4. Track progress from your dashboard\n\nIf you did not create this account, please ignore this email.`;
+  const text = `Welcome to GreenFreightAcademy!\n\nYour trial account for ${companyName} has been activated.\nYou have ${trialSeats} driver seat(s) available until ${expiryDate}.\n\nGetting started:\n1. Go to your dashboard at ${dashboardUrl}\n2. Add your drivers (up to ${trialSeats})\n3. Browse the training catalogue and enrol drivers\n4. Track progress from your dashboard\n\nIf you did not create this account, please ignore this email.`;
   try {
     await sendEmail({
       from: "noreply@greenfreightacademy.co.za",

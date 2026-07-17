@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Loader2, Mail, Lock, AlertCircle } from "lucide-react";
 
@@ -9,6 +9,17 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.authenticated) window.location.href = "/dashboard";
+        else setChecking(false);
+      })
+      .catch(() => setChecking(false));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +36,12 @@ export default function LoginPage() {
     } catch { setError("Something went wrong. Please try again."); }
     finally { setLoading(false); }
   };
+
+  if (checking) return (
+    <div style={{ paddingTop: "5rem", background: "var(--color-slate-900)", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Loader2 size={32} className="animate-spin" style={{ color: "#22c55e" }} />
+    </div>
+  );
 
   return (
     <div style={{ paddingTop: "5rem", background: "var(--color-slate-900)", minHeight: "100vh" }}>

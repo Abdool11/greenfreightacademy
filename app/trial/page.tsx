@@ -57,6 +57,13 @@ function TrialContent() {
       .finally(() => setValidating(false));
   }, [codeParam]);
 
+  useEffect(() => {
+    if (step === "success") {
+      const t = setTimeout(() => { window.location.href = "/dashboard"; }, 2000);
+      return () => clearTimeout(t);
+    }
+  }, [step]);
+
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     if (!password || password.length < 8) {
@@ -164,14 +171,9 @@ function TrialContent() {
               Welcome to GreenFreightAcademy. Your trial account is ready with <strong style={{ color: "#22c55e" }}>{voucher?.seats} driver seat{(voucher?.seats ?? 1) > 1 ? "s" : ""}</strong>.
             </p>
             <p style={{ color: "#6b7280", margin: "0 0 1.5rem", fontSize: "0.875rem" }}>
-              Trial expires: {voucher?.expiresAt ? new Date(voucher.expiresAt).toLocaleDateString("en-ZA") : ""}
+              Taking you to your dashboard...
             </p>
-            <a
-              href="/dashboard"
-              style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", padding: "0.75rem 1.5rem", background: "#22c55e", borderRadius: "0.625rem", color: "#000", fontWeight: 700, textDecoration: "none", fontSize: "0.9375rem" }}
-            >
-              Go to your dashboard <ArrowRight size={16} />
-            </a>
+            <Loader2 size={24} style={{ color: "#22c55e", animation: "spin 1s linear infinite" }} />
           </div>
         </div>
       </div>

@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Loader2, Building2, Mail, Lock, Phone, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Loader2, Building2, Mail, Lock, Phone, AlertCircle } from "lucide-react";
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ companyName: "", contactName: "", email: "", phone: "", password: "", confirm: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -31,19 +30,6 @@ export default function RegisterPage() {
     } catch { setError("Something went wrong. Please try again."); }
     finally { setLoading(false); }
   };
-
-  if (success) return (
-    <div style={{ paddingTop: "5rem", background: "var(--color-slate-900)", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ textAlign: "center", maxWidth: "440px", padding: "2rem" }}>
-        <div style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "50%", width: "64px", height: "64px", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.5rem", color: "#22c55e" }}>
-          <CheckCircle2 size={32} />
-        </div>
-        <h2 style={{ marginBottom: "0.75rem" }}>Account created</h2>
-        <p style={{ color: "#9ca3af", marginBottom: "1.5rem" }}>Your company account has been created. You can now log in and start managing your driver training.</p>
-        <Link href="/login" style={{ display: "inline-flex", alignItems: "center", background: "#22c55e", color: "#000", borderRadius: "0.625rem", padding: "0.75rem 1.5rem", fontWeight: 700, textDecoration: "none" }}>Log in to your dashboard</Link>
-      </div>
-    </div>
-  );
 
   const field = (label: string, key: string, type: string, placeholder: string, Icon: React.ElementType) => (
     <div style={{ marginBottom: "1.125rem" }}>

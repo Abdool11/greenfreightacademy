@@ -61,15 +61,11 @@ function HeroSection() {
           {/* CTAs */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.875rem", alignItems: "center" }}>
             <Link href="/register" className="btn-primary">
-              Book for your company
+              Get Started
               <ArrowRight size={16} />
             </Link>
             <Link href="/contact?type=enquiry" className="btn-outline">
               Enquire now
-            </Link>
-            <Link href="/cpd-bulletins" className="btn-ghost">
-              Explore CPD &amp; Driver Bulletins
-              <ChevronRight size={14} />
             </Link>
           </div>
         </div>
@@ -372,12 +368,12 @@ function ProgrammeArchitectureSection() {
                       </span>
                     </div>
                     <Link
-                      href={`/programmes#${prog.slug}`}
-                      className="btn-ghost"
-                      style={{ marginTop: "auto", fontSize: "0.8rem" }}
+                      href="/register"
+                      className="btn-primary"
+                      style={{ marginTop: "auto", fontSize: "0.8rem", padding: "0.5rem 1rem" }}
                     >
-                      Programme details
-                      <ChevronRight size={13} />
+                      Get Started
+                      <ArrowRight size={13} />
                     </Link>
                   </div>
                 ))}
@@ -662,8 +658,8 @@ function CPDSection() {
               immediately — request a priority CPD intervention pushed to your drivers within the month.
               A small additional fee applies.
             </p>
-            <Link href="/dashboard/cpd-submission" className="btn-ghost" style={{ marginTop: "1.25rem", color: "#f87171" }}>
-              Submit urgent CPD
+            <Link href="/register" className="btn-ghost" style={{ marginTop: "1.25rem", color: "#f87171" }}>
+              Get Started to submit CPD
               <ChevronRight size={13} />
             </Link>
           </div>
@@ -703,8 +699,8 @@ function CPDSection() {
               library. Contributions can be shared anonymously or kept confidential — both strengthen the
               relevance of quarterly CPD content for all participants.
             </p>
-            <Link href="/dashboard/cpd-submission" className="btn-ghost" style={{ marginTop: "1.25rem" }}>
-              Contribute to CPD library
+            <Link href="/register" className="btn-ghost" style={{ marginTop: "1.25rem" }}>
+              Get Started to contribute
               <ChevronRight size={13} />
             </Link>
           </div>
@@ -778,7 +774,7 @@ function AccessModelSection() {
             </ul>
             <div style={{ marginTop: "1.75rem", display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
               <Link href="/register" className="btn-primary" style={{ fontSize: "0.875rem", padding: "0.625rem 1.25rem" }}>
-                Book for your company
+                Get Started
               </Link>
               <Link href="/contact?type=enquiry" className="btn-outline" style={{ fontSize: "0.875rem", padding: "0.625rem 1.25rem" }}>
                 Enquire now
@@ -1001,8 +997,8 @@ function CTASection() {
           Whether you are strengthening driver professionalism, improving management capability, or building greener freight understanding, GFA provides a practical platform for scalable progress.
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.875rem", justifyContent: "center" }}>
-          <Link href="/contact?type=fleet-company" className="btn-primary">
-            JOIN NOW
+          <Link href="/register" className="btn-primary">
+            Get Started
             <ArrowRight size={16} />
           </Link>
         </div>

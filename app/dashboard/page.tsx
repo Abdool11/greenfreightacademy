@@ -320,39 +320,48 @@ export default function DashboardPage() {
         />
       )}
       <div style={{ background: "linear-gradient(160deg, #0a1628 0%, #0f1f3d 100%)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "2rem 0" }}>
-        <div className="container-gfa" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
-          <div>
-            <span className="pill-badge pill-green" style={{ marginBottom: "0.75rem", display: "inline-flex" }}>Company Dashboard</span>
-            <h1 style={{ fontSize: "1.5rem", margin: 0 }}>{companyName || "Your Company"}</h1>
+        <div className="container-gfa">
+          {/* Top row: company name + log out */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem", marginBottom: "1.25rem" }}>
+            <div>
+              <span className="pill-badge pill-green" style={{ marginBottom: "0.75rem", display: "inline-flex" }}>Company Dashboard</span>
+              <h1 style={{ fontSize: "1.5rem", margin: 0 }}>{companyName || "Your Company"}</h1>
+            </div>
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              <button onClick={fetchData} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.5rem", padding: "0.5rem", color: "#6b7280", cursor: "pointer" }}>
+                <RefreshCw size={16} />
+              </button>
+              <button onClick={handleLogout} style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "transparent", border: "none", color: "#6b7280", fontSize: "0.8125rem", cursor: "pointer" }}>
+                <LogOut size={14} /> Log out
+              </button>
+            </div>
           </div>
-          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-            <button onClick={fetchData} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.5rem", padding: "0.5rem", color: "#6b7280", cursor: "pointer" }}>
-              <RefreshCw size={16} />
+          {/* Primary actions: Add Drivers + Import Drivers (prominent) */}
+          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+            <button onClick={() => setShowAddDriversModal(true)} style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "#22c55e", border: "none", borderRadius: "0.625rem", padding: "0.75rem 1.5rem", color: "#000", fontSize: "0.9375rem", fontWeight: 700, cursor: "pointer" }}>
+              <UserPlus size={18} /> Add Drivers
             </button>
-            <button onClick={() => setShowAddDriversModal(true)} style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "0.5rem", padding: "0.5rem 1rem", color: "#22c55e", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}>
-              <UserPlus size={14} /> Add Drivers
-            </button>
-            <Link href="/dashboard/import" style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.15)", borderRadius: "0.5rem", padding: "0.5rem 1rem", color: "#4ade80", fontSize: "0.8125rem", fontWeight: 600, textDecoration: "none" }}>
-              <Upload size={14} /> Import Drivers
+            <Link href="/dashboard/import" style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.25)", borderRadius: "0.625rem", padding: "0.75rem 1.5rem", color: "#4ade80", fontSize: "0.9375rem", fontWeight: 600, textDecoration: "none" }}>
+              <Upload size={18} /> Import from Excel
             </Link>
-            <Link href="/dashboard/bulletins" style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "0.5rem", padding: "0.5rem 1rem", color: "#f59e0b", fontSize: "0.8125rem", fontWeight: 600, textDecoration: "none" }}>
-              <Bell size={14} /> Driver Bulletins
+          </div>
+          {/* Secondary links: smaller, less prominent */}
+          <div style={{ display: "flex", gap: "1.25rem", flexWrap: "wrap", alignItems: "center" }}>
+            <Link href="/dashboard/bulletins" style={{ display: "flex", alignItems: "center", gap: "0.375rem", color: "#9ca3af", fontSize: "0.8125rem", textDecoration: "none" }}>
+              <Bell size={13} /> Driver Bulletins
             </Link>
-            <Link href="/dashboard/training-campaigns" style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.15)", borderRadius: "0.5rem", padding: "0.5rem 1rem", color: "#4ade80", fontSize: "0.8125rem", fontWeight: 600, textDecoration: "none" }}>
-              <Target size={14} /> Training Campaigns
+            <Link href="/dashboard/training-campaigns" style={{ display: "flex", alignItems: "center", gap: "0.375rem", color: "#9ca3af", fontSize: "0.8125rem", textDecoration: "none" }}>
+              <Target size={13} /> Training Campaigns
             </Link>
-            <Link href="/dashboard/campaigns" style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "0.5rem", padding: "0.5rem 1rem", color: "#9ca3af", fontSize: "0.8125rem", textDecoration: "none" }}>
-              <BarChart3 size={14} /> Bulletin Campaigns
+            <Link href="/dashboard/campaigns" style={{ display: "flex", alignItems: "center", gap: "0.375rem", color: "#9ca3af", fontSize: "0.8125rem", textDecoration: "none" }}>
+              <BarChart3 size={13} /> Bulletin Campaigns
             </Link>
-            <Link href="/dashboard/cpd-library" style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "0.5rem", padding: "0.5rem 1rem", color: "#9ca3af", fontSize: "0.8125rem", textDecoration: "none" }}>
-              <BookOpen size={14} /> CPD Library
+            <Link href="/dashboard/cpd-library" style={{ display: "flex", alignItems: "center", gap: "0.375rem", color: "#9ca3af", fontSize: "0.8125rem", textDecoration: "none" }}>
+              <BookOpen size={13} /> CPD Library
             </Link>
-            <Link href="/dashboard/reports" style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "0.5rem", padding: "0.5rem 1rem", color: "#9ca3af", fontSize: "0.8125rem", textDecoration: "none" }}>
-              <BarChart3 size={14} /> Reports
+            <Link href="/dashboard/reports" style={{ display: "flex", alignItems: "center", gap: "0.375rem", color: "#9ca3af", fontSize: "0.8125rem", textDecoration: "none" }}>
+              <BarChart3 size={13} /> Reports
             </Link>
-            <button onClick={handleLogout} style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "transparent", border: "none", color: "#6b7280", fontSize: "0.8125rem", cursor: "pointer" }}>
-              <LogOut size={14} /> Log out
-            </button>
           </div>
         </div>
       </div>

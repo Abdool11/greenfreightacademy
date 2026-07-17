@@ -38,7 +38,7 @@ export const NAV_LINKS = [
   { label: "About Us", href: "/about" },
 ] as const;
 
-export const NAV_CTA_PRIMARY = { label: "JOIN NOW", href: "/contact?type=fleet-company" };
+export const NAV_CTA_PRIMARY = { label: "Get Started", href: "/register" };
 export const NAV_CTA_SECONDARY = { label: "Log in", href: "/login" };
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ export const HERO = {
   supporting:
     "GreenFreightAcademy is South Africa\u2019s specialist capability platform for the road freight sector \u2014 practical training, certification, and development built by transport experts who understand trucks, drivers, and trucking.",
   strategicLine: "",
-  ctaPrimary: { label: "JOIN NOW", href: "/contact?type=fleet-company" },
+  ctaPrimary: { label: "Get Started", href: "/register" },
   ctaSecondary: { label: "", href: "" },
   ctaTertiary: { label: "", href: "" },
 } as const;
