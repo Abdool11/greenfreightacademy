@@ -26,7 +26,8 @@ export default function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Registration failed."); return; }
-      setSuccess(true);
+      // Session cookie is set by the API — go straight to dashboard
+      window.location.href = "/dashboard";
     } catch { setError("Something went wrong. Please try again."); }
     finally { setLoading(false); }
   };

@@ -389,7 +389,8 @@ a {
 }
 
 /* ─── Form Elements ─────────────────────────────────────────────────────────── */
-.input-gfa {
+.input-gfa,
+.form-input {
   width: 100%;
   padding: 0.75rem 1rem;
   background: rgba(255, 255, 255, 0.05);
@@ -402,16 +403,26 @@ a {
   outline: none;
 }
 
-.input-gfa:focus {
+.input-gfa:focus,
+.form-input:focus {
   border-color: var(--color-green-500);
   background: rgba(255, 255, 255, 0.07);
 }
 
-.input-gfa::placeholder {
+.input-gfa::placeholder,
+.form-input::placeholder {
   color: var(--text-muted);
 }
 
-.label-gfa {
+/* Ensure select dropdown options are readable on all browsers */
+.form-input option,
+.input-gfa option {
+  background: var(--color-slate-800);
+  color: var(--text-primary);
+}
+
+.label-gfa,
+.form-label {
   display: block;
   font-family: var(--font-display);
   font-size: 0.875rem;

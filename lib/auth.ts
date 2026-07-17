@@ -126,7 +126,7 @@ export async function requireSuperAdminSession(): Promise<AdminSession> {
 // ─── Set / clear session cookie ──────────────────────────────────────────────
 
 export function setSessionCookie(token: string): string {
-  return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 3600}`;
+  return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 3600}`;
 }
 
 export function clearSessionCookie(): string {

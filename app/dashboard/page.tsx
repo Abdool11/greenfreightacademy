@@ -132,7 +132,11 @@ export default function DashboardPage() {
       if (driversData.companyName) setCompanyName(driversData.companyName);
       if (coursesRes.ok) {
         const cData = await coursesRes.json();
-        setCourses((cData.programmes ?? []).filter((p: Course) => p.status === "active"));
+        setCourses(
+          (cData.programmes ?? [])
+            .filter((p: Course) => p.status === "active")
+            .filter((p: Course) => p.name.toLowerCase().includes("professional truck driver"))
+        );
       }
     } catch { /* silently fail */ } finally { setLoading(false); }
   }, []);
