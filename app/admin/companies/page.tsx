@@ -2,13 +2,14 @@ export const dynamic = "force-dynamic";
 import { requireAdminSession } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import Link from "next/link";
+import AddCompanyForm from "./AddCompanyForm";
 
 export default async function AdminCompaniesPage() {
   await requireAdminSession();
 
   const { data: companies } = await supabaseAdmin
     .from("companies")
-    .select("id, name, contact_name, contact_email, contact_phone, account_type, status, trial_expires_at, created_at")
+    .select("id, name, contact_name, contact_email, contact_phone, account_type, subscription_status, trial_expires_at, created_at")
     .order("created_at", { ascending: false });
 
   return (
@@ -27,6 +28,7 @@ export default async function AdminCompaniesPage() {
             <h1 className="text-2xl font-bold">Companies</h1>
             <p className="text-slate-400 text-sm mt-1">{companies?.length ?? 0} registered companies</p>
           </div>
+          <AddCompanyForm />
         </div>
 
         <div className="bg-[#111f3a] border border-slate-700/50 rounded-xl overflow-hidden">
@@ -68,11 +70,11 @@ export default async function AdminCompaniesPage() {
                   </td>
                   <td className="px-6 py-4">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      c.status === "active"
+                      c.subscription_status === "active"
                         ? "bg-green-500/20 text-green-400"
                         : "bg-red-500/20 text-red-400"
                     }`}>
-                      {c.status}
+                      {c.subscription_status ?? "active"}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-slate-400 text-xs">
