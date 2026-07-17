@@ -77,7 +77,8 @@ function StatusBadge({ status }: { status: string }) {
     completed:     { color: "#8b5cf6", label: "Completed" },
     certified:     { color: "#22c55e", label: "Certified" },
     overdue:       { color: "#ef4444", label: "Overdue" },
-    pending:       { color: "#6b7280", label: "Pending" },
+    pending:       { color: "#6b7280", label: "Pending Payment" },
+    eft_submitted: { color: "#f59e0b", label: "EFT Awaiting Verification" },
     paid:          { color: "#3b82f6", label: "Paid" },
     approved:      { color: "#3b82f6", label: "Paid" },
     deployed:      { color: "#22c55e", label: "Deployed" },
@@ -145,7 +146,7 @@ export default function DashboardPage() {
 
   // Poll quotes for 30s after load to catch payment status updates
   useEffect(() => {
-    const hasPending = quotes.some(q => q.status === "pending");
+    const hasPending = quotes.some(q => q.status === "pending" || q.status === "eft_submitted");
     if (!hasPending) return;
     const interval = setInterval(async () => {
       try {
@@ -153,7 +154,7 @@ export default function DashboardPage() {
         if (res.ok) {
           const data = await res.json();
           const newQuotes = data.quotes ?? [];
-          const stillPending = newQuotes.some((q: Quote) => q.status === "pending");
+          const stillPending = newQuotes.some((q: Quote) => q.status === "pending" || q.status === "eft_submitted");
           setQuotes(newQuotes);
           if (!stillPending) clearInterval(interval);
         }
@@ -609,6 +610,17 @@ export default function DashboardPage() {
                           )}
                         </div>
                       </div>
+                      {(quote.status === "pending" || quote.status === "eft_submitted") && (
+                        <div style={{ marginTop: "0.75rem", fontSize: "0.75rem", color: "#9ca3af", display: "flex", alignItems: "flex-start", gap: "0.375rem" }}>
+                          <span style={{ color: "#f59e0b", flexShrink: 0 }}>💡</span>
+                          <span>
+                            You can also pay via EFT — bank details were sent to your email.
+                            {quote.status === "eft_submitted"
+                              ? " We are verifying your payment — the Deploy button will appear here once confirmed."
+                              : " Once we verify your payment, the Deploy button will appear here."}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

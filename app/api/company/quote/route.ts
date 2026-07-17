@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
         </div>
 
         <p style="color: #6b7280; font-size: 0.8125rem;">
-          Once payment is made, log in to your dashboard and click <strong>"Confirm Payment"</strong> next to this quote (ref: ${ref}), then click <strong>"Deploy Training"</strong> to send WhatsApp welcome messages to your drivers.
+          You can pay online via card — just click <strong>"Pay Now"</strong> on your dashboard. Alternatively, pay via EFT using the bank details above and email your proof of payment to ${config.company_email || "info@greenfreightacademy.com"}. Once your payment is verified, return to your dashboard and click <strong>"Deploy Training"</strong> to send WhatsApp welcome messages to your drivers.
         </p>
         <p style="color: #6b7280; font-size: 0.8125rem; margin-top: 8px;">
           Questions? Contact us at ${config.company_email || "info@greenfreightacademy.com"} or ${config.company_phone || ""}

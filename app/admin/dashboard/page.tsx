@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import { requireAdminSession } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import Link from "next/link";
+import PendingPaymentsWidget from "./PendingPaymentsWidget";
 
 async function getPlatformStats() {
   const [
@@ -47,10 +48,22 @@ async function getRecentActivity() {
   return { recentCompanies: recentCompanies ?? [], pendingDeployments: pendingDeployments ?? [] };
 }
 
+async function getPendingQuotes() {
+  const { data: pendingQuotes } = await supabaseAdmin
+    .from("quotes")
+    .select("id, reference, total, status, created_at, companies(name, contact_email)")
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  return pendingQuotes ?? [];
+}
+
 export default async function AdminDashboardPage() {
   const session = await requireAdminSession();
   const stats = await getPlatformStats();
   const { recentCompanies, pendingDeployments } = await getRecentActivity();
+  const pendingQuotes = await getPendingQuotes();
 
   const isSuperAdmin = session.role === "super_admin";
 
@@ -104,6 +117,7 @@ export default async function AdminDashboardPage() {
                 { href: "/admin/super", label: "CEO Dashboard", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
               ] : []),
               { href: "/admin/data", label: "Data Management", icon: "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" },
+              { href: "/admin/video-library", label: "Video Library", icon: "M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" },
             ].map((item) => (
               <Link
                 key={item.href}
@@ -134,6 +148,7 @@ export default async function AdminDashboardPage() {
               { label: "Active Enrolments", value: stats.activeEnrolments, color: "text-purple-400", sub: "in training" },
               { label: "Certificates Issued", value: stats.totalCerts, color: "text-amber-400", sub: "all time" },
               { label: "Pending Cohorts", value: stats.pendingCohorts, color: stats.pendingCohorts > 0 ? "text-red-400" : "text-slate-400", sub: "awaiting payment" },
+              { label: "Pending Payments", value: pendingQuotes.length, color: pendingQuotes.length > 0 ? "text-amber-400" : "text-slate-400", sub: "EFT awaiting verification" },
               { label: "Trial Accounts", value: stats.trialCompanies, color: "text-cyan-400", sub: "active trials" },
             ].map((stat) => (
               <div key={stat.label} className="bg-[#111f3a] border border-slate-700/50 rounded-xl p-5">
@@ -143,6 +158,44 @@ export default async function AdminDashboardPage() {
               </div>
             ))}
           </div>
+
+          {/* Pending Payments panel */}
+          {pendingQuotes.length > 0 && (
+            <div className="bg-[#111f3a] border border-amber-500/30 rounded-xl p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-white font-semibold">Pending Payments</h2>
+                <span className="text-amber-400 text-xs px-2 py-0.5 rounded-full bg-amber-500/20">
+                  {pendingQuotes.length} awaiting verification
+                </span>
+              </div>
+              <div className="space-y-3">
+                {pendingQuotes.map((q: Record<string, unknown>) => {
+                  const company = (q.companies as Record<string, unknown>) ?? {};
+                  return (
+                    <div key={q.id as string} className="flex items-center justify-between py-2 border-b border-slate-700/30 last:border-0">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-white text-sm font-medium truncate">
+                          {(company.name as string) ?? "Unknown Company"}
+                        </div>
+                        <div className="text-slate-500 text-xs flex items-center gap-3">
+                          <span className="font-mono">{q.reference as string}</span>
+                          <span className="text-[#2ecc71] font-semibold">
+                            R {Number(q.total).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+                          </span>
+                          <span>{new Date(q.created_at as string).toLocaleDateString("en-ZA")}</span>
+                        </div>
+                      </div>
+                      <PendingPaymentsWidget
+                        quoteId={q.id as string}
+                        quoteReference={q.reference as string}
+                        companyName={(company.name as string) ?? "Unknown"}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Two-column activity panels */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
