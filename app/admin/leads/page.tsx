@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Upload, Download, Plus, Send, CheckSquare, Square, Search, Filter, RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Upload, Download, Plus, Send, CheckSquare, Square, Search, Filter, RefreshCw, AlertTriangle, CheckCircle2, Pencil } from "lucide-react";
 
 type Stage = "imported" | "voucher_sent" | "activated" | "drivers_deployed" | "converted" | "lost";
 
@@ -61,6 +61,18 @@ export default function LeadsPage() {
   const [campaignSendVia, setCampaignSendVia] = useState("both");
   const [sendingCampaign, setSendingCampaign] = useState(false);
   const [campaignResult, setCampaignResult] = useState<{ sent: number; failed: number } | null>(null);
+
+  // Add/Edit lead modal
+  const [showLeadModal, setShowLeadModal] = useState(false);
+  const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
+  const [leadCompanyName, setLeadCompanyName] = useState("");
+  const [leadContactName, setLeadContactName] = useState("");
+  const [leadEmail, setLeadEmail] = useState("");
+  const [leadPhone, setLeadPhone] = useState("");
+  const [leadNotes, setLeadNotes] = useState("");
+  const [leadStage, setLeadStage] = useState<Stage>("imported");
+  const [savingLead, setSavingLead] = useState(false);
+  const [leadResult, setLeadResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   useEffect(() => { fetchLeads(); }, [search, stageFilter]);
 
@@ -125,6 +137,76 @@ export default function LeadsPage() {
     }
   }
 
+  function resetLeadForm(lead?: Lead) {
+    setEditingLeadId(lead?.id ?? null);
+    setLeadCompanyName(lead?.company_name ?? "");
+    setLeadContactName(lead?.contact_name ?? "");
+    setLeadEmail(lead?.email ?? "");
+    setLeadPhone(lead?.phone ?? "");
+    setLeadNotes(lead?.notes ?? "");
+    setLeadStage(lead?.stage ?? "imported");
+    setLeadResult(null);
+  }
+
+  function openAddLead() {
+    resetLeadForm();
+    setShowLeadModal(true);
+  }
+
+  function openEditLead(lead: Lead) {
+    resetLeadForm(lead);
+    setShowLeadModal(true);
+  }
+
+  async function saveLead() {
+    if (!leadCompanyName.trim() && !leadEmail.trim()) {
+      setLeadResult({ ok: false, message: "Company name or email is required." });
+      return;
+    }
+    setSavingLead(true);
+    setLeadResult(null);
+    try {
+      if (editingLeadId) {
+        const res = await fetch("/api/admin/leads", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            leadId: editingLeadId,
+            companyName: leadCompanyName,
+            contactName: leadContactName,
+            email: leadEmail,
+            phone: leadPhone,
+            notes: leadNotes,
+            stage: leadStage,
+          }),
+        });
+        if (!res.ok) throw new Error("Update failed");
+        setLeadResult({ ok: true, message: "Lead updated." });
+        fetchLeads();
+      } else {
+        const res = await fetch("/api/admin/leads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            companyName: leadCompanyName,
+            contactName: leadContactName,
+            email: leadEmail,
+            phone: leadPhone,
+            notes: leadNotes,
+          }),
+        });
+        if (!res.ok) throw new Error("Add failed");
+        setLeadResult({ ok: true, message: "Lead added." });
+        resetLeadForm();
+        fetchLeads();
+      }
+    } catch (err: any) {
+      setLeadResult({ ok: false, message: err.message || "Failed to save lead." });
+    } finally {
+      setSavingLead(false);
+    }
+  }
+
   function toggleSelect(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -172,6 +254,12 @@ export default function LeadsPage() {
               <Upload size={13} /> {importing ? "Importing…" : "Import Excel"}
               <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleImport} style={{ display: "none" }} />
             </label>
+            <button
+              onClick={openAddLead}
+              style={{ display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.5625rem 1rem", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "0.5rem", color: "#22c55e", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}
+            >
+              <Plus size={13} /> Add lead
+            </button>
             {selected.size > 0 && (
               <button
                 onClick={() => setShowCampaign(true)}
@@ -253,6 +341,7 @@ export default function LeadsPage() {
                   <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontSize: "0.75rem", color: "#6b7280", fontWeight: 600 }}>Stage</th>
                   <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontSize: "0.75rem", color: "#6b7280", fontWeight: 600 }}>Voucher</th>
                   <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontSize: "0.75rem", color: "#6b7280", fontWeight: 600 }}>Added</th>
+                  <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontSize: "0.75rem", color: "#6b7280", fontWeight: 600, width: "48px" }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -288,6 +377,15 @@ export default function LeadsPage() {
                     </td>
                     <td style={{ padding: "0.75rem 1rem", fontSize: "0.75rem", color: "#6b7280" }}>
                       {new Date(lead.created_at).toLocaleDateString("en-ZA")}
+                    </td>
+                    <td style={{ padding: "0.75rem 1rem" }}>
+                      <button
+                        onClick={() => openEditLead(lead)}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", display: "flex" }}
+                        title="Edit lead"
+                      >
+                        <Pencil size={14} />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -356,6 +454,61 @@ export default function LeadsPage() {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Lead modal */}
+        {showLeadModal && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: "1rem" }}>
+            <div style={{ background: "#0a1628", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "1.25rem", padding: "2rem", maxWidth: "480px", width: "100%", maxHeight: "90vh", overflowY: "auto", color: "#f9fafb" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+                <h2 style={{ margin: 0, fontSize: "1.125rem", fontWeight: 700 }}>{editingLeadId ? "Edit lead" : "Add lead"}</h2>
+                <button onClick={() => setShowLeadModal(false)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", fontSize: "1.25rem" }}>×</button>
+              </div>
+              {leadResult && (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.75rem 1rem", background: leadResult.ok ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)", border: `1px solid ${leadResult.ok ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`, borderRadius: "0.625rem", marginBottom: "1rem", color: leadResult.ok ? "#22c55e" : "#f87171", fontSize: "0.875rem" }}>
+                  {leadResult.ok ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />} {leadResult.message}
+                </div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <div>
+                  <label style={labelStyle}>Company name</label>
+                  <input style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} value={leadCompanyName} onChange={(e) => setLeadCompanyName(e.target.value)} placeholder="Example Logistics (Pty) Ltd" />
+                </div>
+                <div>
+                  <label style={labelStyle}>Contact name</label>
+                  <input style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} value={leadContactName} onChange={(e) => setLeadContactName(e.target.value)} placeholder="John Smith" />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div>
+                    <label style={labelStyle}>Email</label>
+                    <input type="email" style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} placeholder="john@example.co.za" />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Phone</label>
+                    <input style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} placeholder="+27 82 123 4567" />
+                  </div>
+                </div>
+                {editingLeadId && (
+                  <div>
+                    <label style={labelStyle}>Stage</label>
+                    <select value={leadStage} onChange={(e) => setLeadStage(e.target.value as Stage)} style={{ ...inputStyle, width: "100%" }}>
+                      {(Object.keys(STAGE_LABELS) as Stage[]).map((s) => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
+                    </select>
+                  </div>
+                )}
+                <div>
+                  <label style={labelStyle}>Notes</label>
+                  <textarea style={{ ...inputStyle, width: "100%", minHeight: "80px", resize: "vertical", boxSizing: "border-box" }} value={leadNotes} onChange={(e) => setLeadNotes(e.target.value)} placeholder="Any relevant notes…" />
+                </div>
+                <div style={{ display: "flex", gap: "0.75rem", paddingTop: "0.5rem" }}>
+                  <button onClick={() => setShowLeadModal(false)} style={{ flex: 1, padding: "0.75rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.5rem", color: "#9ca3af", cursor: "pointer", fontWeight: 600 }}>Cancel</button>
+                  <button onClick={saveLead} disabled={savingLead} style={{ flex: 2, padding: "0.75rem", background: "#22c55e", border: "none", borderRadius: "0.5rem", color: "#000", fontWeight: 700, cursor: savingLead ? "default" : "pointer", opacity: savingLead ? 0.7 : 1 }}>
+                    {savingLead ? "Saving…" : (editingLeadId ? "Save changes" : "Add lead")}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

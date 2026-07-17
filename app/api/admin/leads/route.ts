@@ -128,13 +128,17 @@ export async function PATCH(req: NextRequest) {
   const session = await requireAdminSession();
   if (session instanceof NextResponse) return session;
 
-  const { leadId, stage, notes, assignedTo } = await req.json();
+  const { leadId, stage, notes, assignedTo, companyName, contactName, email, phone } = await req.json();
   if (!leadId) return NextResponse.json({ error: "leadId required" }, { status: 400 });
 
   const updates: Record<string, unknown> = { last_activity_at: new Date().toISOString() };
   if (stage) updates.stage = stage;
   if (notes !== undefined) updates.notes = notes;
   if (assignedTo !== undefined) updates.assigned_to = assignedTo;
+  if (companyName !== undefined) updates.company_name = companyName?.trim() ?? "";
+  if (contactName !== undefined) updates.contact_name = contactName?.trim() ?? "";
+  if (email !== undefined) updates.email = email?.trim().toLowerCase() ?? "";
+  if (phone !== undefined) updates.phone = phone?.trim() || null;
 
   const { error } = await supabaseAdmin
     .from("prospect_leads")

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
+import { renderTemplate } from "@/lib/messaging";
 import { Resend } from "resend";
 import crypto from "crypto";
 
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
     prospectEmail,
     prospectPhone,
     prospectCompany,
-    sendVia, // "email" | "whatsapp" | "both" | "none"
+    sendVia: requestedSendVia, // "email" | "whatsapp" | "both" | "none"
   } = await req.json();
 
   if (!seats || ![1, 3, 5, 10].includes(Number(seats))) {
@@ -83,6 +84,14 @@ export async function POST(req: NextRequest) {
 
   const activationUrl = `${process.env.NEXT_PUBLIC_GFA_URL ?? ""}/trial?code=${code}`;
 
+  const config = await getConfigs([
+    "whatsapp_phone_id",
+    "whatsapp_access_token",
+    "whatsapp_trial_template",
+    "messaging_default_channel",
+  ]);
+  const sendVia = requestedSendVia || config.messaging_default_channel || "both";
+
   // Send via email
   if ((sendVia === "email" || sendVia === "both") && prospectEmail && process.env.RESEND_API_KEY) {
     try {
@@ -109,9 +118,20 @@ export async function POST(req: NextRequest) {
 
   // Send via WhatsApp
   if ((sendVia === "whatsapp" || sendVia === "both") && prospectPhone) {
-    const config = await getConfigs(["whatsapp_phone_id", "whatsapp_access_token"]);
     if (config.whatsapp_phone_id && config.whatsapp_access_token) {
       try {
+        const waTemplate = config.whatsapp_trial_template || "";
+        const waBody = waTemplate
+          ? renderTemplate(waTemplate, {
+              contact_name: prospectName ?? "there",
+              company_name: prospectCompany ?? "",
+              seats: String(seats),
+              expires_date: expiresAt.toLocaleDateString("en-ZA"),
+              activation_link: activationUrl,
+              welcome_message: welcomeMessage ?? "",
+            })
+          : `Hi ${prospectName ?? "there"} 👋\n\nYou have been invited to trial the GreenFreightAcademy platform with ${seats} driver seat${seats > 1 ? "s" : ""}.\n\n${welcomeMessage ? welcomeMessage + "\n\n" : ""}Activate your trial here:\n${activationUrl}\n\nYour trial code: *${code}*\nExpires: ${expiresAt.toLocaleDateString("en-ZA")}`;
+
         await fetch(
           `https://graph.facebook.com/v18.0/${config.whatsapp_phone_id}/messages`,
           {
@@ -124,9 +144,7 @@ export async function POST(req: NextRequest) {
               messaging_product: "whatsapp",
               to: prospectPhone.replace(/\D/g, ""),
               type: "text",
-              text: {
-                body: `Hi ${prospectName ?? "there"} 👋\n\nYou have been invited to trial the GreenFreightAcademy platform with ${seats} driver seat${seats > 1 ? "s" : ""}.\n\n${welcomeMessage ? welcomeMessage + "\n\n" : ""}Activate your trial here:\n${activationUrl}\n\nYour trial code: *${code}*\nExpires: ${expiresAt.toLocaleDateString("en-ZA")}`,
-              },
+              text: { body: waBody },
             }),
           }
         );

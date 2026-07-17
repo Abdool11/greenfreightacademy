@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
+import { renderTemplate } from "@/lib/messaging";
 import crypto from "crypto";
 
 // POST /api/admin/campaigns — send bulk voucher campaign to selected leads
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
     expiresDays,
     welcomeMessage,
     brochureUrl,
-    sendVia, // "email" | "whatsapp" | "both"
+    sendVia: requestedSendVia, // "email" | "whatsapp" | "both"
   } = await req.json();
 
   if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
@@ -36,7 +37,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No leads found" }, { status: 404 });
   }
 
-  const config = await getConfigs(["whatsapp_phone_id", "whatsapp_access_token"]);
+  const config = await getConfigs([
+    "whatsapp_phone_id",
+    "whatsapp_access_token",
+    "whatsapp_trial_template",
+    "messaging_default_channel",
+  ]);
+  const sendVia = requestedSendVia || config.messaging_default_channel || "both";
   const smtpEnabled = !!process.env.BREVO_SMTP_PASSWORD;
 
   const results: { leadId: string; code: string; sent: boolean; error?: string }[] = [];
@@ -116,6 +123,18 @@ export async function POST(req: NextRequest) {
       // Send WhatsApp
       if ((sendVia === "whatsapp" || sendVia === "both") && lead.phone && config.whatsapp_phone_id && config.whatsapp_access_token) {
         try {
+          const waTemplate = config.whatsapp_trial_template || "";
+          const waBody = waTemplate
+            ? renderTemplate(waTemplate, {
+                contact_name: lead.contact_name ?? "there",
+                company_name: lead.company_name ?? "",
+                seats: String(seats),
+                expires_date: expiresAt.toLocaleDateString("en-ZA"),
+                activation_link: activationUrl,
+                welcome_message: welcomeMessage ?? "",
+              })
+            : `Hi ${lead.contact_name ?? "there"} 👋\n\nYou have been invited to trial the GreenFreightAcademy platform with ${seats} driver seat${Number(seats) > 1 ? "s" : ""}.\n\n${welcomeMessage ? welcomeMessage + "\n\n" : ""}Activate your trial here:\n${activationUrl}\n\nYour trial code: *${code}*\nExpires: ${expiresAt.toLocaleDateString("en-ZA")}`;
+
           const waRes = await fetch(
             `https://graph.facebook.com/v18.0/${config.whatsapp_phone_id}/messages`,
             {
@@ -128,9 +147,7 @@ export async function POST(req: NextRequest) {
                 messaging_product: "whatsapp",
                 to: lead.phone.replace(/\D/g, ""),
                 type: "text",
-                text: {
-                  body: `Hi ${lead.contact_name ?? "there"} 👋\n\nYou have been invited to trial the GreenFreightAcademy platform with ${seats} driver seat${Number(seats) > 1 ? "s" : ""}.\n\n${welcomeMessage ? welcomeMessage + "\n\n" : ""}Activate your trial here:\n${activationUrl}\n\nYour trial code: *${code}*\nExpires: ${expiresAt.toLocaleDateString("en-ZA")}`,
-                },
+                text: { body: waBody },
               }),
             }
           );

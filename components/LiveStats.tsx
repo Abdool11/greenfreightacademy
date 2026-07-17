@@ -8,7 +8,7 @@
  * Revalidation: Next.js ISR at 15-minute intervals via `revalidate`.
  */
 
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin, getConfigs } from "@/lib/supabase";
 import { DEMO_METRICS } from "@/lib/constants";
 
 export const revalidate = 900; // 15 minutes
@@ -16,10 +16,19 @@ export const revalidate = 900; // 15 minutes
 async function fetchStats() {
   try {
     const [
+      config,
       { count: companies, error: e1 },
       { count: drivers, error: e2 },
       { count: certificates, error: e3 },
     ] = await Promise.all([
+      getConfigs([
+        "stats_companies_mode",
+        "stats_companies_static",
+        "stats_drivers_mode",
+        "stats_drivers_static",
+        "stats_certificates_mode",
+        "stats_certificates_static",
+      ]),
       supabaseAdmin
         .from("companies")
         .select("*", { count: "exact", head: true })
@@ -36,13 +45,41 @@ async function fetchStats() {
 
     if (e1 || e2 || e3) {
       console.error("[LiveStats] Supabase errors:", e1, e2, e3);
-      return null;
     }
 
+    const resolve = (
+      modeKey: string,
+      staticKey: string,
+      fallback: number,
+      liveValue: number | null
+    ): number => {
+      const mode = config[modeKey] || "static";
+      if (mode === "live") {
+        return liveValue ?? fallback;
+      }
+      const staticVal = parseInt(config[staticKey] ?? "", 10);
+      return isNaN(staticVal) ? fallback : staticVal;
+    };
+
     return {
-      companies: companies ?? DEMO_METRICS.companiesEnrolled,
-      drivers: drivers ?? DEMO_METRICS.seatsBooked,
-      certificates: certificates ?? DEMO_METRICS.certificationsCompleted,
+      companies: resolve(
+        "stats_companies_mode",
+        "stats_companies_static",
+        DEMO_METRICS.companiesEnrolled,
+        companies
+      ),
+      drivers: resolve(
+        "stats_drivers_mode",
+        "stats_drivers_static",
+        DEMO_METRICS.seatsBooked,
+        drivers
+      ),
+      certificates: resolve(
+        "stats_certificates_mode",
+        "stats_certificates_static",
+        DEMO_METRICS.certificationsCompleted,
+        certificates
+      ),
     };
   } catch (err) {
     console.error("[LiveStats] Unexpected error:", err);

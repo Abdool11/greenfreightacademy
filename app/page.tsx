@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * GreenFreightAcademy — Homepage
  *
@@ -21,7 +19,8 @@ import {
   BarChart3,
   ChevronRight,
 } from "lucide-react";
-import { PROGRAMMES, CAPABILITY_PILLARS, ECOSYSTEM_URLS, DEMO_METRICS } from "@/lib/constants";
+import { PROGRAMMES, CAPABILITY_PILLARS, ECOSYSTEM_URLS } from "@/lib/constants";
+import { LiveStats } from "@/components/LiveStats";
 
 // ─── Section 1: Hero ───────────────────────────────────────────────────────────
 function HeroSection() {
@@ -70,46 +69,8 @@ function HeroSection() {
           </div>
         </div>
 
-        {/* Impact strip — static demo metrics (server component rendering issue workaround) */}
-        <div
-          style={{
-            marginTop: "4rem",
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-            gap: "1.5rem",
-            maxWidth: "600px",
-          }}
-        >
-          {[
-            { value: DEMO_METRICS.seatsBooked.toLocaleString(), label: "Seats booked" },
-            { value: DEMO_METRICS.certificationsCompleted.toLocaleString(), label: "Certifications completed" },
-            { value: `${DEMO_METRICS.companiesEnrolled}+`, label: "Companies enrolled" },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              style={{
-                padding: "1.25rem 1.5rem",
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: "0.75rem",
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontWeight: 800,
-                  fontSize: "2rem",
-                  color: "white",
-                  lineHeight: 1,
-                  marginBottom: "0.375rem",
-                }}
-              >
-                {stat.value}
-              </div>
-              <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{stat.label}</div>
-            </div>
-          ))}
-        </div>
+        {/* Impact strip — live stats from Supabase, controlled from admin */}
+        <LiveStats />
       </div>
     </section>
   );
