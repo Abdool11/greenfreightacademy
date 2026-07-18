@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Navigation } from "@/components/layout/Navigation";
-import { Footer } from "@/components/layout/Footer";
+import { ConditionalChrome } from "@/components/layout/ConditionalChrome";
 import { LogoIntro } from "@/components/layout/LogoIntro";
 import { SITE_NAME, SITE_DESCRIPTION, SITE_TAGLINE } from "@/lib/constants";
 
@@ -121,9 +120,8 @@ export default function RootLayout({
       </head>
       <body>
         <LogoIntro logoSrc="/tag-logo.png" />
-        <Navigation />
+        <ConditionalChrome />
         <main>{children}</main>
-        <Footer />
       </body>
     </html>
   );
