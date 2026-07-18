@@ -169,7 +169,7 @@ export async function POST(req: NextRequest) {
   if (process.env.BREVO_SMTP_PASSWORD) {
     try {
       await sendEmail({
-        from: "noreply@greenfreightacademy.co.za",
+        from: "abdool@transportactiongroup.co.za",
         fromName: "GreenFreightAcademy",
         to: session.email,
         subject: `Your GFA Training Quotation — ${ref}`,
@@ -179,7 +179,7 @@ export async function POST(req: NextRequest) {
       // Also notify GFA admin
       const adminEmail = config.email_booking_to || "durbanroadtransport@gmail.com";
       await sendEmail({
-        from: "noreply@greenfreightacademy.co.za",
+        from: "abdool@transportactiongroup.co.za",
         fromName: "GFA Platform",
         to: adminEmail,
         subject: `New quote generated — ${session.companyName} — ${ref}`,

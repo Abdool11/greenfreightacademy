@@ -151,10 +151,10 @@ export default function EmailSettingsClient({
             How email delivery works
           </h3>
           <p className="text-slate-400 text-xs leading-relaxed">
-            GFA uses Resend for transactional email delivery. The &ldquo;From Name&rdquo;
+            GFA uses Brevo for transactional email delivery. The &ldquo;From Name&rdquo;
             and notification addresses set here are used by the booking and
             contact form API routes. The actual sending domain must be verified
-            in your Resend account settings.
+            in your Brevo account settings.
           </p>
         </div>
       </div>

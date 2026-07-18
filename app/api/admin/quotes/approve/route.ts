@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
   if (clientEmail && process.env.BREVO_SMTP_PASSWORD) {
     try {
       await sendEmail({
-        from: "noreply@greenfreightacademy.co.za",
+        from: "abdool@transportactiongroup.co.za",
         fromName: "GreenFreightAcademy",
         to: clientEmail,
         subject: `Payment Confirmed — Quote ${quote.reference}`,
@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
   if (adminEmail && process.env.BREVO_SMTP_PASSWORD) {
     try {
       await sendEmail({
-        from: "noreply@greenfreightacademy.co.za",
+        from: "abdool@transportactiongroup.co.za",
         fromName: "GFA Platform",
         to: adminEmail,
         subject: `EFT Payment Manually Confirmed — ${companyName} — ${quote.reference}`,

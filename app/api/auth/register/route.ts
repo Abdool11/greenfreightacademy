@@ -42,7 +42,7 @@ async function sendWelcomeEmail(to: string, contactName: string, companyName: st
   const text = `Welcome to GreenFreightAcademy!\n\nYour company account for ${companyName} has been created.\n\nGetting started:\n1. Go to your dashboard at ${dashboardUrl}\n2. Add your drivers\n3. Browse the training catalogue and enrol drivers\n4. Track progress from your dashboard\n\nIf you did not create this account, please ignore this email.`;
   try {
     await sendEmail({
-      from: "noreply@greenfreightacademy.co.za",
+      from: "abdool@transportactiongroup.co.za",
       fromName: "GreenFreightAcademy",
       to,
       subject: `Welcome to GreenFreightAcademy — your ${companyName} account is ready`,

@@ -399,7 +399,7 @@ export async function POST(req: NextRequest) {
   if (process.env.BREVO_SMTP_PASSWORD) {
     try {
       await sendEmail({
-        from: "noreply@greenfreightacademy.co.za",
+        from: "abdool@transportactiongroup.co.za",
         fromName: "GFA Platform",
         to: adminEmail,
         subject: `Training deployed — ${session.companyName} — Ref: ${quote.reference}`,

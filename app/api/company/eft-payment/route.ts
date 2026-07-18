@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
   if (adminEmail && process.env.BREVO_SMTP_PASSWORD) {
     try {
       await sendEmail({
-        from: "noreply@greenfreightacademy.co.za",
+        from: "abdool@transportactiongroup.co.za",
         fromName: "GFA Platform",
         to: adminEmail,
         subject: `EFT Payment Notification — ${quote.reference}`,

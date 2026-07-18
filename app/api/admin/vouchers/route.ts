@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
   if ((sendVia === "email" || sendVia === "both") && prospectEmail && process.env.BREVO_SMTP_PASSWORD) {
     try {
       await sendEmail({
-        from: "noreply@greenfreightacademy.co.za",
+        from: "abdool@transportactiongroup.co.za",
         fromName: "GreenFreightAcademy",
         to: prospectEmail,
         subject: `Your GFA Trial Access — ${seats} seat${seats > 1 ? "s" : ""} ready`,

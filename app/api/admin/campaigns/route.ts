@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
       if ((sendVia === "email" || sendVia === "both") && lead.email && smtpEnabled) {
         try {
           await sendEmail({
-            from: "noreply@greenfreightacademy.co.za",
+            from: "abdool@transportactiongroup.co.za",
             fromName: "GreenFreightAcademy",
             to: lead.email,
             subject: `Your GFA Trial Access — ${seats} seat${Number(seats) > 1 ? "s" : ""} ready`,
