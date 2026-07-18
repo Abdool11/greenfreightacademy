@@ -6,7 +6,7 @@
  */
 
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Info, Play, Zap } from "lucide-react";
+import { ArrowRight, CheckCircle2, Info, Play } from "lucide-react";
 import { PROGRAMMES } from "@/lib/constants";
 
 export default function PricingPage() {
@@ -15,11 +15,12 @@ export default function PricingPage() {
   const bookSeatsLabel = "Book seats";
 
   // Single source of truth: all data comes from PROGRAMMES in constants.ts
-  const monthlyProgrammes = PROGRAMMES.filter((p) => p.pricingModel === "monthly-per-driver");
-  const onceOffProgrammes = PROGRAMMES.filter(
-    (p) => p.pricingModel === "once-off" && p.slug !== "green-freight-procurement" && (p as { status?: string }).status !== "coming-soon"
+  const monthlyProgrammes = PROGRAMMES.filter(
+    (p) => p.pricingModel === "monthly-per-driver"
   );
-  const comingSoonProgrammes = PROGRAMMES.filter((p) => (p as { status?: string }).status === "coming-soon");
+  const onceOffProgrammes = PROGRAMMES.filter(
+    (p) => p.pricingModel === "once-off" && p.slug !== "green-freight-procurement"
+  );
 
   // Derive the enrolment fee from constants (R75 per candidate setup fee — same as monthly price)
   const enrolmentFee = monthlyProgrammes[0]?.price ?? 75;
@@ -73,7 +74,31 @@ export default function PricingPage() {
                   borderRadius: "1rem",
                 }}
               >
-                <h3 style={{ fontSize: "1.125rem", marginBottom: "0.75rem" }}>{prog.title}</h3>
+                {!prog.available && (
+                <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem" }}>
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.3rem",
+                      padding: "0.2rem 0.6rem",
+                      background: "rgba(245,158,11,0.12)",
+                      border: "1px solid rgba(245,158,11,0.3)",
+                      borderRadius: "9999px",
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      fontFamily: "var(--font-display)",
+                      color: "#f59e0b",
+                      letterSpacing: "0.04em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
+                    Coming Soon
+                  </span>
+                </div>
+              )}
+              <h3 style={{ fontSize: "1.125rem", marginBottom: "0.75rem" }}>{prog.title}</h3>
                 {/* Price rendered from constants — no hardcoded value */}
                 <div
                   style={{
@@ -109,12 +134,29 @@ export default function PricingPage() {
                   ))}
                 </ul>
                 <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-                  <Link href={bookHref} className="btn-primary" style={{ fontSize: "0.875rem" }}>
-                    {bookLabel}
-                  </Link>
-                  <Link href={`/contact?type=individual-learner&programme=${prog.slug}`} className="btn-secondary" style={{ fontSize: "0.875rem" }}>
-                    Individual enrolment
-                  </Link>
+                  {prog.available ? (
+                    <>
+                      <Link href={bookHref} className="btn-primary" style={{ fontSize: "0.875rem" }}>
+                        {bookLabel}
+                      </Link>
+                      <Link href={`/contact?type=individual-learner&programme=${prog.slug}`} className="btn-secondary" style={{ fontSize: "0.875rem" }}>
+                        Individual enrolment
+                      </Link>
+                    </>
+                  ) : (
+                    <span
+                      className="btn-primary"
+                      aria-disabled="true"
+                      style={{
+                        fontSize: "0.875rem",
+                        opacity: 0.5,
+                        cursor: "not-allowed",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      Coming Soon
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -168,7 +210,31 @@ export default function PricingPage() {
                   borderRadius: "1rem",
                 }}
               >
-                <h4 style={{ fontSize: "1rem", marginBottom: "0.5rem" }}>{prog.title}</h4>
+                {!prog.available && (
+                <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.3rem",
+                      padding: "0.2rem 0.6rem",
+                      background: "rgba(245,158,11,0.12)",
+                      border: "1px solid rgba(245,158,11,0.3)",
+                      borderRadius: "9999px",
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      fontFamily: "var(--font-display)",
+                      color: "#f59e0b",
+                      letterSpacing: "0.04em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
+                    Coming Soon
+                  </span>
+                </div>
+              )}
+              <h4 style={{ fontSize: "1rem", marginBottom: "0.5rem" }}>{prog.title}</h4>
                 {/* Price from constants */}
                 <div
                   style={{
@@ -189,12 +255,30 @@ export default function PricingPage() {
                   {prog.shortDescription}
                 </p>
                 <div style={{ display: "flex", gap: "0.625rem", flexWrap: "wrap" }}>
-                  <Link href={bookHref} className="btn-secondary" style={{ fontSize: "0.8rem", padding: "0.5rem 1rem" }}>
-                    {bookSeatsLabel}
-                  </Link>
-                  <Link href={`/programmes#${prog.slug}`} className="btn-ghost" style={{ fontSize: "0.8rem" }}>
-                    Programme details
-                  </Link>
+                  {prog.available ? (
+                    <>
+                      <Link href={bookHref} className="btn-secondary" style={{ fontSize: "0.8rem", padding: "0.5rem 1rem" }}>
+                        {bookSeatsLabel}
+                      </Link>
+                      <Link href={`/programmes#${prog.slug}`} className="btn-ghost" style={{ fontSize: "0.8rem" }}>
+                        Programme details
+                      </Link>
+                    </>
+                  ) : (
+                    <span
+                      className="btn-secondary"
+                      aria-disabled="true"
+                      style={{
+                        fontSize: "0.8rem",
+                        padding: "0.5rem 1rem",
+                        opacity: 0.5,
+                        cursor: "not-allowed",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      Coming Soon
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -202,119 +286,6 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Coming soon programmes — rendered from constants, fully dynamic */}
-      {comingSoonProgrammes.length > 0 && (
-        <section style={{ padding: "4rem 0", background: "var(--color-slate-900)" }}>
-          <div className="container-gfa">
-            {comingSoonProgrammes.map((prog) => (
-              <div
-                key={prog.id}
-                style={{
-                  padding: "2.5rem",
-                  background: "linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(16,185,129,0.04) 100%)",
-                  border: "1px solid rgba(34,197,94,0.2)",
-                  borderRadius: "1.25rem",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "1.5rem",
-                  marginBottom: "1.5rem",
-                }}
-              >
-                {/* Badge */}
-                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "0.35rem",
-                      padding: "0.25rem 0.75rem",
-                      background: "rgba(34,197,94,0.12)",
-                      border: "1px solid rgba(34,197,94,0.3)",
-                      borderRadius: "9999px",
-                      fontSize: "0.7rem",
-                      fontWeight: 700,
-                      fontFamily: "var(--font-display)",
-                      color: "#22c55e",
-                      letterSpacing: "0.05em",
-                      textTransform: "uppercase" as const,
-                    }}
-                  >
-                    <Zap size={10} />
-                    Coming soon
-                  </span>
-                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>New programme launching shortly</span>
-                </div>
-
-                {/* Content + price callout */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "2rem", alignItems: "flex-start" }}>
-                  <div>
-                    <h3 style={{ fontSize: "1.375rem", marginBottom: "0.75rem" }}>{prog.title}</h3>
-                    <p style={{ fontSize: "0.9375rem", color: "var(--text-secondary)", lineHeight: 1.7, marginBottom: "1.25rem", maxWidth: "600px" }}>
-                      {prog.fullDescription}
-                    </p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1.5rem" }}>
-                      {prog.outcomes.map((item) => (
-                        <span
-                          key={item}
-                          style={{
-                            padding: "0.3rem 0.75rem",
-                            background: "rgba(34,197,94,0.08)",
-                            border: "1px solid rgba(34,197,94,0.18)",
-                            borderRadius: "0.5rem",
-                            fontSize: "0.775rem",
-                            color: "var(--text-secondary)",
-                          }}
-                        >
-                          {item}
-                        </span>
-                      ))}
-                    </div>
-                    <Link
-                      href={`/contact?type=ev-driver-interest&programme=${prog.slug}`}
-                      className="btn-secondary"
-                      style={{ fontSize: "0.875rem" }}
-                    >
-                      Register your interest
-                    </Link>
-                  </div>
-
-                  {/* Price callout — fully from constants */}
-                  <div
-                    style={{
-                      padding: "1.5rem 2rem",
-                      background: "rgba(34,197,94,0.08)",
-                      border: "1px solid rgba(34,197,94,0.2)",
-                      borderRadius: "1rem",
-                      textAlign: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <div style={{ fontSize: "0.7rem", fontFamily: "var(--font-display)", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" as const, color: "var(--text-muted)", marginBottom: "0.5rem" }}>
-                      Launch price
-                    </div>
-                    <div
-                      style={{
-                        fontFamily: "var(--font-display)",
-                        fontWeight: 800,
-                        fontSize: "2.5rem",
-                        color: "#22c55e",
-                        lineHeight: 1,
-                        marginBottom: "0.25rem",
-                      }}
-                    >
-                      R{prog.price.toLocaleString()}
-                    </div>
-                    <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>once-off · per driver</div>
-                    <div style={{ marginTop: "0.75rem", fontSize: "0.75rem", color: "var(--text-muted)", fontStyle: "italic" }}>
-                      {prog.durationLabel}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* CTA */}
       <section

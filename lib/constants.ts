@@ -104,8 +104,8 @@ export const PROGRAMMES: Programme[] = [
     priceLabel: "R75 per driver per month",
     deliveryModel: "online-self-paced",
     durationLabel: "12-month programme with quarterly CPD",
-    available: true,
-    status: "active",
+    available: false,
+    status: "coming-soon",
   },
   {
     id: "electric-truck-driver",
@@ -154,8 +154,8 @@ export const PROGRAMMES: Programme[] = [
     priceLabel: "R999 per person",
     deliveryModel: "online-self-paced",
     durationLabel: "Self-paced, approximately 4–6 hours",
-    available: true,
-    status: "in-development",
+    available: false,
+    status: "coming-soon",
   },
   {
     id: "road-freight-manager",
@@ -179,8 +179,8 @@ export const PROGRAMMES: Programme[] = [
     priceLabel: "R999 per person",
     deliveryModel: "blended",
     durationLabel: "Structured programme — duration confirmed on enrolment",
-    available: true,
-    status: "in-development",
+    available: false,
+    status: "coming-soon",
   },
   {
     id: "electric-truck-transformation",
@@ -204,8 +204,8 @@ export const PROGRAMMES: Programme[] = [
     priceLabel: "R4,999 per person",
     deliveryModel: "blended",
     durationLabel: "Structured programme — duration confirmed on enrolment",
-    available: true,
-    status: "in-development",
+    available: false,
+    status: "coming-soon",
   },
   {
     id: "green-freight-procurement",
@@ -229,8 +229,8 @@ export const PROGRAMMES: Programme[] = [
     priceLabel: "R4,999 per person",
     deliveryModel: "blended",
     durationLabel: "Structured programme — duration confirmed on enrolment",
-    available: true,
-    status: "in-development",
+    available: false,
+    status: "coming-soon",
   },
 ];
 // ─── Capability Pillars ───────────────────────────────────────────────────────

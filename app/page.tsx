@@ -299,6 +299,30 @@ function ProgrammeArchitectureSection() {
                       gap: "0.75rem",
                     }}
                   >
+                    {!prog.available && (
+                      <div style={{ display: "flex", gap: "0.5rem" }}>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.3rem",
+                            padding: "0.2rem 0.6rem",
+                            background: "rgba(245,158,11,0.12)",
+                            border: "1px solid rgba(245,158,11,0.3)",
+                            borderRadius: "9999px",
+                            fontSize: "0.7rem",
+                            fontWeight: 700,
+                            fontFamily: "var(--font-display)",
+                            color: "#f59e0b",
+                            letterSpacing: "0.04em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
+                          Coming Soon
+                        </span>
+                      </div>
+                    )}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
                       <h4 style={{ fontSize: "1rem", lineHeight: 1.3 }}>{prog.title}</h4>
                       <span
@@ -328,14 +352,31 @@ function ProgrammeArchitectureSection() {
                         {prog.durationLabel}
                       </span>
                     </div>
-                    <Link
-                      href="/register"
-                      className="btn-primary"
-                      style={{ marginTop: "auto", fontSize: "0.8rem", padding: "0.5rem 1rem" }}
-                    >
-                      Get Started
-                      <ArrowRight size={13} />
-                    </Link>
+                    {prog.available ? (
+                      <Link
+                        href="/register"
+                        className="btn-primary"
+                        style={{ marginTop: "auto", fontSize: "0.8rem", padding: "0.5rem 1rem" }}
+                      >
+                        Get Started
+                        <ArrowRight size={13} />
+                      </Link>
+                    ) : (
+                      <span
+                        className="btn-primary"
+                        aria-disabled="true"
+                        style={{
+                          marginTop: "auto",
+                          fontSize: "0.8rem",
+                          padding: "0.5rem 1rem",
+                          opacity: 0.5,
+                          cursor: "not-allowed",
+                          pointerEvents: "none",
+                        }}
+                      >
+                        Coming Soon
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
