@@ -30,6 +30,9 @@ export async function POST(req: NextRequest) {
     "company_bank_name",
     "company_bank_account",
     "company_bank_branch",
+    "company_bank_account_holder",
+    "company_bank_account_type",
+    "company_bank_product_type",
   ]);
 
   // Fetch course prices from DB
@@ -148,11 +151,14 @@ export async function POST(req: NextRequest) {
         </table>
 
         <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-          <p style="margin: 0 0 8px; font-weight: 600; font-size: 0.875rem;">Payment Details</p>
-          <p style="margin: 0; color: #374151; font-size: 0.875rem;">Bank: ${config.company_bank_name || "TBC"}</p>
-          <p style="margin: 4px 0 0; color: #374151; font-size: 0.875rem;">Account: ${config.company_bank_account || "TBC"}</p>
+          <p style="margin: 0 0 8px; font-weight: 600; font-size: 0.875rem;">Payment Details (EFT)</p>
+          <p style="margin: 0; color: #374151; font-size: 0.875rem;">Bank: <strong>${config.company_bank_name || "TBC"}</strong></p>
+          <p style="margin: 4px 0 0; color: #374151; font-size: 0.875rem;">Account Holder: ${config.company_bank_account_holder || "TBC"}</p>
+          <p style="margin: 4px 0 0; color: #374151; font-size: 0.875rem;">Account Number: <strong>${config.company_bank_account || "TBC"}</strong></p>
+          <p style="margin: 4px 0 0; color: #374151; font-size: 0.875rem;">Account Type: ${config.company_bank_account_type || "TBC"}</p>
           <p style="margin: 4px 0 0; color: #374151; font-size: 0.875rem;">Branch Code: ${config.company_bank_branch || "TBC"}</p>
-          <p style="margin: 4px 0 0; color: #374151; font-size: 0.875rem;">Reference: <strong>${ref}</strong></p>
+          <p style="margin: 4px 0 0; color: #374151; font-size: 0.875rem;">Product Type: ${config.company_bank_product_type || "TBC"}</p>
+          <p style="margin: 8px 0 0; color: #374151; font-size: 0.875rem;">Reference: <strong>${ref}</strong></p>
         </div>
 
         <p style="color: #6b7280; font-size: 0.8125rem;">
