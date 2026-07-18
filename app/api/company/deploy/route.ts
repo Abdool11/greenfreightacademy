@@ -25,12 +25,17 @@ function generateOpaqueToken(): string {
  */
 async function getOrCreateInvitation(params: {
   driverId: string;
+  companyId: string;
   deploymentId: string;
   programAssignment: "p1" | "p2" | "p1_p2";
+  programmeSlug: string;
+  driverName: string;
+  driverMobile: string | null;
+  driverEmail: string | null;
   expiresAt: string | null;
   inviteVideoUrl: string | null;
-}): Promise<{ token: string }> {
-  const { driverId, deploymentId, programAssignment, expiresAt, inviteVideoUrl } = params;
+}): Promise<{ token: string; error?: string }> {
+  const { driverId, companyId, deploymentId, programAssignment, programmeSlug, driverName, driverMobile, driverEmail, expiresAt, inviteVideoUrl } = params;
 
   // Check for an existing active (non-revoked, non-expired) invitation
   const { data: existing } = await supabaseAdmin
@@ -48,15 +53,26 @@ async function getOrCreateInvitation(params: {
 
   // Create a fresh invitation
   const token = generateOpaqueToken();
-  await supabaseAdmin.from("driver_invitations").insert({
+  const { error: inviteErr } = await supabaseAdmin.from("driver_invitations").insert({
     driver_id: driverId,
+    company_id: companyId,
     deployment_id: deploymentId,
     token,
     program_assignment: programAssignment,
-    expires_at: expiresAt,
+    programme_slug: programmeSlug,
+    driver_name: driverName,
+    driver_mobile: driverMobile,
+    driver_email: driverEmail,
+    status: "pending",
+    expires_at: expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     invite_video_url: inviteVideoUrl,
     created_at: new Date().toISOString(),
   });
+
+  if (inviteErr) {
+    console.error("[GFA deploy] Failed to create driver_invitation:", inviteErr);
+    return { token, error: inviteErr.message };
+  }
 
   return { token };
 }
@@ -189,8 +205,8 @@ export async function POST(req: NextRequest) {
   ]);
 
   const bdBaseUrl = (config.bd_base_url || "https://betterdriver.co.za").replace(/\/$/, "");
-  const phoneId = config.whatsapp_phone_id;
-  const accessToken = config.whatsapp_access_token;
+  const phoneId = config.whatsapp_phone_id || process.env.WHATSAPP_PHONE_NUMBER_ID || "";
+  const accessToken = config.whatsapp_access_token || process.env.WHATSAPP_ACCESS_TOKEN || "";
 
   // ── 3. Resolve campaign (expiry date + invite video) ──────────────────────
   let campaignExpiresAt: string | null = null;
@@ -245,6 +261,14 @@ export async function POST(req: NextRequest) {
   const items: Array<{ driverId: string; driverName: string; courseIds: string[] }> =
     quote.items_json ?? [];
 
+  // Pre-fetch all course slugs so we can use them as programme_id
+  const allCourseIds = [...new Set(items.flatMap(i => i.courseIds))];
+  const { data: courseRows } = await supabaseAdmin
+    .from("courses")
+    .select("id, name, slug")
+    .in("id", allCourseIds);
+  const courseMap = Object.fromEntries((courseRows ?? []).map(c => [c.id, c]));
+
   const results: {
     driverId: string;
     whatsapp: boolean;
@@ -255,49 +279,93 @@ export async function POST(req: NextRequest) {
   for (const item of items) {
     const { data: driver } = await supabaseAdmin
       .from("drivers")
-      .select("id, first_name, last_name, mobile")
+      .select("id, first_name, last_name, mobile, email")
       .eq("id", item.driverId)
       .single();
 
     if (!driver) continue;
 
-    // Create enrolment records (one per course)
-    for (const courseId of item.courseIds) {
-      await supabaseAdmin.from("enrolments").upsert(
-        {
-          driver_id: driver.id,
+    // Find or create a company_employees record for this driver
+    let employeeId: string | null = null;
+    const { data: existingEmp } = await supabaseAdmin
+      .from("company_employees")
+      .select("id")
+      .eq("company_id", session.companyId)
+      .or(`mobile.eq.${driver.mobile},email.eq.${driver.email}`)
+      .maybeSingle();
+
+    if (existingEmp) {
+      employeeId = existingEmp.id;
+    } else {
+      const { data: newEmp, error: empErr } = await supabaseAdmin
+        .from("company_employees")
+        .insert({
           company_id: session.companyId,
-          programme_id: courseId,
-          programme_slug: "",
-          campaign_id: campaignId ?? null,
-          status: "enrolled",
-          started_at: new Date().toISOString(),
-          progress_percent: 0,
-          modules_completed: 0,
-        },
-        { onConflict: "driver_id,programme_id", ignoreDuplicates: true }
-      );
+          name: `${driver.first_name ?? ""} ${driver.last_name ?? ""}`.trim(),
+          email: driver.email ?? `driver_${driver.id}@placeholder.local`,
+          mobile: driver.mobile,
+        })
+        .select("id")
+        .single();
+      if (empErr) {
+        console.error("[GFA deploy] Failed to create company_employees record:", empErr);
+      } else {
+        employeeId = newEmp.id;
+      }
     }
 
-    // Resolve programme name from the first course
+    // Resolve programme name and slug from the first course
     let programmeName = "The Professional Truck Driver";
+    let programmeSlug = "professional-truck-driver";
     if (item.courseIds.length > 0) {
-      const { data: course } = await supabaseAdmin
-        .from("courses")
-        .select("name")
-        .eq("id", item.courseIds[0])
-        .single();
-      if (course?.name) programmeName = course.name;
+      const c = courseMap[item.courseIds[0]];
+      if (c?.name) programmeName = c.name;
+      if (c?.slug) programmeSlug = c.slug;
+    }
+
+    // Create enrolment records (one per course)
+    let enrolmentOk = false;
+    for (const courseId of item.courseIds) {
+      const c = courseMap[courseId];
+      const slug = c?.slug ?? programmeSlug;
+      const { error: enrolErr } = await supabaseAdmin.from("enrolments").insert({
+        employee_id: employeeId,
+        driver_id: driver.id,
+        company_id: session.companyId,
+        programme_id: slug,
+        programme_slug: slug,
+        campaign_id: campaignId ?? null,
+        status: "enrolled",
+        started_at: new Date().toISOString(),
+        progress_percent: 0,
+        modules_completed: 0,
+      });
+      if (enrolErr) {
+        console.error("[GFA deploy] Failed to insert enrolment:", enrolErr);
+      } else {
+        enrolmentOk = true;
+      }
     }
 
     // Generate / reuse BD invitation token
-    const { token } = await getOrCreateInvitation({
+    const { token, error: inviteErr } = await getOrCreateInvitation({
       driverId: driver.id,
+      companyId: session.companyId,
       deploymentId,
       programAssignment: "p1",
+      programmeSlug,
+      driverName: `${driver.first_name ?? ""} ${driver.last_name ?? ""}`.trim(),
+      driverMobile: driver.mobile,
+      driverEmail: driver.email,
       expiresAt: campaignExpiresAt,
       inviteVideoUrl: campaignInviteVideoUrl,
     });
+
+    if (inviteErr) {
+      console.error("[GFA deploy] Skipping WhatsApp — invitation could not be persisted:", inviteErr);
+      results.push({ driverId: driver.id, whatsapp: false, enrolment: false, magicLink: "" });
+      continue;
+    }
 
     const magicLink = `${bdBaseUrl}/join/${token}`;
 
@@ -317,7 +385,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    results.push({ driverId: driver.id, whatsapp: whatsappSent, enrolment: true, magicLink });
+    results.push({ driverId: driver.id, whatsapp: whatsappSent, enrolment: enrolmentOk, magicLink });
   }
 
   // ── 6. Mark quote as deployed ──────────────────────────────────────────────

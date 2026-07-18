@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   Users, Award, Upload, CheckCircle2, Loader2, Send,
   CreditCard, BarChart3, FileText, LogOut, RefreshCw, Bell, BookOpen, Zap, Target,
-  UserPlus,
+  UserPlus, Download,
 } from "lucide-react";
 import CampaignSetupModal from "@/components/CampaignSetupModal";
 import AddDriversModal from "@/components/AddDriversModal";
@@ -591,6 +591,13 @@ export default function DashboardPage() {
                           )}
                         </div>
                         <div style={{ display: "flex", gap: "0.625rem" }}>
+                          <a
+                            href={`/api/company/quotes/${quote.id}/pdf`}
+                            download
+                            style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.5rem", padding: "0.5rem 0.875rem", color: "#9ca3af", fontSize: "0.8125rem", fontWeight: 600, textDecoration: "none", cursor: "pointer" }}
+                          >
+                            <Download size={13} /> PDF
+                          </a>
                           {quote.status === "pending" && (
                             <button onClick={() => handlePayNow(quote.id)} disabled={payingQuote === quote.id} style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "0.5rem", padding: "0.5rem 0.875rem", color: "#22c55e", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}>
                               {payingQuote === quote.id ? <Loader2 size={13} className="animate-spin" /> : <CreditCard size={13} />}
