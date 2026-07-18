@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/email";
 
 interface QuoteLineItem {
   driverId: string;
@@ -166,23 +166,30 @@ export async function POST(req: NextRequest) {
   `;
 
   // Send quote email to company
-  if (process.env.RESEND_API_KEY) {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    await resend.emails.send({
-      from: `GreenFreightAcademy <quotes@greenfreightacademy.com>`,
-      to: session.email,
-      subject: `Your GFA Training Quotation — ${ref}`,
-      html: emailHtml,
-    });
+  if (process.env.BREVO_SMTP_PASSWORD) {
+    try {
+      await sendEmail({
+        from: "noreply@greenfreightacademy.co.za",
+        fromName: "GreenFreightAcademy",
+        to: session.email,
+        subject: `Your GFA Training Quotation — ${ref}`,
+        html: emailHtml,
+      });
 
-    // Also notify GFA admin
-    const adminEmail = config.email_booking_to || "durbanroadtransport@gmail.com";
-    await resend.emails.send({
-      from: `GreenFreightAcademy <quotes@greenfreightacademy.com>`,
-      to: adminEmail,
-      subject: `New quote generated — ${session.companyName} — ${ref}`,
-      html: `<p>A new quote has been generated for <strong>${session.companyName}</strong>.</p><p>Reference: <strong>${ref}</strong></p><p>Total: <strong>R ${total.toFixed(2)}</strong></p><p>Drivers: ${items.length}</p>`,
-    });
+      // Also notify GFA admin
+      const adminEmail = config.email_booking_to || "durbanroadtransport@gmail.com";
+      await sendEmail({
+        from: "noreply@greenfreightacademy.co.za",
+        fromName: "GFA Platform",
+        to: adminEmail,
+        subject: `New quote generated — ${session.companyName} — ${ref}`,
+        html: `<p>A new quote has been generated for <strong>${session.companyName}</strong>.</p><p>Reference: <strong>${ref}</strong></p><p>Total: <strong>R ${total.toFixed(2)}</strong></p><p>Drivers: ${items.length}</p>`,
+      });
+    } catch (emailErr) {
+      console.error("Quote email send error:", emailErr);
+    }
+  } else {
+    console.warn("BREVO_SMTP_PASSWORD not set — quote email skipped for", ref);
   }
 
   return NextResponse.json({ ok: true, reference: ref, total, quoteId: quote.id });

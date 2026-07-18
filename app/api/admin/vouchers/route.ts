@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
 import { renderTemplate } from "@/lib/messaging";
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/email";
 import crypto from "crypto";
 
 // GET /api/admin/vouchers — list all vouchers
@@ -93,11 +93,11 @@ export async function POST(req: NextRequest) {
   const sendVia = requestedSendVia || config.messaging_default_channel || "both";
 
   // Send via email
-  if ((sendVia === "email" || sendVia === "both") && prospectEmail && process.env.RESEND_API_KEY) {
+  if ((sendVia === "email" || sendVia === "both") && prospectEmail && process.env.BREVO_SMTP_PASSWORD) {
     try {
-      const resend = new Resend(process.env.RESEND_API_KEY);
-      await resend.emails.send({
-        from: "GreenFreightAcademy <noreply@greenfreightacademy.co.za>",
+      await sendEmail({
+        from: "noreply@greenfreightacademy.co.za",
+        fromName: "GreenFreightAcademy",
         to: prospectEmail,
         subject: `Your GFA Trial Access — ${seats} seat${seats > 1 ? "s" : ""} ready`,
         html: buildVoucherEmail({

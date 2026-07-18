@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/email";
 import { randomBytes } from "crypto";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -396,25 +396,29 @@ export async function POST(req: NextRequest) {
 
   // ── 7. Notify GFA admin by email ───────────────────────────────────────────
   const adminEmail = config.email_booking_to || "durbanroadtransport@gmail.com";
-  if (process.env.RESEND_API_KEY) {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    await resend.emails.send({
-      from: `GreenFreightAcademy <notifications@greenfreightacademy.co.za>`,
-      to: adminEmail,
-      subject: `Training deployed — ${session.companyName} — Ref: ${quote.reference}`,
-      html: `
-        <p><strong>${session.companyName}</strong> has confirmed payment and deployed training.</p>
-        <p>Quote reference: <strong>${quote.reference}</strong></p>
-        <p>Drivers enrolled: <strong>${items.length}</strong></p>
-        <p>Magic links sent via WhatsApp: <strong>${results.filter((r) => r.whatsapp).length}</strong></p>
-        <p>Total value: <strong>R ${quote.total?.toFixed(2)}</strong></p>
-        <hr/>
-        <p style="font-size:12px;color:#666;">
-          Each driver received a personalised magic link to BetterDriver.
-          They tap the link and land directly in their training portal — no password required.
-        </p>
-      `,
-    });
+  if (process.env.BREVO_SMTP_PASSWORD) {
+    try {
+      await sendEmail({
+        from: "noreply@greenfreightacademy.co.za",
+        fromName: "GFA Platform",
+        to: adminEmail,
+        subject: `Training deployed — ${session.companyName} — Ref: ${quote.reference}`,
+        html: `
+          <p><strong>${session.companyName}</strong> has confirmed payment and deployed training.</p>
+          <p>Quote reference: <strong>${quote.reference}</strong></p>
+          <p>Drivers enrolled: <strong>${items.length}</strong></p>
+          <p>Magic links sent via WhatsApp: <strong>${results.filter((r) => r.whatsapp).length}</strong></p>
+          <p>Total value: <strong>R ${quote.total?.toFixed(2)}</strong></p>
+          <hr/>
+          <p style="font-size:12px;color:#666;">
+            Each driver received a personalised magic link to BetterDriver.
+            They tap the link and land directly in their training portal — no password required.
+          </p>
+        `,
+      });
+    } catch (emailErr) {
+      console.error("Deploy notification email error:", emailErr);
+    }
   }
 
   return NextResponse.json({
