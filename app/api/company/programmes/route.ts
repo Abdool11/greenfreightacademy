@@ -9,12 +9,12 @@ export async function GET() {
 
   const { data, error } = await supabaseAdmin
     .from("courses")
-    .select("id, name, slug, module_count, is_active")
-    .eq("is_active", true)
+    .select("id, name, slug, module_count, status, audience")
+    .eq("status", "active")
     .order("created_at", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({
-    programmes: (data ?? []).map(c => ({ ...c, status: c.is_active ? "active" : "archived" })),
+    programmes: (data ?? []).map(c => ({ ...c, status: c.status || "active" })),
   });
 }

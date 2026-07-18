@@ -19,6 +19,7 @@ interface Course {
   slug: string;
   module_count: number;
   status: string;
+  audience?: string;
 }
 
 interface DriverEnrolment {
@@ -136,7 +137,7 @@ export default function DashboardPage() {
         setCourses(
           (cData.programmes ?? [])
             .filter((p: Course) => p.status === "active")
-            .filter((p: Course) => p.name.toLowerCase().includes("professional truck driver"))
+            .filter((p: Course) => !p.audience || p.audience === "drivers")
         );
       }
     } catch { /* silently fail */ } finally { setLoading(false); }
