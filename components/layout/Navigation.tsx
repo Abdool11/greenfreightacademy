@@ -2,18 +2,48 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Menu, X, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Menu, X, ChevronRight, LogOut, User } from "lucide-react";
 import { NAV_LINKS, NAV_CTA_PRIMARY, NAV_CTA_SECONDARY, SITE_NAME, LOGO_URL } from "@/lib/constants";
+
+interface SessionInfo {
+  authenticated: boolean;
+  companyName?: string;
+  email?: string;
+}
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [session, setSession] = useState<SessionInfo | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: SessionInfo) => setSession(d))
+      .catch(() => setSession({ authenticated: false }));
+  }, []);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      setSession({ authenticated: false });
+      setIsOpen(false);
+      router.push("/");
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   return (
     <header
@@ -119,13 +149,67 @@ export function Navigation() {
 
           {/* Desktop CTAs */}
           <div style={{ alignItems: "center", gap: "0.75rem" }} className="hidden md:flex">
-            <Link href={NAV_CTA_SECONDARY.href} className="btn-secondary" style={{ padding: "0.5rem 1.25rem", fontSize: "0.875rem" }}>
-              {NAV_CTA_SECONDARY.label}
-            </Link>
-            <Link href={NAV_CTA_PRIMARY.href} className="btn-primary" style={{ padding: "0.5rem 1.25rem", fontSize: "0.875rem" }}>
-              {NAV_CTA_PRIMARY.label}
-              <ChevronRight size={15} />
-            </Link>
+            {session?.authenticated ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    padding: "0.5rem 0.875rem",
+                    borderRadius: "0.625rem",
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "white",
+                    fontFamily: "var(--font-display)",
+                    fontWeight: 600,
+                    fontSize: "0.875rem",
+                    textDecoration: "none",
+                    maxWidth: "200px",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                  title={session.companyName || session.email || "My account"}
+                >
+                  <User size={15} style={{ color: "var(--color-green-400)", flexShrink: 0 }} />
+                  {session.companyName || session.email || "My account"}
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    padding: "0.5rem 1rem",
+                    borderRadius: "0.625rem",
+                    background: "transparent",
+                    border: "1px solid rgba(239,68,68,0.4)",
+                    color: "#f87171",
+                    fontFamily: "var(--font-display)",
+                    fontWeight: 600,
+                    fontSize: "0.875rem",
+                    cursor: loggingOut ? "not-allowed" : "pointer",
+                    opacity: loggingOut ? 0.6 : 1,
+                  }}
+                >
+                  <LogOut size={15} />
+                  {loggingOut ? "Logging out..." : "Log out"}
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href={NAV_CTA_SECONDARY.href} className="btn-secondary" style={{ padding: "0.5rem 1.25rem", fontSize: "0.875rem" }}>
+                  {NAV_CTA_SECONDARY.label}
+                </Link>
+                <Link href={NAV_CTA_PRIMARY.href} className="btn-primary" style={{ padding: "0.5rem 1.25rem", fontSize: "0.875rem" }}>
+                  {NAV_CTA_PRIMARY.label}
+                  <ChevronRight size={15} />
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile menu toggle */}
@@ -177,12 +261,63 @@ export function Navigation() {
               </Link>
             ))}
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginTop: "1.25rem" }}>
-              <Link href={NAV_CTA_SECONDARY.href} className="btn-secondary" onClick={() => setIsOpen(false)}>
-                {NAV_CTA_SECONDARY.label}
-              </Link>
-              <Link href={NAV_CTA_PRIMARY.href} className="btn-primary" onClick={() => setIsOpen(false)}>
-                {NAV_CTA_PRIMARY.label}
-              </Link>
+              {session?.authenticated ? (
+                <>
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setIsOpen(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      padding: "0.75rem 1rem",
+                      borderRadius: "0.625rem",
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      color: "white",
+                      fontFamily: "var(--font-display)",
+                      fontWeight: 600,
+                      fontSize: "0.9375rem",
+                      textDecoration: "none",
+                    }}
+                  >
+                    <User size={16} style={{ color: "var(--color-green-400)" }} />
+                    {session.companyName || session.email || "My account"}
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    disabled={loggingOut}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "0.5rem",
+                      padding: "0.75rem 1rem",
+                      borderRadius: "0.625rem",
+                      background: "transparent",
+                      border: "1px solid rgba(239,68,68,0.4)",
+                      color: "#f87171",
+                      fontFamily: "var(--font-display)",
+                      fontWeight: 600,
+                      fontSize: "0.9375rem",
+                      cursor: loggingOut ? "not-allowed" : "pointer",
+                      opacity: loggingOut ? 0.6 : 1,
+                    }}
+                  >
+                    <LogOut size={16} />
+                    {loggingOut ? "Logging out..." : "Log out"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href={NAV_CTA_SECONDARY.href} className="btn-secondary" onClick={() => setIsOpen(false)}>
+                    {NAV_CTA_SECONDARY.label}
+                  </Link>
+                  <Link href={NAV_CTA_PRIMARY.href} className="btn-primary" onClick={() => setIsOpen(false)}>
+                    {NAV_CTA_PRIMARY.label}
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
