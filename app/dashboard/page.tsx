@@ -136,8 +136,7 @@ export default function DashboardPage() {
         const cData = await coursesRes.json();
         setCourses(
           (cData.programmes ?? [])
-            .filter((p: Course) => p.status === "active")
-            .filter((p: Course) => !p.audience || p.audience === "drivers")
+            .filter((p: Course) => p.status === "active" && p.slug === "ptdp")
         );
       }
     } catch { /* silently fail */ } finally { setLoading(false); }
