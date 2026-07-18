@@ -120,8 +120,9 @@ export default function RootLayout({
       </head>
       <body>
         <LogoIntro logoSrc="/tag-logo.png" />
-        <ConditionalChrome />
-        <main>{children}</main>
+        <ConditionalChrome>
+          <main>{children}</main>
+        </ConditionalChrome>
       </body>
     </html>
   );
