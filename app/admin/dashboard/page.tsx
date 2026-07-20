@@ -51,8 +51,8 @@ async function getRecentActivity() {
 async function getPendingQuotes() {
   const { data: pendingQuotes } = await supabaseAdmin
     .from("quotes")
-    .select("id, reference, total, status, created_at, companies(name, contact_email)")
-    .eq("status", "pending")
+    .select("id, reference, total, status, payment_method, created_at, companies(name, contact_email)")
+    .in("status", ["pending", "eft_submitted"])
     .order("created_at", { ascending: false })
     .limit(10);
 
@@ -189,6 +189,8 @@ export default async function AdminDashboardPage() {
                         quoteId={q.id as string}
                         quoteReference={q.reference as string}
                         companyName={(company.name as string) ?? "Unknown"}
+                        paymentMethod={(q.payment_method as string) ?? undefined}
+                        quoteStatus={q.status as string}
                       />
                     </div>
                   );

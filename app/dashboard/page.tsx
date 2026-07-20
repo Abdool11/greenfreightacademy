@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import CampaignSetupModal from "@/components/CampaignSetupModal";
 import AddDriversModal from "@/components/AddDriversModal";
+import BuyCreditsModal from "@/components/BuyCreditsModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -20,6 +21,7 @@ interface Course {
   module_count: number;
   status: string;
   audience?: string;
+  price_corporate?: number;
 }
 
 interface DriverEnrolment {
@@ -117,14 +119,20 @@ export default function DashboardPage() {
   const [campaignCreated, setCampaignCreated] = useState<string | null>(null);
   // Add drivers modal
   const [showAddDriversModal, setShowAddDriversModal] = useState(false);
+  // Credits
+  const [creditBalance, setCreditBalance] = useState(0);
+  const [pendingQuoteCount, setPendingQuoteCount] = useState(0);
+  const [showBuyCredits, setShowBuyCredits] = useState(false);
+  const [autoPopupChecked, setAutoPopupChecked] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [driversRes, quotesRes, coursesRes] = await Promise.all([
+      const [driversRes, quotesRes, coursesRes, creditsRes] = await Promise.all([
         fetch("/api/company/drivers", { cache: "no-store" }),
         fetch("/api/company/quotes", { cache: "no-store" }),
         fetch("/api/company/programmes", { cache: "no-store" }),
+        fetch("/api/company/credits", { cache: "no-store" }),
       ]);
       if (driversRes.status === 401) { window.location.href = "/login"; return; }
       const driversData = await driversRes.json();
@@ -139,10 +147,23 @@ export default function DashboardPage() {
             .filter((p: Course) => p.status === "active" && p.slug === "ptdp")
         );
       }
+      if (creditsRes.ok) {
+        const creditsData = await creditsRes.json();
+        setCreditBalance(creditsData.creditBalance ?? 0);
+        setPendingQuoteCount(creditsData.pendingQuotes ?? 0);
+      }
     } catch { /* silently fail */ } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Auto-open Buy Credits modal when credits are 0 and no pending quotes
+  useEffect(() => {
+    if (!loading && !autoPopupChecked && creditBalance === 0 && pendingQuoteCount === 0) {
+      setShowBuyCredits(true);
+      setAutoPopupChecked(true);
+    }
+  }, [loading, creditBalance, pendingQuoteCount, autoPopupChecked]);
 
   // Poll quotes for 30s after load to catch payment status updates
   useEffect(() => {
@@ -293,6 +314,8 @@ export default function DashboardPage() {
   const activatedDrivers = drivers.filter(d => d.enrolments.some(e => e.started_at)).length;
   const certifiedDrivers = drivers.filter(d => d.enrolments.some(e => e.completed_at)).length;
   const pendingQuotes = quotes.filter(q => q.status === "pending").length;
+  const deployedDrivers = drivers.filter(d => d.enrolments.length > 0).length;
+  const toDeployDrivers = drivers.filter(d => d.enrolments.length === 0).length;
 
   return (
     <div style={{ paddingTop: "5rem", background: "var(--color-slate-900)", minHeight: "100vh" }}>
@@ -305,6 +328,14 @@ export default function DashboardPage() {
           }}
         />
       )}
+
+      {/* Buy Credits Modal */}
+      <BuyCreditsModal
+        open={showBuyCredits}
+        onClose={() => setShowBuyCredits(false)}
+        courses={courses}
+        onQuoteCreated={() => fetchData()}
+      />
 
       {/* Campaign Setup Modal */}
       {showCampaignModal && pendingDeployQuoteId && (
@@ -329,6 +360,36 @@ export default function DashboardPage() {
               <h1 style={{ fontSize: "1.5rem", margin: 0 }}>{companyName || "Your Company"}</h1>
             </div>
             <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              {/* Credit balance badge */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: "0.375rem",
+                  background: creditBalance > 0 ? "rgba(46,204,113,0.15)" : "rgba(239,68,68,0.15)",
+                  border: `1px solid ${creditBalance > 0 ? "rgba(46,204,113,0.3)" : "rgba(239,68,68,0.3)"}`,
+                  borderRadius: "0.5rem", padding: "0.375rem 0.75rem",
+                }}>
+                  <Zap size={14} style={{ color: creditBalance > 0 ? "#2ecc71" : "#ef4444" }} />
+                  <span style={{ color: creditBalance > 0 ? "#2ecc71" : "#ef4444", fontSize: "0.8125rem", fontWeight: 700 }}>
+                    {creditBalance} {creditBalance === 1 ? "credit" : "credits"}
+                  </span>
+                  {pendingQuoteCount > 0 && (
+                    <span style={{ color: "#f59e0b", fontSize: "0.6875rem", fontWeight: 600 }}>
+                      ({pendingQuoteCount} pending)
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowBuyCredits(true)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "0.375rem",
+                    background: "#2ecc71", border: "none", borderRadius: "0.5rem",
+                    padding: "0.375rem 0.875rem", color: "#000",
+                    fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer",
+                  }}
+                >
+                  <Zap size={14} /> Add Credits
+                </button>
+              </div>
               <button onClick={fetchData} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.5rem", padding: "0.5rem", color: "#6b7280", cursor: "pointer" }}>
                 <RefreshCw size={16} />
               </button>
@@ -378,9 +439,11 @@ export default function DashboardPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "1rem", marginBottom: "2.5rem" }}>
               {[
                 { label: "Total Drivers", value: totalDrivers, Icon: Users, color: "#3b82f6" },
+                { label: "Deployed", value: deployedDrivers, Icon: Send, color: "#22c55e" },
+                { label: "To Deploy", value: toDeployDrivers, Icon: Target, color: "#f59e0b" },
                 { label: "Link Activated", value: activatedDrivers, Icon: Zap, color: "#f59e0b" },
-                { label: "Certified", value: certifiedDrivers, Icon: Award, color: "#22c55e" },
-                { label: "Pending Quotes", value: pendingQuotes, Icon: FileText, color: "#8b5cf6" },
+                { label: "Certified", value: certifiedDrivers, Icon: Award, color: "#a78bfa" },
+                { label: "Credits", value: creditBalance, Icon: FileText, color: "#2ecc71" },
               ].map(m => (
                 <div key={m.label} style={{ background: "#0d1520", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "0.875rem", padding: "1.25rem" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.75rem" }}>
@@ -416,8 +479,8 @@ export default function DashboardPage() {
                 <div>
                   <h2 style={{ margin: 0, fontSize: "1.125rem", color: "#f9fafb" }}>Training Matrix</h2>
                   <p style={{ margin: "0.25rem 0 0", color: "#6b7280", fontSize: "0.875rem" }}>
-                    Tick <strong style={{ color: "#9ca3af" }}>Enrol</strong> for each driver and programme, then click <strong style={{ color: "#22c55e" }}>Get Quote</strong>.
-                    Tick <strong style={{ color: "#f59e0b" }}>Nudge</strong> to queue a reminder, then click <strong style={{ color: "#f59e0b" }}>Send Reminders</strong>.
+                    Select drivers to deploy using your credits. Tick <strong style={{ color: "#22c55e" }}>Enrol</strong> for each driver and programme, then click <strong style={{ color: "#22c55e" }}>Get Quote</strong> to deploy.
+                    Need more credits? Click <strong style={{ color: "#2ecc71" }}>Add Credits</strong> above.
                   </p>
                 </div>
                 <div style={{ display: "flex", gap: "0.625rem", flexWrap: "wrap" }}>

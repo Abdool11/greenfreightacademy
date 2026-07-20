@@ -57,6 +57,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to update quote" }, { status: 500 });
   }
 
+  // 3b. Add credits to company balance
+  const { data: paidQuote } = await supabaseAdmin
+    .from("quotes")
+    .select("line_items")
+    .eq("id", quoteId)
+    .single();
+
+  const lineItems = Array.isArray(paidQuote?.line_items) ? paidQuote.line_items : [];
+  const creditCount = lineItems.length;
+
+  if (creditCount > 0) {
+    const { data: companyForCredit } = await supabaseAdmin
+      .from("companies")
+      .select("credit_balance")
+      .eq("id", quote.company_id)
+      .single();
+
+    const newBalance = Number(companyForCredit?.credit_balance ?? 0) + creditCount;
+    await supabaseAdmin
+      .from("companies")
+      .update({ credit_balance: newBalance })
+      .eq("id", quote.company_id);
+  }
+
   // 4. Insert payment record
   const { error: paymentError } = await supabaseAdmin.from("payments").insert({
     company_id: quote.company_id,

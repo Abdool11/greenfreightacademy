@@ -46,8 +46,28 @@ interface Company {
   contact_phone: string;
   account_type: string;
   status: string;
+  credit_balance: number;
   trial_expires_at?: string;
   created_at: string;
+}
+
+interface QuoteRow {
+  id: string;
+  reference: string;
+  total: number;
+  status: string;
+  payment_method: string | null;
+  created_at: string;
+  paid_at: string | null;
+}
+
+interface PaymentRow {
+  id: string;
+  amount: number;
+  payment_method: string;
+  status: string;
+  created_at: string;
+  paid_at: string | null;
 }
 
 function ProgressBar({ done, total }: { done: number; total: number }) {
@@ -72,13 +92,15 @@ function Badge({ label, color }: { label: string; color: string }) {
   );
 }
 
-export default async function AdminCompanyDetailPage({ params }: { params: { id: string } }) {
+export default async function AdminCompanyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdminSession();
+
+  const { id } = await params;
 
   const { data: company } = await supabaseAdmin
     .from("companies")
-    .select("id, name, contact_name, contact_email, contact_phone, account_type, status, trial_expires_at, created_at")
-    .eq("id", params.id)
+    .select("id, name, contact_name, contact_email, contact_phone, account_type, status, credit_balance, trial_expires_at, created_at")
+    .eq("id", id)
     .single() as { data: Company | null };
 
   if (!company) notFound();
@@ -107,7 +129,7 @@ export default async function AdminCompanyDetailPage({ params }: { params: { id:
         campaign_id
       )
     `)
-    .eq("company_id", params.id)
+    .eq("company_id", id)
     .order("last_name", { ascending: true }) as { data: Driver[] | null };
 
   const { data: courses } = await supabaseAdmin
@@ -116,13 +138,36 @@ export default async function AdminCompanyDetailPage({ params }: { params: { id:
     .eq("status", "active")
     .order("name") as { data: Course[] | null };
 
+  const { data: quotes } = await supabaseAdmin
+    .from("quotes")
+    .select("id, reference, total, status, payment_method, created_at, paid_at")
+    .eq("company_id", id)
+    .order("created_at", { ascending: false })
+    .limit(10) as { data: QuoteRow[] | null };
+
+  const { data: payments } = await supabaseAdmin
+    .from("payments")
+    .select("id, amount, payment_method, status, created_at, paid_at")
+    .eq("company_id", id)
+    .order("created_at", { ascending: false })
+    .limit(10) as { data: PaymentRow[] | null };
+
+  const { count: deploymentCount } = await supabaseAdmin
+    .from("deployments")
+    .select("*", { count: "exact", head: true })
+    .eq("company_id", id);
+
   const driverList = drivers ?? [];
   const courseList = courses ?? [];
+  const quoteList = quotes ?? [];
+  const paymentList = payments ?? [];
+  const credits = Number(company.credit_balance ?? 0);
 
   const totalDrivers = driverList.length;
   const activatedDrivers = driverList.filter(d => d.enrolments.some(e => e.started_at)).length;
   const certifiedDrivers = driverList.filter(d => d.enrolments.some(e => e.completed_at)).length;
   const enrolledDrivers = driverList.filter(d => d.enrolments.length > 0).length;
+  const totalEnrolments = driverList.reduce((sum, d) => sum + d.enrolments.length, 0);
 
   const statusColor: Record<string, string> = {
     active: "#22c55e", trial: "#f59e0b", suspended: "#ef4444", inactive: "#6b7280",
@@ -168,16 +213,88 @@ export default async function AdminCompanyDetailPage({ params }: { params: { id:
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
           {[
+            { label: "Credit Balance", value: credits, color: "#2ecc71" },
             { label: "Total Drivers", value: totalDrivers, color: "#3b82f6" },
             { label: "Enrolled", value: enrolledDrivers, color: "#22c55e" },
+            { label: "Enrolments", value: totalEnrolments, color: "#60a5fa" },
             { label: "Link Activated", value: activatedDrivers, color: "#f59e0b" },
             { label: "Certified", value: certifiedDrivers, color: "#a78bfa" },
+            { label: "Deployments", value: deploymentCount ?? 0, color: "#f472b6" },
           ].map(m => (
             <div key={m.label} style={{ background: "#111f3a", border: "1px solid rgba(100,116,139,0.3)", borderRadius: "0.875rem", padding: "1.25rem" }}>
               <div style={{ color: "#94a3b8", fontSize: "0.8125rem", marginBottom: "0.5rem" }}>{m.label}</div>
               <div style={{ fontSize: "1.75rem", fontWeight: 700, color: m.color }}>{m.value}</div>
             </div>
           ))}
+        </div>
+
+        {/* Payment & Quote History */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem", marginBottom: "2rem" }}>
+          {/* Quotes */}
+          <div>
+            <h2 style={{ margin: "0 0 1rem", fontSize: "1.125rem", fontWeight: 700 }}>Recent Quotes</h2>
+            {quoteList.length === 0 ? (
+              <div style={{ background: "#111f3a", border: "1px dashed rgba(100,116,139,0.3)", borderRadius: "0.875rem", padding: "2rem", textAlign: "center", color: "#475569", fontSize: "0.875rem" }}>
+                No quotes yet.
+              </div>
+            ) : (
+              <div style={{ background: "#111f3a", border: "1px solid rgba(100,116,139,0.3)", borderRadius: "0.875rem", overflow: "hidden" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "2px solid rgba(100,116,139,0.3)" }}>
+                      <th style={{ padding: "0.625rem 1rem", textAlign: "left", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Reference</th>
+                      <th style={{ padding: "0.625rem 1rem", textAlign: "right", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Total</th>
+                      <th style={{ padding: "0.625rem 1rem", textAlign: "center", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Status</th>
+                      <th style={{ padding: "0.625rem 1rem", textAlign: "left", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {quoteList.map((q, i) => (
+                      <tr key={q.id} style={{ borderBottom: i < quoteList.length - 1 ? "1px solid rgba(100,116,139,0.1)" : "none" }}>
+                        <td style={{ padding: "0.625rem 1rem", color: "#94a3b8", fontFamily: "monospace", fontSize: "0.75rem" }}>{q.reference}</td>
+                        <td style={{ padding: "0.625rem 1rem", textAlign: "right", color: "#22c55e", fontWeight: 600 }}>R {Number(q.total).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</td>
+                        <td style={{ padding: "0.625rem 1rem", textAlign: "center" }}><Badge label={q.status} color={statusColor[q.status] ?? "#6b7280"} /></td>
+                        <td style={{ padding: "0.625rem 1rem", color: "#64748b", fontSize: "0.75rem" }}>{new Date(q.created_at).toLocaleDateString("en-ZA")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Payments */}
+          <div>
+            <h2 style={{ margin: "0 0 1rem", fontSize: "1.125rem", fontWeight: 700 }}>Payment History</h2>
+            {paymentList.length === 0 ? (
+              <div style={{ background: "#111f3a", border: "1px dashed rgba(100,116,139,0.3)", borderRadius: "0.875rem", padding: "2rem", textAlign: "center", color: "#475569", fontSize: "0.875rem" }}>
+                No payments yet.
+              </div>
+            ) : (
+              <div style={{ background: "#111f3a", border: "1px solid rgba(100,116,139,0.3)", borderRadius: "0.875rem", overflow: "hidden" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "2px solid rgba(100,116,139,0.3)" }}>
+                      <th style={{ padding: "0.625rem 1rem", textAlign: "left", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Method</th>
+                      <th style={{ padding: "0.625rem 1rem", textAlign: "right", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Amount</th>
+                      <th style={{ padding: "0.625rem 1rem", textAlign: "center", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Status</th>
+                      <th style={{ padding: "0.625rem 1rem", textAlign: "left", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paymentList.map((p, i) => (
+                      <tr key={p.id} style={{ borderBottom: i < paymentList.length - 1 ? "1px solid rgba(100,116,139,0.1)" : "none" }}>
+                        <td style={{ padding: "0.625rem 1rem", color: "#94a3b8", textTransform: "capitalize" }}>{p.payment_method}</td>
+                        <td style={{ padding: "0.625rem 1rem", textAlign: "right", color: "#22c55e", fontWeight: 600 }}>R {Number(p.amount).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</td>
+                        <td style={{ padding: "0.625rem 1rem", textAlign: "center" }}><Badge label={p.status} color={p.status === "paid" ? "#22c55e" : "#f59e0b"} /></td>
+                        <td style={{ padding: "0.625rem 1rem", color: "#64748b", fontSize: "0.75rem" }}>{new Date(p.paid_at || p.created_at).toLocaleDateString("en-ZA")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Training Matrix */}

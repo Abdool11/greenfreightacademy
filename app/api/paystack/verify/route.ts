@@ -124,6 +124,30 @@ export async function POST(req: NextRequest) {
         .eq("id", quoteId)
         .eq("company_id", session.companyId);
 
+      // ── Add credits to company balance ─────────────────────────────────────
+      const { data: paidQuote } = await supabaseAdmin
+        .from("quotes")
+        .select("line_items")
+        .eq("id", quoteId)
+        .single();
+
+      const lineItems = Array.isArray(paidQuote?.line_items) ? paidQuote.line_items : [];
+      const creditCount = lineItems.length;
+
+      if (creditCount > 0) {
+        const { data: companyForCredit } = await supabaseAdmin
+          .from("companies")
+          .select("credit_balance")
+          .eq("id", session.companyId)
+          .single();
+
+        const newBalance = Number(companyForCredit?.credit_balance ?? 0) + creditCount;
+        await supabaseAdmin
+          .from("companies")
+          .update({ credit_balance: newBalance })
+          .eq("id", session.companyId);
+      }
+
       // Update payment record
       await supabaseAdmin
         .from("payments")

@@ -178,7 +178,7 @@ export async function POST(req: NextRequest) {
   const { quoteId, campaignId } = await req.json();
   if (!quoteId) return NextResponse.json({ error: "quoteId required" }, { status: 400 });
 
-  // ── 1. Verify quote is paid ────────────────────────────────────────────────
+  // ── 1. Verify quote exists and belongs to company ──────────────────────────
   const { data: quote } = await supabaseAdmin
     .from("quotes")
     .select("*")
@@ -187,11 +187,28 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (!quote) return NextResponse.json({ error: "Quote not found" }, { status: 404 });
-  if (quote.status !== "paid") {
-    return NextResponse.json({ error: "Payment must be confirmed before deploying" }, { status: 400 });
-  }
   if (quote.deployed_at) {
     return NextResponse.json({ ok: true, alreadyDeployed: true });
+  }
+
+  // ── 1b. Check credit balance ───────────────────────────────────────────────
+  const items: Array<{ driverId: string; driverName: string; courseIds: string[] }> =
+    quote.items_json ?? [];
+  const enrolmentCount = items.reduce((sum, item) => sum + (item.courseIds?.length ?? 0), 0);
+
+  const { data: companyRow } = await supabaseAdmin
+    .from("companies")
+    .select("credit_balance")
+    .eq("id", session.companyId)
+    .single();
+
+  const currentBalance = Number(companyRow?.credit_balance ?? 0);
+  if (currentBalance < enrolmentCount) {
+    return NextResponse.json({
+      error: "Insufficient credits",
+      required: enrolmentCount,
+      available: currentBalance,
+    }, { status: 402 });
   }
 
   // ── 2. Load config ─────────────────────────────────────────────────────────
@@ -258,8 +275,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 5. Process each driver ─────────────────────────────────────────────────
-  const items: Array<{ driverId: string; driverName: string; courseIds: string[] }> =
-    quote.items_json ?? [];
+  // (items already declared above during credit check)
 
   // Pre-fetch all course slugs so we can use them as programme_id
   const allCourseIds = [...new Set(items.flatMap(i => i.courseIds))];
@@ -393,6 +409,19 @@ export async function POST(req: NextRequest) {
     .from("quotes")
     .update({ status: "deployed", deployed_at: new Date().toISOString() })
     .eq("id", quoteId);
+
+  // ── 6b. Deduct credits from company balance ────────────────────────────────
+  const { data: companyForDeduction } = await supabaseAdmin
+    .from("companies")
+    .select("credit_balance")
+    .eq("id", session.companyId)
+    .single();
+
+  const balanceAfter = Number(companyForDeduction?.credit_balance ?? 0) - enrolmentCount;
+  await supabaseAdmin
+    .from("companies")
+    .update({ credit_balance: Math.max(0, balanceAfter) })
+    .eq("id", session.companyId);
 
   // ── 7. Notify GFA admin by email ───────────────────────────────────────────
   const adminEmail = config.email_booking_to || "durbanroadtransport@gmail.com";

@@ -9,7 +9,7 @@ export default function AddCompanyForm({ onCreated }: { onCreated?: () => void }
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState<{ name: string; tempPassword?: string } | null>(null);
+  const [success, setSuccess] = useState<{ name: string; tempPassword?: string; setupLink?: string } | null>(null);
 
   // Form fields
   const [companyName, setCompanyName] = useState("");
@@ -20,6 +20,7 @@ export default function AddCompanyForm({ onCreated }: { onCreated?: () => void }
   const [password, setPassword] = useState("");
   const [accountType, setAccountType] = useState<"full" | "trial">("full");
   const [sendWelcome, setSendWelcome] = useState(true);
+  const [trialCredits, setTrialCredits] = useState(5);
 
   function resetForm() {
     setCompanyName("");
@@ -30,6 +31,7 @@ export default function AddCompanyForm({ onCreated }: { onCreated?: () => void }
     setPassword("");
     setAccountType("full");
     setSendWelcome(true);
+    setTrialCredits(5);
     setError("");
   }
 
@@ -50,6 +52,7 @@ export default function AddCompanyForm({ onCreated }: { onCreated?: () => void }
           password: password || undefined,
           accountType,
           sendWelcome,
+          trialCredits: accountType === "trial" ? trialCredits : undefined,
         }),
       });
       const data = await res.json();
@@ -57,7 +60,7 @@ export default function AddCompanyForm({ onCreated }: { onCreated?: () => void }
         setError(data.error ?? "Failed to create company");
         return;
       }
-      setSuccess({ name: data.company.name, tempPassword: data.tempPassword });
+      setSuccess({ name: data.company.name, tempPassword: data.tempPassword, setupLink: data.setupLink });
       resetForm();
       router.refresh();
       onCreated?.();
@@ -119,6 +122,12 @@ export default function AddCompanyForm({ onCreated }: { onCreated?: () => void }
                   <div className="bg-[#0a1628] border border-amber-500/30 rounded-lg p-4 mt-4">
                     <p className="text-amber-400 text-xs font-medium mb-1">Temporary password (send to client):</p>
                     <p className="text-white font-mono text-sm">{success.tempPassword}</p>
+                  </div>
+                )}
+                {success.setupLink && (
+                  <div className="bg-[#0a1628] border border-[#2ecc71]/30 rounded-lg p-4 mt-4">
+                    <p className="text-[#2ecc71] text-xs font-medium mb-1">Setup link (also sent via email):</p>
+                    <p className="text-white font-mono text-xs break-all">{success.setupLink}</p>
                   </div>
                 )}
                 <button
@@ -242,20 +251,42 @@ export default function AddCompanyForm({ onCreated }: { onCreated?: () => void }
                   </div>
                 </div>
 
-                {/* Password (optional) */}
-                <div>
-                  <label className="block text-slate-400 text-xs font-medium mb-1.5">
-                    Password{" "}
-                    <span className="text-slate-600">(leave blank to auto-generate)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[#0a1628] border border-slate-700/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#2ecc71]"
-                    placeholder="Auto-generated if empty"
-                  />
-                </div>
+                {/* Trial credits (only for trial accounts) */}
+                {accountType === "trial" && (
+                  <div>
+                    <label className="block text-slate-400 text-xs font-medium mb-1.5">
+                      Trial Credits <span className="text-slate-600">(number of driver enrolments to grant)</span>
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={trialCredits}
+                      onChange={(e) => setTrialCredits(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-full bg-[#0a1628] border border-slate-700/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#2ecc71]"
+                      placeholder="5"
+                    />
+                    <p className="text-slate-500 text-xs mt-1">
+                      The company will receive a welcome email with a setup link to create their own password.
+                    </p>
+                  </div>
+                )}
+
+                {/* Password (optional, only for full accounts) */}
+                {accountType === "full" && (
+                  <div>
+                    <label className="block text-slate-400 text-xs font-medium mb-1.5">
+                      Password{" "}
+                      <span className="text-slate-600">(leave blank to auto-generate)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-[#0a1628] border border-slate-700/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#2ecc71]"
+                      placeholder="Auto-generated if empty"
+                    />
+                  </div>
+                )}
 
                 {/* Send welcome email */}
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -266,7 +297,7 @@ export default function AddCompanyForm({ onCreated }: { onCreated?: () => void }
                     className="w-4 h-4 rounded accent-[#2ecc71]"
                   />
                   <span className="text-slate-300 text-sm">
-                    Send welcome email{!password && " with temporary password"}
+                    Send welcome email{accountType === "trial" ? " with setup link and credits" : (!password && " with temporary password")}
                   </span>
                 </label>
 
