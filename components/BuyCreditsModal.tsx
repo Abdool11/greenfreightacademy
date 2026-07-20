@@ -6,6 +6,7 @@ import { X, Loader2, CreditCard, Building2, CheckCircle2, AlertTriangle } from "
 interface Course {
   id: string;
   name: string;
+  slug?: string;
   price_corporate?: number;
 }
 
@@ -155,18 +156,41 @@ export default function BuyCreditsModal({ open, onClose, courses, onQuoteCreated
               <label className="block text-slate-400 text-xs font-medium mb-1.5">
                 Select a training course
               </label>
-              <select
-                value={courseId}
-                onChange={(e) => setCourseId(e.target.value)}
-                className="w-full bg-[#0a1628] border border-slate-700/50 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#2ecc71]"
-              >
-                <option value="">Choose a course...</option>
-                {courses.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} — R {Number(c.price_corporate).toFixed(2)} / driver
-                  </option>
-                ))}
-              </select>
+              <div className="space-y-2">
+                {courses.map(c => {
+                  const isAvailable = c.slug === "ptdp";
+                  const isSelected = courseId === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      disabled={!isAvailable}
+                      onClick={() => isAvailable && setCourseId(c.id)}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                        isSelected
+                          ? "bg-[#2ecc71]/15 border border-[#2ecc71]/50 text-white"
+                          : isAvailable
+                            ? "bg-[#0a1628] border border-slate-700/50 text-slate-300 hover:border-[#2ecc71]/30"
+                            : "bg-[#0a1628] border border-slate-800/50 text-slate-600 cursor-not-allowed"
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        {c.name}
+                        {!isAvailable && (
+                          <span className="text-[0.625rem] font-semibold uppercase tracking-wide bg-slate-700/50 text-slate-500 px-1.5 py-0.5 rounded-full">
+                            Coming Soon
+                          </span>
+                        )}
+                      </span>
+                      {isAvailable && (
+                        <span className="text-slate-400 text-xs">
+                          R {Number(c.price_corporate ?? 0).toFixed(2)} / driver
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {selectedCourse && (
