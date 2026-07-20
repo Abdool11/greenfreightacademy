@@ -9,7 +9,7 @@ export async function GET() {
 
   const { data, error } = await supabaseAdmin
     .from("courses")
-    .select("id, name, slug, module_count, status, audience")
+    .select("id, name, slug, module_count, status, audience, price_corporate")
     .eq("status", "active")
     .order("created_at", { ascending: true });
 

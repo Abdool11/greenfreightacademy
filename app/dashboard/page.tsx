@@ -124,6 +124,8 @@ export default function DashboardPage() {
   const [pendingQuoteCount, setPendingQuoteCount] = useState(0);
   const [showBuyCredits, setShowBuyCredits] = useState(false);
   const [autoPopupChecked, setAutoPopupChecked] = useState(false);
+  // All active courses for Buy Credits modal (not filtered to ptdp)
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -142,10 +144,9 @@ export default function DashboardPage() {
       if (driversData.companyName) setCompanyName(driversData.companyName);
       if (coursesRes.ok) {
         const cData = await coursesRes.json();
-        setCourses(
-          (cData.programmes ?? [])
-            .filter((p: Course) => p.status === "active" && p.slug === "ptdp")
-        );
+        const allActive = (cData.programmes ?? []).filter((p: Course) => p.status === "active");
+        setAllCourses(allActive);
+        setCourses(allActive.filter((p: Course) => p.slug === "ptdp"));
       }
       if (creditsRes.ok) {
         const creditsData = await creditsRes.json();
@@ -333,7 +334,7 @@ export default function DashboardPage() {
       <BuyCreditsModal
         open={showBuyCredits}
         onClose={() => setShowBuyCredits(false)}
-        courses={courses}
+        courses={allCourses}
         onQuoteCreated={() => fetchData()}
       />
 
