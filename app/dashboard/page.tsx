@@ -685,7 +685,7 @@ export default function DashboardPage() {
                         <div style={{ marginTop: "0.75rem", fontSize: "0.75rem", color: "#9ca3af", display: "flex", alignItems: "flex-start", gap: "0.375rem" }}>
                           <span style={{ color: "#f59e0b", flexShrink: 0 }}>💡</span>
                           <span>
-                            You can also pay via EFT — bank details were sent to your email.
+                            You can also pay via EFT to our Nedbank account — details were sent to your email.
                             {quote.status === "eft_submitted"
                               ? " We are verifying your payment — the Deploy button will appear here once confirmed."
                               : " Once we verify your payment, the Deploy button will appear here."}

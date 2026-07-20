@@ -277,17 +277,10 @@ export default function BuyCreditsModal({ open, onClose, courses, onQuoteCreated
                 disabled={submitting}
                 className="w-full bg-[#0a1628] hover:bg-slate-800 border border-slate-700/50 text-white py-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
               >
-                {submitting ? <Loader2 size={18} className="animate-spin" /> : <Building2 size={18} />}
-                Pay by EFT (Bank Transfer)
+                <Building2 size={18} />
+                Pay by EFT (Nedbank Account)
               </button>
             </div>
-
-            <button
-              onClick={handleClose}
-              className="w-full text-slate-400 hover:text-white text-sm transition-colors"
-            >
-              I&apos;ll pay later
-            </button>
           </div>
         )}
 
@@ -297,8 +290,8 @@ export default function BuyCreditsModal({ open, onClose, courses, onQuoteCreated
             <div className="flex items-center gap-3 bg-[#2ecc71]/10 border border-[#2ecc71]/30 rounded-lg p-4">
               <CheckCircle2 size={24} className="text-[#2ecc71] flex-shrink-0" />
               <div>
-                <p className="text-white font-medium text-sm">EFT Payment Recorded</p>
-                <p className="text-slate-400 text-xs mt-0.5">We&apos;ve emailed you the bank details and notified our team.</p>
+                <p className="text-white font-medium text-sm">Nedbank EFT Payment Recorded</p>
+                <p className="text-slate-400 text-xs mt-0.5">We&apos;ve emailed you the Nedbank account details and notified our team.</p>
               </div>
             </div>
 
