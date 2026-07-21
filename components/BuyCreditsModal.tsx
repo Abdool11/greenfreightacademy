@@ -118,7 +118,7 @@ export default function BuyCreditsModal({ open, onClose, courses, onQuoteCreated
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-700/50">
           <h2 className="text-white font-semibold text-lg">
-            {step === "form" && "Buy Training Credits"}
+            {step === "form" && "Get an Instant Quote"}
             {step === "quote" && "Your Quote"}
             {step === "eft" && "EFT Payment Instructions"}
             {step === "paying" && "Processing..."}

@@ -60,7 +60,7 @@ function HeroSection() {
           {/* CTAs */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.875rem", alignItems: "center" }}>
             <Link href="/register" className="btn-primary">
-              Get Started
+              Get an Instant Quote
               <ArrowRight size={16} />
             </Link>
             <Link href="/contact?type=enquiry" className="btn-outline">
@@ -358,7 +358,7 @@ function ProgrammeArchitectureSection() {
                         className="btn-primary"
                         style={{ marginTop: "auto", fontSize: "0.8rem", padding: "0.5rem 1rem" }}
                       >
-                        Get Started
+                        Get an Instant Quote
                         <ArrowRight size={13} />
                       </Link>
                     ) : (
@@ -776,7 +776,7 @@ function AccessModelSection() {
             </ul>
             <div style={{ marginTop: "1.75rem", display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
               <Link href="/register" className="btn-primary" style={{ fontSize: "0.875rem", padding: "0.625rem 1.25rem" }}>
-                Get Started
+                Get an Instant Quote
               </Link>
               <Link href="/contact?type=enquiry" className="btn-outline" style={{ fontSize: "0.875rem", padding: "0.625rem 1.25rem" }}>
                 Enquire now
@@ -993,14 +993,14 @@ function CTASection() {
     >
       <div className="container-gfa" style={{ textAlign: "center" }}>
         <h2 style={{ maxWidth: "640px", margin: "0 auto 1.25rem" }}>
-          Get Started — Build capability across your freight business
+          Get an Instant Quote — Build capability across your freight business
         </h2>
         <p style={{ maxWidth: "580px", margin: "0 auto 2.5rem", fontSize: "1.0625rem" }}>
           Whether you are strengthening driver professionalism, improving management capability, or building greener freight understanding, GFA provides a practical platform for scalable progress.
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.875rem", justifyContent: "center" }}>
           <Link href="/register" className="btn-primary">
-            Get Started
+            Get an Instant Quote
             <ArrowRight size={16} />
           </Link>
         </div>
@@ -1035,7 +1035,7 @@ function ClosingTheLoopSection() {
                 <ArrowRight size={15} />
               </Link>
               <Link href="/register" className="btn-outline">
-                Get started
+                Get an Instant Quote
               </Link>
             </div>
           </div>

@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   Users, Award, Upload, CheckCircle2, Loader2, Send,
   CreditCard, BarChart3, FileText, LogOut, RefreshCw, Bell, BookOpen, Zap, Target,
-  UserPlus, Download,
+  UserPlus, Download, ChevronDown, ChevronRight,
 } from "lucide-react";
 import CampaignSetupModal from "@/components/CampaignSetupModal";
 import AddDriversModal from "@/components/AddDriversModal";
@@ -124,6 +124,7 @@ export default function DashboardPage() {
   const [pendingQuoteCount, setPendingQuoteCount] = useState(0);
   const [showBuyCredits, setShowBuyCredits] = useState(false);
   const [autoPopupChecked, setAutoPopupChecked] = useState(false);
+  const [expandedQuoteId, setExpandedQuoteId] = useState<string | null>(null);
   // All active courses for Buy Credits modal (not filtered to ptdp)
   const [allCourses, setAllCourses] = useState<Course[]>([]);
 
@@ -388,7 +389,7 @@ export default function DashboardPage() {
                     fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer",
                   }}
                 >
-                  <Zap size={14} /> Add Credits
+                  <Zap size={14} /> Get a Quote
                 </button>
               </div>
               <button onClick={fetchData} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.5rem", padding: "0.5rem", color: "#6b7280", cursor: "pointer" }}>
@@ -617,7 +618,17 @@ export default function DashboardPage() {
             </div>
 
             <div>
-              <h2 style={{ margin: "0 0 0.5rem", fontSize: "1.125rem", color: "#f9fafb" }}>Deployment</h2>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem", marginBottom: "0.5rem" }}>
+                <h2 style={{ margin: 0, fontSize: "1.125rem", color: "#f9fafb" }}>Deployment</h2>
+                <div style={{ display: "flex", gap: "0.625rem", alignItems: "center" }}>
+                  <Link href="/dashboard/import" style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.25)", borderRadius: "0.5rem", padding: "0.375rem 0.75rem", color: "#4ade80", fontSize: "0.75rem", fontWeight: 600, textDecoration: "none" }}>
+                    <Upload size={13} /> Import from Excel
+                  </Link>
+                  <a href="/api/company/import" download style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.5rem", padding: "0.375rem 0.75rem", color: "#9ca3af", fontSize: "0.75rem", fontWeight: 600, textDecoration: "none" }}>
+                    <Download size={13} /> Template
+                  </a>
+                </div>
+              </div>
               <p style={{ margin: "0 0 1.25rem", color: "#6b7280", fontSize: "0.875rem" }}>Pay for your quote via Paystack, then deploy training to send WhatsApp welcome messages to each driver.</p>
               {quotes.length === 0 ? (
                 <div style={{ background: "#0d1520", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: "0.875rem", padding: "2.5rem", textAlign: "center", color: "#4b5563" }}>
@@ -637,22 +648,39 @@ export default function DashboardPage() {
                           <div style={{ color: "#6b7280", fontSize: "0.8125rem" }}>
                             {quote.line_items?.length ?? 0} enrolments · R {quote.total?.toFixed(2)} incl. VAT · {new Date(quote.created_at).toLocaleDateString("en-ZA")}
                           </div>
-                          {quote.line_items && quote.line_items.length > 0 && (
-                            <div style={{ marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-                              {[...new Set(quote.line_items.map(l => l.driverName))].map((name, i) => {
-                                const item = quote.line_items.find(l => l.driverName === name);
-                                return (
-                                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8125rem", color: "#9ca3af" }}>
-                                    <Users size={12} style={{ color: "#6b7280" }} />
-                                    <span>{name}</span>
-                                    {item?.driverMobile && (
-                                      <span style={{ color: "#6b7280" }}>· {item.driverMobile}</span>
-                                    )}
+                          {quote.line_items && quote.line_items.length > 0 && (() => {
+                            const uniqueDrivers = [...new Set(quote.line_items.map(l => l.driverName))];
+                            const uniqueCourses = [...new Set(quote.line_items.map(l => l.courseName))];
+                            const isExpanded = expandedQuoteId === quote.id;
+                            return (
+                              <div style={{ marginTop: "0.75rem" }}>
+                                <button
+                                  onClick={() => setExpandedQuoteId(isExpanded ? null : quote.id)}
+                                  style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "0.375rem", padding: "0.375rem 0.625rem", color: "#9ca3af", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}
+                                >
+                                  {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                                  <Users size={12} style={{ color: "#6b7280" }} />
+                                  <span>{uniqueDrivers.length} drivers · {uniqueCourses.join(", ")}</span>
+                                </button>
+                                {isExpanded && (
+                                  <div style={{ marginTop: "0.5rem", display: "flex", flexDirection: "column", gap: "0.375rem", paddingLeft: "0.5rem" }}>
+                                    {uniqueDrivers.map((name, i) => {
+                                      const item = quote.line_items.find(l => l.driverName === name);
+                                      return (
+                                        <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8125rem", color: "#9ca3af" }}>
+                                          <Users size={12} style={{ color: "#6b7280" }} />
+                                          <span>{name}</span>
+                                          {item?.driverMobile && (
+                                            <span style={{ color: "#6b7280" }}>· {item.driverMobile}</span>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
                                   </div>
-                                );
-                              })}
-                            </div>
-                          )}
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div style={{ display: "flex", gap: "0.625rem" }}>
                           <a

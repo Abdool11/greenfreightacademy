@@ -108,14 +108,23 @@ export async function GET(
   doc.text(session.email, 14, y);
   y += 12;
 
-  // Line items table
+  // Group line items by course for conciseness
+  const courseGroups = lineItems.reduce((acc, l) => {
+    const key = l.courseName || "Unknown";
+    if (!acc[key]) acc[key] = { count: 0, price: Number(l.price || 0), subtotal: 0 };
+    acc[key].count++;
+    acc[key].subtotal += Number(l.price || 0);
+    return acc;
+  }, {} as Record<string, { count: number; price: number; subtotal: number }>);
+
+  // Line items table — grouped by course
   autoTable(doc, {
     startY: y,
-    head: [["Driver", "Programme", "Amount"]],
-    body: lineItems.map((l) => [
-      l.driverName || "",
-      l.courseName || "",
-      `R ${Number(l.price || 0).toFixed(2)}`,
+    head: [["Programme", "Unit Price", "Amount"]],
+    body: Object.entries(courseGroups).map(([courseName, g]) => [
+      `${g.count} × ${courseName}`,
+      `R ${g.price.toFixed(2)}`,
+      `R ${g.subtotal.toFixed(2)}`,
     ]),
     theme: "grid",
     headStyles: {
@@ -130,7 +139,7 @@ export async function GET(
     },
     columnStyles: {
       0: { cellWidth: "auto" },
-      1: { cellWidth: "auto" },
+      1: { halign: "right" },
       2: { halign: "right" },
     },
   });

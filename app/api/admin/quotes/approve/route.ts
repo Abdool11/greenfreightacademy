@@ -42,13 +42,15 @@ export async function POST(req: NextRequest) {
 
   const now = new Date().toISOString();
 
-  // 3. Update quote to paid
+  // 3. Update quote to approved (matching Paystack auto-approve flow)
   const { error: updateError } = await supabaseAdmin
     .from("quotes")
     .update({
-      status: "paid",
+      status: "approved",
       paid_at: now,
       payment_method: "eft",
+      approved_at: now,
+      approved_by: session.email || String(session.adminId),
     })
     .eq("id", quoteId);
 
@@ -99,14 +101,18 @@ export async function POST(req: NextRequest) {
   }
 
   // 5. Fetch company contact email
-  const { data: company } = await supabaseAdmin
+  const { data: company, error: companyError } = await supabaseAdmin
     .from("companies")
-    .select("name, email, contact_email")
+    .select("name, contact_email")
     .eq("id", quote.company_id)
     .single();
 
+  if (companyError) {
+    console.error("Company fetch error:", companyError);
+  }
+
   const companyName = company?.name ?? "Unknown";
-  const clientEmail = company?.contact_email || company?.email;
+  const clientEmail = company?.contact_email;
   const config = await getConfigs(["company_email", "email_booking_to"]);
   const adminEmail = config["email_booking_to"] || config["company_email"];
   const siteUrl =
@@ -116,7 +122,11 @@ export async function POST(req: NextRequest) {
   const dashboardUrl = `${siteUrl}/dashboard`;
 
   // 6. Send confirmation email to client
-  if (clientEmail && process.env.BREVO_SMTP_PASSWORD) {
+  if (!clientEmail) {
+    console.warn(`No contact_email found for company ${quote.company_id} — skipping client confirmation email`);
+  } else if (!process.env.BREVO_SMTP_PASSWORD) {
+    console.warn("BREVO_SMTP_PASSWORD not set — skipping client confirmation email");
+  } else {
     try {
       await sendEmail({
         from: "abdool@transportactiongroup.co.za",
@@ -160,7 +170,11 @@ export async function POST(req: NextRequest) {
   }
 
   // 7. Send audit email to admin
-  if (adminEmail && process.env.BREVO_SMTP_PASSWORD) {
+  if (!adminEmail) {
+    console.warn("No admin email configured — skipping admin audit email");
+  } else if (!process.env.BREVO_SMTP_PASSWORD) {
+    console.warn("BREVO_SMTP_PASSWORD not set — skipping admin audit email");
+  } else {
     try {
       await sendEmail({
         from: "abdool@transportactiongroup.co.za",

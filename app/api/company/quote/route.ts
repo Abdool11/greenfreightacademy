@@ -90,12 +90,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to save quote" }, { status: 500 });
   }
 
-  // Build email HTML
-  const lineItemsHtml = lineItems.map(l => `
+  // Build email HTML — grouped by course for conciseness
+  const courseGroups = lineItems.reduce((acc, l) => {
+    const key = l.courseName;
+    if (!acc[key]) acc[key] = { count: 0, price: l.price, subtotal: 0 };
+    acc[key].count++;
+    acc[key].subtotal += l.price;
+    return acc;
+  }, {} as Record<string, { count: number; price: number; subtotal: number }>);
+
+  const lineItemsHtml = Object.entries(courseGroups).map(([courseName, g]) => `
     <tr>
-      <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${l.driverName}</td>
-      <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${l.courseName}</td>
-      <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">R ${l.price.toFixed(2)}</td>
+      <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${g.count} × ${courseName}</td>
+      <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">R ${g.price.toFixed(2)}</td>
+      <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">R ${g.subtotal.toFixed(2)}</td>
     </tr>
   `).join("");
 
@@ -128,8 +136,8 @@ export async function POST(req: NextRequest) {
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
           <thead>
             <tr style="background: #f9fafb;">
-              <th style="padding: 10px 12px; text-align: left; font-size: 0.8125rem; color: #6b7280; border-bottom: 2px solid #e5e7eb;">Driver</th>
               <th style="padding: 10px 12px; text-align: left; font-size: 0.8125rem; color: #6b7280; border-bottom: 2px solid #e5e7eb;">Programme</th>
+              <th style="padding: 10px 12px; text-align: right; font-size: 0.8125rem; color: #6b7280; border-bottom: 2px solid #e5e7eb;">Unit Price</th>
               <th style="padding: 10px 12px; text-align: right; font-size: 0.8125rem; color: #6b7280; border-bottom: 2px solid #e5e7eb;">Amount</th>
             </tr>
           </thead>
