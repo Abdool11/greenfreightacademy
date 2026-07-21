@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   // 1. Fetch the quote
   const { data: quote, error: quoteError } = await supabaseAdmin
     .from("quotes")
-    .select("id, reference, total, status, company_id")
+    .select("id, reference, total, subtotal, vat, status, company_id")
     .eq("id", quoteId)
     .single();
 
@@ -113,6 +113,9 @@ export async function POST(req: NextRequest) {
 
   const companyName = company?.name ?? "Unknown";
   const clientEmail = company?.contact_email;
+  const quoteSubtotal = Number(quote.subtotal ?? 0);
+  const quoteVat = Number(quote.vat ?? 0);
+  const quoteTotal = Number(quote.total ?? 0);
   const config = await getConfigs(["company_email", "email_booking_to"]);
   const adminEmail = config["email_booking_to"] || config["company_email"];
   const siteUrl =
@@ -145,6 +148,11 @@ export async function POST(req: NextRequest) {
                 Your EFT payment for quote <strong style="color: white;">${quote.reference}</strong>
                 has been confirmed by our team.
               </p>
+              <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+                <tr><td style="padding: 6px 0; color: #94a3b8;">Subtotal</td><td style="padding: 6px 0; color: white; text-align: right;">R ${quoteSubtotal.toFixed(2)}</td></tr>
+                <tr><td style="padding: 6px 0; color: #94a3b8;">VAT (15%)</td><td style="padding: 6px 0; color: white; text-align: right;">R ${quoteVat.toFixed(2)}</td></tr>
+                <tr style="border-top: 1px solid rgba(255,255,255,0.1);"><td style="padding: 8px 0; color: white; font-weight: 700;">Total Paid</td><td style="padding: 8px 0; color: #2ecc71; font-weight: 700; text-align: right;">R ${quoteTotal.toFixed(2)}</td></tr>
+              </table>
               <p style="color: #94a3b8; line-height: 1.6;">
                 You can now deploy training to your drivers. Log in to your dashboard and click
                 <strong style="color: #2ecc71;">Deploy Training</strong> to send WhatsApp welcome
@@ -162,7 +170,7 @@ export async function POST(req: NextRequest) {
             </div>
           </div>
         `,
-        text: `Payment Confirmed\n\nYour EFT payment for quote ${quote.reference} has been confirmed by our team.\n\nLog in to your dashboard at ${dashboardUrl} and click "Deploy Training" to send WhatsApp welcome messages to your drivers.`,
+        text: `Payment Confirmed\n\nYour EFT payment for quote ${quote.reference} has been confirmed by our team.\n\nSubtotal: R ${quoteSubtotal.toFixed(2)}\nVAT (15%): R ${quoteVat.toFixed(2)}\nTotal Paid: R ${quoteTotal.toFixed(2)}\n\nLog in to your dashboard at ${dashboardUrl} and click "Deploy Training" to send WhatsApp welcome messages to your drivers.`,
       });
     } catch (err) {
       console.error("Client confirmation email error:", err);
@@ -188,13 +196,15 @@ export async function POST(req: NextRequest) {
             <table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
               <tr><td style="padding: 0.5rem; color: #6b7280; width: 40%;">Company</td><td style="padding: 0.5rem; font-weight: 600;">${companyName}</td></tr>
               <tr><td style="padding: 0.5rem; color: #6b7280;">Quote Reference</td><td style="padding: 0.5rem; font-weight: 600;">${quote.reference}</td></tr>
-              <tr><td style="padding: 0.5rem; color: #6b7280;">Amount</td><td style="padding: 0.5rem; font-weight: 600;">R ${Number(quote.total).toFixed(2)}</td></tr>
+              <tr><td style="padding: 0.5rem; color: #6b7280;">Subtotal</td><td style="padding: 0.5rem; font-weight: 600;">R ${quoteSubtotal.toFixed(2)}</td></tr>
+              <tr><td style="padding: 0.5rem; color: #6b7280;">VAT (15%)</td><td style="padding: 0.5rem; font-weight: 600;">R ${quoteVat.toFixed(2)}</td></tr>
+              <tr><td style="padding: 0.5rem; color: #6b7280;">Total Amount</td><td style="padding: 0.5rem; font-weight: 600;">R ${quoteTotal.toFixed(2)}</td></tr>
               <tr><td style="padding: 0.5rem; color: #6b7280;">Confirmed By</td><td style="padding: 0.5rem; font-weight: 600;">${session.name} (${session.email})</td></tr>
               <tr><td style="padding: 0.5rem; color: #6b7280;">Confirmed At</td><td style="padding: 0.5rem; font-weight: 600;">${new Date(now).toLocaleString("en-ZA")}</td></tr>
             </table>
           </div>
         `,
-        text: `EFT Payment Manually Confirmed\n\nCompany: ${companyName}\nQuote Ref: ${quote.reference}\nAmount: R ${Number(quote.total).toFixed(2)}\nConfirmed By: ${session.name} (${session.email})\nConfirmed At: ${new Date(now).toLocaleString("en-ZA")}`,
+        text: `EFT Payment Manually Confirmed\n\nCompany: ${companyName}\nQuote Ref: ${quote.reference}\nSubtotal: R ${quoteSubtotal.toFixed(2)}\nVAT (15%): R ${quoteVat.toFixed(2)}\nTotal Amount: R ${quoteTotal.toFixed(2)}\nConfirmed By: ${session.name} (${session.email})\nConfirmed At: ${new Date(now).toLocaleString("en-ZA")}`,
       });
     } catch (err) {
       console.error("Admin audit email error:", err);

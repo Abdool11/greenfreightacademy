@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
         // Fetch quote + company details for email
         const { data: quoteRow } = await supabaseAdmin
           .from("quotes")
-          .select("reference, total, company_id")
+          .select("reference, total, subtotal, vat, company_id")
           .eq("id", quoteId)
           .single();
 
@@ -156,6 +156,8 @@ export async function POST(req: NextRequest) {
         const dashboardUrl = `${siteUrl}/dashboard`;
         const quoteRef = quoteRow?.reference ?? quoteId;
         const quoteTotal = Number(quoteRow?.total ?? 0);
+        const quoteSubtotal = Number(quoteRow?.subtotal ?? 0);
+        const quoteVat = Number(quoteRow?.vat ?? 0);
 
         // Client confirmation email
         if (clientEmail) {
@@ -177,6 +179,11 @@ export async function POST(req: NextRequest) {
                       Your card payment for quote <strong style="color: white;">${quoteRef}</strong>
                       has been confirmed.
                     </p>
+                    <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+                      <tr><td style="padding: 6px 0; color: #94a3b8;">Subtotal</td><td style="padding: 6px 0; color: white; text-align: right;">R ${quoteSubtotal.toFixed(2)}</td></tr>
+                      <tr><td style="padding: 6px 0; color: #94a3b8;">VAT (15%)</td><td style="padding: 6px 0; color: white; text-align: right;">R ${quoteVat.toFixed(2)}</td></tr>
+                      <tr style="border-top: 1px solid rgba(255,255,255,0.1);"><td style="padding: 8px 0; color: white; font-weight: 700;">Total Paid</td><td style="padding: 8px 0; color: #2ecc71; font-weight: 700; text-align: right;">R ${quoteTotal.toFixed(2)}</td></tr>
+                    </table>
                     <p style="color: #94a3b8; line-height: 1.6;">
                       You can now deploy training to your drivers. Log in to your dashboard and click
                       <strong style="color: #2ecc71;">Deploy Training</strong> to send WhatsApp welcome
@@ -194,7 +201,7 @@ export async function POST(req: NextRequest) {
                   </div>
                 </div>
               `,
-              text: `Payment Confirmed\n\nYour card payment for quote ${quoteRef} has been confirmed.\n\nLog in to your dashboard at ${dashboardUrl} and click "Deploy Training" to send WhatsApp welcome messages to your drivers.`,
+              text: `Payment Confirmed\n\nYour card payment for quote ${quoteRef} has been confirmed.\n\nSubtotal: R ${quoteSubtotal.toFixed(2)}\nVAT (15%): R ${quoteVat.toFixed(2)}\nTotal Paid: R ${quoteTotal.toFixed(2)}\n\nLog in to your dashboard at ${dashboardUrl} and click "Deploy Training" to send WhatsApp welcome messages to your drivers.`,
             });
           } catch (err) {
             console.error("Paystack webhook: client email error:", err);
@@ -216,7 +223,9 @@ export async function POST(req: NextRequest) {
                   <table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
                     <tr><td style="padding: 0.5rem; color: #6b7280; width: 40%;">Company</td><td style="padding: 0.5rem; font-weight: 600;">${companyName}</td></tr>
                     <tr><td style="padding: 0.5rem; color: #6b7280;">Quote Reference</td><td style="padding: 0.5rem; font-weight: 600;">${quoteRef}</td></tr>
-                    <tr><td style="padding: 0.5rem; color: #6b7280;">Amount</td><td style="padding: 0.5rem; font-weight: 600;">R ${quoteTotal.toFixed(2)}</td></tr>
+                    <tr><td style="padding: 0.5rem; color: #6b7280;">Subtotal</td><td style="padding: 0.5rem; font-weight: 600;">R ${quoteSubtotal.toFixed(2)}</td></tr>
+                    <tr><td style="padding: 0.5rem; color: #6b7280;">VAT (15%)</td><td style="padding: 0.5rem; font-weight: 600;">R ${quoteVat.toFixed(2)}</td></tr>
+                    <tr><td style="padding: 0.5rem; color: #6b7280;">Total Amount</td><td style="padding: 0.5rem; font-weight: 600;">R ${quoteTotal.toFixed(2)}</td></tr>
                     <tr><td style="padding: 0.5rem; color: #6b7280;">Payment Method</td><td style="padding: 0.5rem; font-weight: 600;">Paystack (Card)</td></tr>
                     <tr><td style="padding: 0.5rem; color: #6b7280;">Paystack Reference</td><td style="padding: 0.5rem; font-weight: 600;">${paystackReference}</td></tr>
                     <tr><td style="padding: 0.5rem; color: #6b7280;">Confirmed At</td><td style="padding: 0.5rem; font-weight: 600;">${new Date().toLocaleString("en-ZA")}</td></tr>
@@ -224,7 +233,7 @@ export async function POST(req: NextRequest) {
                   <p>The quote has been auto-approved. The client can now deploy training from their dashboard.</p>
                 </div>
               `,
-              text: `Paystack Payment Received\n\nCompany: ${companyName}\nQuote Ref: ${quoteRef}\nAmount: R ${quoteTotal.toFixed(2)}\nPayment Method: Paystack (Card)\nPaystack Ref: ${paystackReference}\nConfirmed At: ${new Date().toLocaleString("en-ZA")}`,
+              text: `Paystack Payment Received\n\nCompany: ${companyName}\nQuote Ref: ${quoteRef}\nSubtotal: R ${quoteSubtotal.toFixed(2)}\nVAT (15%): R ${quoteVat.toFixed(2)}\nTotal Amount: R ${quoteTotal.toFixed(2)}\nPayment Method: Paystack (Card)\nPaystack Ref: ${paystackReference}\nConfirmed At: ${new Date().toLocaleString("en-ZA")}`,
             });
           } catch (err) {
             console.error("Paystack webhook: admin email error:", err);

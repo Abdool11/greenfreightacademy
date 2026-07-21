@@ -197,7 +197,7 @@ export async function POST(req: NextRequest) {
         fromName: "GFA Platform",
         to: adminEmail,
         subject: `New quote generated — ${session.companyName} — ${ref}`,
-        html: `<p>A new quote has been generated for <strong>${session.companyName}</strong>.</p><p>Reference: <strong>${ref}</strong></p><p>Total: <strong>R ${total.toFixed(2)}</strong></p><p>Drivers: ${items.length}</p>`,
+        html: `<p>A new quote has been generated for <strong>${session.companyName}</strong>.</p><p>Reference: <strong>${ref}</strong></p><p>Subtotal: R ${subtotal.toFixed(2)}</p><p>VAT (15%): R ${vat.toFixed(2)}</p><p>Total: <strong>R ${total.toFixed(2)}</strong></p><p>Drivers: ${items.length}</p>`,
       });
     } catch (emailErr) {
       console.error("Quote email send error:", emailErr);
