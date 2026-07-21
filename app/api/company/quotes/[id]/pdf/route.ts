@@ -52,11 +52,10 @@ export async function GET(
   const lineItems: QuoteLineItem[] = Array.isArray(quote.line_items)
     ? quote.line_items
     : [];
-  const subtotal =
-    Number(quote.subtotal) ||
-    lineItems.reduce((sum, l) => sum + Number(l.price || 0), 0);
-  const total = Number(quote.total) || 0;
-  const vat = Number(quote.vat) || total - subtotal;
+  // Always calculate subtotal from line items so the table and totals are consistent
+  const subtotal = lineItems.reduce((sum, l) => sum + Number(l.price || 0), 0);
+  const vat = Math.round(subtotal * 0.15 * 100) / 100;
+  const total = subtotal + vat;
 
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
