@@ -1,5 +1,8 @@
 "use client";
 
+// QuoteDriverForm — lets clients fill in real driver details (or upload CSV/Excel)
+// after a quote is paid, replacing placeholder "Driver 1", "Driver 2" entries.
+
 import { useState, useRef, useCallback } from "react";
 import {
   Upload, Loader2, CheckCircle2, AlertCircle, Users, Save, FileSpreadsheet,
