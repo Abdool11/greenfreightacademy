@@ -8,7 +8,7 @@ export async function GET() {
 
   const { data: quotes, error } = await supabaseAdmin
     .from("quotes")
-    .select("id, reference, total, status, created_at, paid_at, deployed_at, line_items")
+    .select("id, reference, total, status, created_at, paid_at, deployed_at, line_items, items_json")
     .eq("company_id", session.companyId)
     .order("created_at", { ascending: false });
 

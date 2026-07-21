@@ -11,6 +11,7 @@ import {
 import CampaignSetupModal from "@/components/CampaignSetupModal";
 import AddDriversModal from "@/components/AddDriversModal";
 import BuyCreditsModal from "@/components/BuyCreditsModal";
+import QuoteDriverForm from "@/components/QuoteDriverForm";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,12 @@ interface Driver {
   enrolments: DriverEnrolment[];
 }
 
+interface QuoteItemJson {
+  driverId: string;
+  driverName: string;
+  courseIds: string[];
+}
+
 interface Quote {
   id: string;
   reference: string;
@@ -56,6 +63,7 @@ interface Quote {
   paid_at?: string;
   deployed_at?: string;
   line_items: Array<{ driverName: string; driverMobile?: string; courseName: string; price: number }>;
+  items_json?: QuoteItemJson[];
 }
 
 // ─── Progress bar ─────────────────────────────────────────────────────────────
@@ -719,6 +727,14 @@ export default function DashboardPage() {
                               : " Once we verify your payment, the Deploy button will appear here."}
                           </span>
                         </div>
+                      )}
+                      {(quote.status === "paid" || quote.status === "approved") && !quote.deployed_at &&
+                        quote.items_json?.some((item) => item.driverId.startsWith("placeholder-")) && (
+                        <QuoteDriverForm
+                          quoteId={quote.id}
+                          slotCount={quote.items_json.length}
+                          onSaved={() => fetchData()}
+                        />
                       )}
                     </div>
                   ))}
