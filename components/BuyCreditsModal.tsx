@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Loader2, CreditCard, Building2, CheckCircle2, AlertTriangle } from "lucide-react";
 
 interface Course {
@@ -24,6 +24,14 @@ export default function BuyCreditsModal({ open, onClose, courses, onQuoteCreated
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [quote, setQuote] = useState<{ quoteId: string; reference: string; total: number; lineItems: Array<{ price: number }> } | null>(null);
+
+  // Auto-select the available course when modal opens
+  useEffect(() => {
+    if (open) {
+      const available = courses.find(c => c.slug === "ptdp");
+      if (available) setCourseId(available.id);
+    }
+  }, [open, courses]);
 
   if (!open) return null;
 
@@ -166,15 +174,16 @@ export default function BuyCreditsModal({ open, onClose, courses, onQuoteCreated
                       type="button"
                       disabled={!isAvailable}
                       onClick={() => isAvailable && setCourseId(c.id)}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all ${
                         isSelected
-                          ? "bg-[#2ecc71]/15 border border-[#2ecc71]/50 text-white"
+                          ? "course-selected bg-[#2ecc71]/15 border border-[#2ecc71]/50 text-white"
                           : isAvailable
                             ? "bg-[#0a1628] border border-slate-700/50 text-slate-300 hover:border-[#2ecc71]/30"
                             : "bg-[#0a1628] border border-slate-800/50 text-slate-600 cursor-not-allowed"
                       }`}
                     >
                       <span className="flex items-center gap-2">
+                        {isSelected && <CheckCircle2 size={16} className="text-[#2ecc71]" />}
                         {c.name}
                         {!isAvailable && (
                           <span className="text-[0.625rem] font-semibold uppercase tracking-wide bg-slate-700/50 text-slate-500 px-1.5 py-0.5 rounded-full">

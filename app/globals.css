@@ -188,6 +188,22 @@ a {
   }
 }
 
+/* ─── Course Selected Glow Animation ───────────────────────────────────────── */
+@keyframes course-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(46, 204, 113, 0.3), 0 0 10px rgba(46, 204, 113, 0.15);
+    border-color: rgba(46, 204, 113, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(46, 204, 113, 0.5), 0 0 24px rgba(46, 204, 113, 0.25);
+    border-color: rgba(46, 204, 113, 0.7);
+  }
+}
+
+.course-selected {
+  animation: course-glow 2s ease-in-out infinite;
+}
+
 /* section-label — alias for pill-badge pill-green, consistent with TAG and BetterDriver */
 .section-label {
   display: inline-flex;
