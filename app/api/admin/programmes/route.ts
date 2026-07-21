@@ -63,11 +63,13 @@ export async function POST(req: NextRequest) {
   }
 
   // Log the action
-  await supabaseAdmin.from("admin_audit_log").insert({
-    admin_id: session.adminId,
-    action: "programme_created",
-    details: { programme_id: data.id, name: data.name },
-  }).catch(() => {});
+  try {
+    await supabaseAdmin.from("admin_audit_log").insert({
+      admin_id: session.adminId,
+      action: "programme_created",
+      details: { programme_id: data.id, name: data.name },
+    });
+  } catch {}
 
   return NextResponse.json({ programme: data }, { status: 201 });
 }
@@ -96,11 +98,13 @@ export async function PATCH(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  await supabaseAdmin.from("admin_audit_log").insert({
-    admin_id: session.adminId,
-    action: "programme_updated",
-    details: { programme_id: id, changes: Object.keys(updates) },
-  }).catch(() => {});
+  try {
+    await supabaseAdmin.from("admin_audit_log").insert({
+      admin_id: session.adminId,
+      action: "programme_updated",
+      details: { programme_id: id, changes: Object.keys(updates) },
+    });
+  } catch {}
 
   return NextResponse.json({ programme: data });
 }
@@ -134,11 +138,13 @@ export async function DELETE(req: NextRequest) {
   const { error } = await supabaseAdmin.from("courses").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  await supabaseAdmin.from("admin_audit_log").insert({
-    admin_id: session.adminId,
-    action: "programme_deleted",
-    details: { programme_id: id },
-  }).catch(() => {});
+  try {
+    await supabaseAdmin.from("admin_audit_log").insert({
+      admin_id: session.adminId,
+      action: "programme_deleted",
+      details: { programme_id: id },
+    });
+  } catch {}
 
   return NextResponse.json({ message: "Programme deleted" });
 }

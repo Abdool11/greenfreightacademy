@@ -10,7 +10,7 @@ const BUNNY_CDN_HOSTNAME = process.env.BUNNY_CDN_HOSTNAME ?? ""; // e.g. vz-abc1
 // ─── GET /api/admin/video-library — list all videos ──────────────────────────
 export async function GET(req: NextRequest) {
   try {
-    await requireAdminSession(req);
+    await requireAdminSession();
 
     const { searchParams } = new URL(req.url);
     const videoType = searchParams.get("type"); // filter by type
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
 // ─── POST /api/admin/video-library — create video record + get Bunny upload URL
 export async function POST(req: NextRequest) {
   try {
-    await requireAdminSession(req);
+    await requireAdminSession();
 
     const body = await req.json();
     const { title, description, video_type, language, programme, is_public } = body;
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
 // ─── PATCH /api/admin/video-library — update video record (status, thumbnail, etc.)
 export async function PATCH(req: NextRequest) {
   try {
-    await requireAdminSession(req);
+    await requireAdminSession();
 
     const body = await req.json();
     const { id, ...updates } = body;
@@ -140,7 +140,7 @@ export async function PATCH(req: NextRequest) {
 // ─── DELETE /api/admin/video-library — delete video from Bunny.net and DB
 export async function DELETE(req: NextRequest) {
   try {
-    await requireAdminSession(req);
+    await requireAdminSession();
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
