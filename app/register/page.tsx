@@ -32,7 +32,7 @@ export default function RegisterPage() {
   };
 
   const field = (label: string, key: string, type: string, placeholder: string, Icon: React.ElementType) => (
-    <div style={{ marginBottom: "1.125rem" }}>
+    <div>
       <label style={{ display: "block", color: "#9ca3af", fontSize: "0.8125rem", fontWeight: 600, marginBottom: "0.5rem" }}>{label}</label>
       <div style={{ position: "relative" }}>
         <Icon size={16} style={{ position: "absolute", left: "0.875rem", top: "50%", transform: "translateY(-50%)", color: "#4b5563" }} />
@@ -43,37 +43,34 @@ export default function RegisterPage() {
   );
 
   return (
-    <div style={{ paddingTop: "5rem", background: "var(--color-slate-900)", minHeight: "100vh" }}>
-      <section style={{ padding: "5rem 0 4rem", background: "linear-gradient(160deg, #0a1628 0%, #0f1f3d 100%)", borderBottom: "1px solid var(--border-subtle)" }}>
-        <div className="container-gfa">
-          <h1 style={{ maxWidth: "600px", marginBottom: "1rem" }}>Register your company</h1>
-          <p style={{ maxWidth: "520px", color: "var(--text-secondary)" }}>Create a company account to manage driver training, track progress, and deploy learning at scale.</p>
-        </div>
-      </section>
-      <section style={{ padding: "4rem 0" }}>
-        <div className="container-gfa">
-          <div style={{ maxWidth: "480px" }}>
-            <form onSubmit={handleSubmit} style={{ background: "#0d1520", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "1rem", padding: "2rem" }}>
-              {error && (
-                <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "0.625rem", padding: "0.75rem 1rem", marginBottom: "1.25rem", color: "#f87171", fontSize: "0.875rem" }}>
-                  <AlertCircle size={16} />{error}
-                </div>
-              )}
+    <div style={{ paddingTop: "5rem", background: "var(--color-slate-900)", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <section style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "3rem 1.5rem", background: "linear-gradient(160deg, #0a1628 0%, #0f1f3d 100%)" }}>
+        <div style={{ width: "100%", maxWidth: "640px", textAlign: "center" }}>
+          <span className="pill-badge pill-green" style={{ marginBottom: "1.5rem", display: "inline-flex" }}>Company Registration</span>
+          <h1 style={{ marginBottom: "0.75rem" }}>Register your company</h1>
+          <p style={{ color: "var(--text-secondary)", marginBottom: "2.5rem" }}>Create a company account to manage driver training, track progress, and deploy learning at scale.</p>
+          <form onSubmit={handleSubmit} style={{ background: "#0d1520", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "1rem", padding: "2rem", textAlign: "left" }}>
+            {error && (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "0.625rem", padding: "0.75rem 1rem", marginBottom: "1.25rem", color: "#f87171", fontSize: "0.875rem" }}>
+                <AlertCircle size={16} />{error}
+              </div>
+            )}
+            <div className="auth-form-grid">
               {field("Company name", "companyName", "text", "Your company name", Building2)}
               {field("Your name", "contactName", "text", "Contact person name", Building2)}
               {field("Work email", "email", "email", "you@company.co.za", Mail)}
               {field("Phone number", "phone", "tel", "+27 xx xxx xxxx", Phone)}
               {field("Password", "password", "password", "Min. 8 characters", Lock)}
               {field("Confirm password", "confirm", "password", "Repeat password", Lock)}
-              <button type="submit" disabled={loading} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", background: "#22c55e", color: "#000", border: "none", borderRadius: "0.625rem", padding: "0.875rem", fontWeight: 700, fontSize: "0.9375rem", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1, marginTop: "0.5rem" }}>
-                {loading ? <Loader2 size={18} className="animate-spin" /> : null}
-                {loading ? "Creating account..." : "Create company account"}
-              </button>
-              <p style={{ textAlign: "center", color: "#6b7280", fontSize: "0.875rem", marginTop: "1.25rem" }}>
-                Already have an account?{" "}<Link href="/login" style={{ color: "#22c55e", fontWeight: 600 }}>Log in</Link>
-              </p>
-            </form>
-          </div>
+            </div>
+            <button type="submit" disabled={loading} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", background: "#22c55e", color: "#000", border: "none", borderRadius: "0.625rem", padding: "0.875rem", fontWeight: 700, fontSize: "0.9375rem", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1, marginTop: "1.5rem" }}>
+              {loading ? <Loader2 size={18} className="animate-spin" /> : null}
+              {loading ? "Creating account..." : "Create company account"}
+            </button>
+            <p style={{ textAlign: "center", color: "#6b7280", fontSize: "0.875rem", marginTop: "1.25rem" }}>
+              Already have an account?{" "}<Link href="/login" style={{ color: "#22c55e", fontWeight: 600 }}>Log in</Link>
+            </p>
+          </form>
         </div>
       </section>
     </div>

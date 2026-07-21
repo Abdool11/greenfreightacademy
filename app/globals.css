@@ -176,6 +176,18 @@ a {
   border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
+/* ─── Auth Form Grid (responsive two-column → one-column) ──────────────────── */
+.auth-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.125rem;
+}
+@media (max-width: 640px) {
+  .auth-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* section-label — alias for pill-badge pill-green, consistent with TAG and BetterDriver */
 .section-label {
   display: inline-flex;
