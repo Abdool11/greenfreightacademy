@@ -80,15 +80,19 @@ export async function PATCH(
     existingMobileMap.set(normaliseSAMobile(d.mobile ?? ""), d.id);
   });
 
-  const itemsJson: Array<{ driverId: string; driverName: string; courseIds: string[] }> =
+  const itemsJson: Array<{ driverId: string; driverName: string; courseIds: string[]; deployedAt?: string }> =
     quote.items_json ?? [];
 
   // Extract courseIds from the first item (all items in a simple quote share the same course)
   const courseIds = itemsJson.length > 0 ? itemsJson[0].courseIds : [];
 
+  // Separate placeholder items from already-saved items
+  const placeholderItems = itemsJson.filter((i) => i.driverId.startsWith("placeholder-"));
+  const savedItems = itemsJson.filter((i) => !i.driverId.startsWith("placeholder-"));
+
   const errors: { index: number; field: string; message: string }[] = [];
   const createdDrivers: { id: string; name: string; mobile: string }[] = [];
-  const newItemsJson: Array<{ driverId: string; driverName: string; courseIds: string[] }> = [];
+  const newSavedItems: Array<{ driverId: string; driverName: string; courseIds: string[]; deployedAt?: string }> = [];
 
   for (let i = 0; i < selectedDrivers.length; i++) {
     const d = selectedDrivers[i];
@@ -161,7 +165,7 @@ export async function PATCH(
       mobile: normalisedMobile,
     });
 
-    newItemsJson.push({
+    newSavedItems.push({
       driverId,
       driverName: `${d.first_name.trim()} ${d.last_name.trim()}`,
       courseIds,
@@ -172,7 +176,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Validation errors", errorDetails: errors }, { status: 400 });
   }
 
-  // Build new line_items from the original line_items template
+  // Build new line_items: keep existing saved line items + add new ones + keep remaining placeholders
   const originalLineItems: Array<{ driverName: string; driverMobile?: string; courseName: string; price: number }> =
     quote.line_items ?? [];
 
@@ -180,7 +184,8 @@ export async function PATCH(
   const courseName = originalLineItems[0]?.courseName ?? "";
   const price = originalLineItems[0]?.price ?? 0;
 
-  const newLineItems = createdDrivers.flatMap(d =>
+  // New line items for newly saved drivers
+  const newLineItemsForSaved = createdDrivers.flatMap(d =>
     courseIds.map(() => ({
       driverName: d.name,
       driverMobile: d.mobile,
@@ -189,11 +194,37 @@ export async function PATCH(
     }))
   );
 
-  // Update the quote with real driver data
+  // Existing saved line items (for already-saved drivers)
+  const existingSavedLineItems = originalLineItems.filter((li, i) => {
+    const item = itemsJson[i];
+    return item && !item.driverId.startsWith("placeholder-");
+  });
+
+  // Remaining placeholder line items (one per remaining placeholder slot)
+  const remainingPlaceholderCount = placeholderItems.length - selectedDrivers.length;
+  const remainingPlaceholderLineItems = Array.from({ length: Math.max(0, remainingPlaceholderCount) }, (_, i) => ({
+    driverName: `Driver ${savedItems.length + newSavedItems.length + i + 1}`,
+    driverMobile: "",
+    courseName,
+    price,
+  }));
+
+  const newLineItems = [...existingSavedLineItems, ...newLineItemsForSaved, ...remainingPlaceholderLineItems];
+
+  // Build new items_json: already-saved items + newly saved items + remaining placeholders
+  const remainingPlaceholders = Array.from({ length: Math.max(0, remainingPlaceholderCount) }, (_, i) => ({
+    driverId: `placeholder-${savedItems.length + newSavedItems.length + i + 1}`,
+    driverName: `Driver ${savedItems.length + newSavedItems.length + i + 1}`,
+    courseIds,
+  }));
+
+  const finalItemsJson = [...savedItems, ...newSavedItems, ...remainingPlaceholders];
+
+  // Update the quote with real driver data (preserving remaining placeholders)
   const { error: updateErr } = await supabaseAdmin
     .from("quotes")
     .update({
-      items_json: newItemsJson,
+      items_json: finalItemsJson,
       line_items: newLineItems,
     })
     .eq("id", quoteId)

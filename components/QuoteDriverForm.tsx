@@ -4,7 +4,7 @@
 // after a quote is paid, replacing placeholder "Driver 1", "Driver 2" entries.
 // Saved drivers get individual Deploy buttons so clients can deploy 1 or a few at a time.
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import {
   Loader2, CheckCircle2, AlertCircle, Users, Save, FileSpreadsheet, Send,
 } from "lucide-react";
@@ -47,6 +47,11 @@ export default function QuoteDriverForm({ quoteId, itemsJson, lineItems, onSaved
   const [rows, setRows] = useState<DriverRow[]>(
     Array.from({ length: placeholderItems.length || itemsJson.length }, () => ({ ...EMPTY_ROW }))
   );
+
+  // Reset rows when placeholder count changes (e.g. after a save + refetch)
+  useEffect(() => {
+    setRows(Array.from({ length: placeholderItems.length }, () => ({ ...EMPTY_ROW })));
+  }, [placeholderItems.length]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deployingDriverId, setDeployingDriverId] = useState<string | null>(null);
