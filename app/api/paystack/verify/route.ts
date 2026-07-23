@@ -181,6 +181,14 @@ export async function POST(req: NextRequest) {
           const quoteRef = quoteRow?.reference ?? quoteId;
           const quoteTotal = Number(quoteRow?.total ?? 0);
 
+          // Fetch updated credit balance
+          const { data: companyForBalance } = await supabaseAdmin
+            .from("companies")
+            .select("credit_balance")
+            .eq("id", session.companyId)
+            .single();
+          const creditBalance = Number(companyForBalance?.credit_balance ?? 0);
+
           if (clientEmail) {
             try {
               await sendEmail({
@@ -200,6 +208,10 @@ export async function POST(req: NextRequest) {
                         Your card payment for quote <strong style="color: white;">${quoteRef}</strong>
                         has been confirmed.
                       </p>
+                      <div style="background: rgba(46,204,113,0.1); border: 1px solid rgba(46,204,113,0.3); border-radius: 8px; padding: 16px; margin: 16px 0;">
+                        <p style="margin: 0; color: #2ecc71; font-weight: 700; font-size: 16px;">Credits Added: ${creditCount}</p>
+                        <p style="margin: 4px 0 0; color: #94a3b8; font-size: 14px;">Your dashboard now has <strong style="color: white;">${creditBalance}</strong> training credits available.</p>
+                      </div>
                       <p style="color: #94a3b8; line-height: 1.6;">
                         You can now deploy training to your drivers. Log in to your dashboard and click
                         <strong style="color: #2ecc71;">Deploy Training</strong> to send WhatsApp welcome
@@ -217,7 +229,7 @@ export async function POST(req: NextRequest) {
                     </div>
                   </div>
                 `,
-                text: `Payment Confirmed\n\nYour card payment for quote ${quoteRef} has been confirmed.\n\nLog in to your dashboard at ${dashboardUrl} and click "Deploy Training" to send WhatsApp welcome messages to your drivers.`,
+                text: `Payment Confirmed\n\nYour card payment for quote ${quoteRef} has been confirmed.\n\nCredits Added: ${creditCount}\nYour dashboard now has ${creditBalance} training credits available.\n\nLog in to your dashboard at ${dashboardUrl} and click "Deploy Training" to send WhatsApp welcome messages to your drivers.`,
               });
             } catch (err) {
               console.error("Paystack verify: client email error:", err);

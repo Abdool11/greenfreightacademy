@@ -159,6 +159,14 @@ export async function POST(req: NextRequest) {
         const quoteSubtotal = Number(quoteRow?.subtotal ?? 0);
         const quoteVat = Number(quoteRow?.vat ?? 0);
 
+        // Fetch updated credit balance
+        const { data: companyForBalance } = await supabaseAdmin
+          .from("companies")
+          .select("credit_balance")
+          .eq("id", companyId)
+          .single();
+        const creditBalance = Number(companyForBalance?.credit_balance ?? 0);
+
         // Client confirmation email
         if (clientEmail) {
           try {
@@ -184,6 +192,10 @@ export async function POST(req: NextRequest) {
                       <tr><td style="padding: 6px 0; color: #94a3b8;">VAT (15%)</td><td style="padding: 6px 0; color: white; text-align: right;">R ${quoteVat.toFixed(2)}</td></tr>
                       <tr style="border-top: 1px solid rgba(255,255,255,0.1);"><td style="padding: 8px 0; color: white; font-weight: 700;">Total Paid</td><td style="padding: 8px 0; color: #2ecc71; font-weight: 700; text-align: right;">R ${quoteTotal.toFixed(2)}</td></tr>
                     </table>
+                    <div style="background: rgba(46,204,113,0.1); border: 1px solid rgba(46,204,113,0.3); border-radius: 8px; padding: 16px; margin: 16px 0;">
+                      <p style="margin: 0; color: #2ecc71; font-weight: 700; font-size: 16px;">Credits Added: ${creditCount}</p>
+                      <p style="margin: 4px 0 0; color: #94a3b8; font-size: 14px;">Your dashboard now has <strong style="color: white;">${creditBalance}</strong> training credits available.</p>
+                    </div>
                     <p style="color: #94a3b8; line-height: 1.6;">
                       You can now deploy training to your drivers. Log in to your dashboard and click
                       <strong style="color: #2ecc71;">Deploy Training</strong> to send WhatsApp welcome
@@ -201,7 +213,7 @@ export async function POST(req: NextRequest) {
                   </div>
                 </div>
               `,
-              text: `Payment Confirmed\n\nYour card payment for quote ${quoteRef} has been confirmed.\n\nSubtotal: R ${quoteSubtotal.toFixed(2)}\nVAT (15%): R ${quoteVat.toFixed(2)}\nTotal Paid: R ${quoteTotal.toFixed(2)}\n\nLog in to your dashboard at ${dashboardUrl} and click "Deploy Training" to send WhatsApp welcome messages to your drivers.`,
+              text: `Payment Confirmed\n\nYour card payment for quote ${quoteRef} has been confirmed.\n\nSubtotal: R ${quoteSubtotal.toFixed(2)}\nVAT (15%): R ${quoteVat.toFixed(2)}\nTotal Paid: R ${quoteTotal.toFixed(2)}\n\nCredits Added: ${creditCount}\nYour dashboard now has ${creditBalance} training credits available.\n\nLog in to your dashboard at ${dashboardUrl} and click "Deploy Training" to send WhatsApp welcome messages to your drivers.`,
             });
           } catch (err) {
             console.error("Paystack webhook: client email error:", err);
