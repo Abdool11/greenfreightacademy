@@ -45,7 +45,7 @@ interface Company {
   contact_email: string;
   contact_phone: string;
   account_type: string;
-  status: string;
+  subscription_status: string;
   credit_balance: number;
   trial_expires_at?: string;
   created_at: string;
@@ -67,7 +67,7 @@ interface PaymentRow {
   payment_method: string;
   status: string;
   created_at: string;
-  paid_at: string | null;
+  confirmed_at: string | null;
 }
 
 function ProgressBar({ done, total }: { done: number; total: number }) {
@@ -99,7 +99,7 @@ export default async function AdminCompanyDetailPage({ params }: { params: Promi
 
   const { data: company } = await supabaseAdmin
     .from("companies")
-    .select("id, name, contact_name, contact_email, contact_phone, account_type, status, credit_balance, trial_expires_at, created_at")
+    .select("id, name, contact_name, contact_email, contact_phone, account_type, subscription_status, credit_balance, trial_expires_at, created_at")
     .eq("id", id)
     .single() as { data: Company | null };
 
@@ -147,7 +147,7 @@ export default async function AdminCompanyDetailPage({ params }: { params: Promi
 
   const { data: payments } = await supabaseAdmin
     .from("payments")
-    .select("id, amount, payment_method, status, created_at, paid_at")
+    .select("id, amount, payment_method, status, created_at, confirmed_at")
     .eq("company_id", id)
     .order("created_at", { ascending: false })
     .limit(10) as { data: PaymentRow[] | null };
@@ -173,6 +173,7 @@ export default async function AdminCompanyDetailPage({ params }: { params: Promi
     active: "#22c55e", trial: "#f59e0b", suspended: "#ef4444", inactive: "#6b7280",
     enrolled: "#3b82f6", "in-progress": "#f59e0b", completed: "#8b5cf6",
     certified: "#22c55e", overdue: "#ef4444",
+    confirmed: "#22c55e", pending: "#f59e0b",
   };
 
   return (
@@ -194,7 +195,7 @@ export default async function AdminCompanyDetailPage({ params }: { params: Promi
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem" }}>
                 <h1 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}>{company.name}</h1>
-                <Badge label={company.status} color={statusColor[company.status] ?? "#6b7280"} />
+                <Badge label={company.subscription_status} color={statusColor[company.subscription_status] ?? "#6b7280"} />
                 <Badge label={company.account_type} color="#60a5fa" />
               </div>
               <div style={{ display: "flex", gap: "2rem", color: "#94a3b8", fontSize: "0.875rem", flexWrap: "wrap" }}>
@@ -286,8 +287,8 @@ export default async function AdminCompanyDetailPage({ params }: { params: Promi
                       <tr key={p.id} style={{ borderBottom: i < paymentList.length - 1 ? "1px solid rgba(100,116,139,0.1)" : "none" }}>
                         <td style={{ padding: "0.625rem 1rem", color: "#94a3b8", textTransform: "capitalize" }}>{p.payment_method}</td>
                         <td style={{ padding: "0.625rem 1rem", textAlign: "right", color: "#22c55e", fontWeight: 600 }}>R {Number(p.amount).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</td>
-                        <td style={{ padding: "0.625rem 1rem", textAlign: "center" }}><Badge label={p.status} color={p.status === "paid" ? "#22c55e" : "#f59e0b"} /></td>
-                        <td style={{ padding: "0.625rem 1rem", color: "#64748b", fontSize: "0.75rem" }}>{new Date(p.paid_at || p.created_at).toLocaleDateString("en-ZA")}</td>
+                        <td style={{ padding: "0.625rem 1rem", textAlign: "center" }}><Badge label={p.status} color={statusColor[p.status] ?? "#f59e0b"} /></td>
+                        <td style={{ padding: "0.625rem 1rem", color: "#64748b", fontSize: "0.75rem" }}>{new Date(p.confirmed_at || p.created_at).toLocaleDateString("en-ZA")}</td>
                       </tr>
                     ))}
                   </tbody>
