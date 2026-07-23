@@ -285,8 +285,8 @@ export default function QuoteDriverForm({ quoteId, itemsJson, lineItems, onSaved
             <button
               onClick={() => {
                 const headers = ["First Name", "Last Name", "Mobile Number", "Email"];
-                const csv = headers.join(",") + "\n";
-                const blob = new Blob([csv], { type: "text/csv" });
+                const csv = "\uFEFF" + headers.map((h) => `"${h}"`).join(",") + "\n";
+                const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
