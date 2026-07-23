@@ -70,6 +70,17 @@ interface PaymentRow {
   confirmed_at: string | null;
 }
 
+interface DeploymentRow {
+  id: string;
+  programme_id: string;
+  seats: number;
+  status: string;
+  approval_status: string | null;
+  created_at: string;
+  deployed_at: string | null;
+  magic_links_sent_count: number | null;
+}
+
 function ProgressBar({ done, total }: { done: number; total: number }) {
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   const color = pct >= 100 ? "#22c55e" : pct >= 50 ? "#f59e0b" : "#3b82f6";
@@ -105,7 +116,7 @@ export default async function AdminCompanyDetailPage({ params }: { params: Promi
 
   if (!company) notFound();
 
-  const { data: drivers } = await supabaseAdmin
+  const { data: drivers, error: driversError } = await supabaseAdmin
     .from("drivers")
     .select(`
       id,
@@ -130,7 +141,7 @@ export default async function AdminCompanyDetailPage({ params }: { params: Promi
       )
     `)
     .eq("company_id", id)
-    .order("last_name", { ascending: true }) as { data: Driver[] | null };
+    .order("last_name", { ascending: true }) as { data: Driver[] | null; error: unknown };
 
   const { data: courses } = await supabaseAdmin
     .from("courses")
@@ -157,10 +168,20 @@ export default async function AdminCompanyDetailPage({ params }: { params: Promi
     .select("*", { count: "exact", head: true })
     .eq("company_id", id);
 
+  const { data: deployments } = await supabaseAdmin
+    .from("deployments")
+    .select("id, programme_id, seats, status, approval_status, created_at, deployed_at, magic_links_sent_count")
+    .eq("company_id", id)
+    .order("created_at", { ascending: false })
+    .limit(10) as { data: DeploymentRow[] | null };
+
+  if (driversError) console.error("[company-detail] drivers query error:", driversError);
+
   const driverList = drivers ?? [];
   const courseList = courses ?? [];
   const quoteList = quotes ?? [];
   const paymentList = payments ?? [];
+  const deploymentList = deployments ?? [];
   const credits = Number(company.credit_balance ?? 0);
 
   const totalDrivers = driverList.length;
@@ -298,6 +319,88 @@ export default async function AdminCompanyDetailPage({ params }: { params: Promi
           </div>
         </div>
 
+        {/* Deployments */}
+        <div style={{ marginBottom: "2rem" }}>
+          <h2 style={{ margin: "0 0 1rem", fontSize: "1.125rem", fontWeight: 700 }}>Deployments</h2>
+          {deploymentList.length === 0 ? (
+            <div style={{ background: "#111f3a", border: "1px dashed rgba(100,116,139,0.3)", borderRadius: "0.875rem", padding: "2rem", textAlign: "center", color: "#475569", fontSize: "0.875rem" }}>
+              No deployments yet.
+            </div>
+          ) : (
+            <div style={{ background: "#111f3a", border: "1px solid rgba(100,116,139,0.3)", borderRadius: "0.875rem", overflow: "hidden" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
+                <thead>
+                  <tr style={{ borderBottom: "2px solid rgba(100,116,139,0.3)" }}>
+                    <th style={{ padding: "0.625rem 1rem", textAlign: "left", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Programme</th>
+                    <th style={{ padding: "0.625rem 1rem", textAlign: "center", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Seats</th>
+                    <th style={{ padding: "0.625rem 1rem", textAlign: "center", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Status</th>
+                    <th style={{ padding: "0.625rem 1rem", textAlign: "center", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Approval</th>
+                    <th style={{ padding: "0.625rem 1rem", textAlign: "center", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Links Sent</th>
+                    <th style={{ padding: "0.625rem 1rem", textAlign: "left", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {deploymentList.map((d, i) => (
+                    <tr key={d.id} style={{ borderBottom: i < deploymentList.length - 1 ? "1px solid rgba(100,116,139,0.1)" : "none" }}>
+                      <td style={{ padding: "0.625rem 1rem", color: "#f9fafb", fontWeight: 600, textTransform: "uppercase", fontSize: "0.75rem" }}>{d.programme_id}</td>
+                      <td style={{ padding: "0.625rem 1rem", textAlign: "center", color: "#94a3b8" }}>{d.seats}</td>
+                      <td style={{ padding: "0.625rem 1rem", textAlign: "center" }}><Badge label={d.status} color={statusColor[d.status] ?? "#6b7280"} /></td>
+                      <td style={{ padding: "0.625rem 1rem", textAlign: "center" }}>{d.approval_status ? <Badge label={d.approval_status} color={d.approval_status === "approved" ? "#22c55e" : "#f59e0b"} /> : <span style={{ color: "#1e293b", fontSize: "0.75rem" }}>—</span>}</td>
+                      <td style={{ padding: "0.625rem 1rem", textAlign: "center", color: "#94a3b8" }}>{d.magic_links_sent_count ?? 0}</td>
+                      <td style={{ padding: "0.625rem 1rem", color: "#64748b", fontSize: "0.75rem" }}>{new Date(d.deployed_at || d.created_at).toLocaleDateString("en-ZA")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Driver List */}
+        <div style={{ marginBottom: "2rem" }}>
+          <h2 style={{ margin: "0 0 1rem", fontSize: "1.125rem", fontWeight: 700 }}>Drivers ({driverList.length})</h2>
+          {driverList.length === 0 ? (
+            <div style={{ background: "#111f3a", border: "1px dashed rgba(100,116,139,0.3)", borderRadius: "0.875rem", padding: "2rem", textAlign: "center", color: "#475569", fontSize: "0.875rem" }}>
+              No drivers imported yet.
+            </div>
+          ) : (
+            <div style={{ background: "#111f3a", border: "1px solid rgba(100,116,139,0.3)", borderRadius: "0.875rem", overflow: "hidden" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
+                <thead>
+                  <tr style={{ borderBottom: "2px solid rgba(100,116,139,0.3)" }}>
+                    <th style={{ padding: "0.625rem 1rem", textAlign: "left", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Name</th>
+                    <th style={{ padding: "0.625rem 1rem", textAlign: "left", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Contact</th>
+                    <th style={{ padding: "0.625rem 1rem", textAlign: "center", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Status</th>
+                    <th style={{ padding: "0.625rem 1rem", textAlign: "center", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Enrolments</th>
+                    <th style={{ padding: "0.625rem 1rem", textAlign: "center", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Activated</th>
+                    <th style={{ padding: "0.625rem 1rem", textAlign: "center", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Certified</th>
+                    <th style={{ padding: "0.625rem 1rem", textAlign: "left", color: "#64748b", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase" }}>Added</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {driverList.map((d, i) => (
+                    <tr key={d.id} style={{ borderBottom: i < driverList.length - 1 ? "1px solid rgba(100,116,139,0.1)" : "none" }}>
+                      <td style={{ padding: "0.625rem 1rem", color: "#f9fafb", fontWeight: 600 }}>
+                        {d.first_name} {d.last_name}
+                        {d.branch && <div style={{ color: "#64748b", fontSize: "0.75rem", fontWeight: 400 }}>{d.branch}</div>}
+                      </td>
+                      <td style={{ padding: "0.625rem 1rem", color: "#94a3b8" }}>
+                        <div>{d.mobile}</div>
+                        {d.email && <div style={{ color: "#64748b", fontSize: "0.75rem" }}>{d.email}</div>}
+                      </td>
+                      <td style={{ padding: "0.625rem 1rem", textAlign: "center" }}><Badge label={d.status} color={statusColor[d.status] ?? "#6b7280"} /></td>
+                      <td style={{ padding: "0.625rem 1rem", textAlign: "center", color: "#94a3b8" }}>{d.enrolments.length}</td>
+                      <td style={{ padding: "0.625rem 1rem", textAlign: "center" }}>{d.enrolments.some(e => e.started_at) ? <span style={{ color: "#22c55e" }}>✓</span> : <span style={{ color: "#1e293b" }}>—</span>}</td>
+                      <td style={{ padding: "0.625rem 1rem", textAlign: "center" }}>{d.enrolments.some(e => e.completed_at) ? <span style={{ color: "#a78bfa" }}>★</span> : <span style={{ color: "#1e293b" }}>—</span>}</td>
+                      <td style={{ padding: "0.625rem 1rem", color: "#64748b", fontSize: "0.75rem" }}>{new Date(d.created_at).toLocaleDateString("en-ZA")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
         {/* Training Matrix */}
         <div>
           <h2 style={{ margin: "0 0 1rem", fontSize: "1.125rem", fontWeight: 700 }}>Training Matrix</h2>
@@ -349,7 +452,7 @@ export default async function AdminCompanyDetailPage({ params }: { params: Promi
                         {driver.email && <div style={{ color: "#64748b", fontSize: "0.75rem" }}>{driver.email}</div>}
                       </td>
                       {courseList.map(c => {
-                        const enrolment = driver.enrolments.find(e => e.programme_id === c.id);
+                        const enrolment = driver.enrolments.find(e => e.programme_id === c.slug || e.programme_slug === c.slug);
                         const moduleTotal = c.module_count || 12;
                         return (
                           <>
