@@ -88,13 +88,25 @@ async function sendTrialWelcomeEmail(to: string, contactName: string, companyNam
             <li>WhatsApp-based training delivery to your drivers</li>
           </ul>
         </div>
+        <div style="background: #0a1628; border: 1px solid rgba(46,204,113,0.3); border-radius: 8px; padding: 1rem 1.25rem; margin: 1rem 0;">
+          <p style="color: #2ecc71; margin: 0 0 0.75rem; font-size: 0.875rem; font-weight: 700;">Getting Started</p>
+          <ol style="color: #94a3b8; margin: 0; padding-left: 1.25rem; font-size: 0.875rem; line-height: 1.8;">
+            <li><strong style="color: white;">Add drivers</strong> — Go to the Drivers section and add your drivers' names and WhatsApp numbers.</li>
+            <li><strong style="color: white;">Select courses</strong> — Browse the training library and choose the courses you want to deploy.</li>
+            <li><strong style="color: white;">Deploy training</strong> — Use your credits to enrol drivers and deploy training via WhatsApp.</li>
+          </ol>
+        </div>
+        <p style="color: #94a3b8; line-height: 1.6; font-size: 0.875rem; margin: 1.5rem 0 0;">
+          Already set up your password? You can log in anytime at
+          <a href="${siteUrl}/login" style="color: #2ecc71; text-decoration: none;">${siteUrl}/login</a>
+        </p>
         <p style="color: #64748b; font-size: 12px; text-align: center;">
           This setup link expires in 7 days. If you have any questions, please contact the GreenFreightAcademy team.
         </p>
       </div>
     </div>
   `;
-  const text = `Welcome to GreenFreightAcademy!\n\nYour trial account for ${companyName} has been created with ${trialCredits} training credits.\n\nSet up your password at: ${setupUrl}\n\nThis link expires in 7 days.`;
+  const text = `Welcome to GreenFreightAcademy!\n\nYour trial account for ${companyName} has been created with ${trialCredits} training credits.\n\nSet up your password at: ${setupUrl}\n\nGetting Started:\n  1. Add drivers — Go to the Drivers section and add your drivers' names and WhatsApp numbers.\n  2. Select courses — Browse the training library and choose the courses you want to deploy.\n  3. Deploy training — Use your credits to enrol drivers and deploy training via WhatsApp.\n\nAlready set up your password? Log in anytime at: ${siteUrl}/login\n\nThis setup link expires in 7 days.`;
   try {
     await sendEmail({
       from: "abdool@transportactiongroup.co.za",

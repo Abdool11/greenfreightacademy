@@ -131,6 +131,7 @@ export default function DashboardPage() {
   // Credits
   const [creditBalance, setCreditBalance] = useState(0);
   const [pendingQuoteCount, setPendingQuoteCount] = useState(0);
+  const [accountType, setAccountType] = useState<string>("full");
   const [showBuyCredits, setShowBuyCredits] = useState(false);
   const [autoPopupChecked, setAutoPopupChecked] = useState(false);
   const [expandedQuoteId, setExpandedQuoteId] = useState<string | null>(null);
@@ -162,6 +163,7 @@ export default function DashboardPage() {
         const creditsData = await creditsRes.json();
         setCreditBalance(creditsData.creditBalance ?? 0);
         setPendingQuoteCount(creditsData.pendingQuotes ?? 0);
+        setAccountType(creditsData.accountType ?? "full");
       }
     } catch { /* silently fail */ } finally { setLoading(false); }
   }, []);
@@ -628,7 +630,14 @@ export default function DashboardPage() {
 
             <div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem", marginBottom: "0.5rem" }}>
-                <h2 style={{ margin: 0, fontSize: "1.125rem", color: "#f9fafb" }}>Deployment</h2>
+                <h2 style={{ margin: 0, fontSize: "1.125rem", color: "#f9fafb", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  Deployment
+                  {accountType === "trial" && (
+                    <span style={{ background: "rgba(34,211,238,0.2)", color: "#22d3ee", fontSize: "0.6875rem", fontWeight: 700, padding: "0.125rem 0.5rem", borderRadius: "9999px", border: "1px solid rgba(34,211,238,0.3)", letterSpacing: "0.025em" }}>
+                      TRIAL
+                    </span>
+                  )}
+                </h2>
                 <div style={{ display: "flex", gap: "0.625rem", alignItems: "center" }}>
                   <Link href="/dashboard/import" style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.25)", borderRadius: "0.5rem", padding: "0.375rem 0.75rem", color: "#4ade80", fontSize: "0.75rem", fontWeight: 600, textDecoration: "none" }}>
                     <Upload size={13} /> Import from Excel

@@ -8,7 +8,7 @@ export async function GET() {
 
   const { data: company, error } = await supabaseAdmin
     .from("companies")
-    .select("credit_balance")
+    .select("credit_balance, account_type")
     .eq("id", session.companyId)
     .single();
 
@@ -24,5 +24,6 @@ export async function GET() {
   return NextResponse.json({
     creditBalance: Number(company?.credit_balance ?? 0),
     pendingQuotes: pendingCredits ?? 0,
+    accountType: company?.account_type ?? "full",
   });
 }
