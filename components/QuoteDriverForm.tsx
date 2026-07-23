@@ -6,7 +6,7 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import {
-  Loader2, CheckCircle2, AlertCircle, Users, Save, FileSpreadsheet, Send,
+  Loader2, CheckCircle2, AlertCircle, Users, Save, FileSpreadsheet, Send, Download,
 } from "lucide-react";
 
 interface QuoteItemJson {
@@ -281,6 +281,35 @@ export default function QuoteDriverForm({ quoteId, itemsJson, lineItems, onSaved
             >
               {uploading ? <Loader2 size={13} className="animate-spin" /> : <FileSpreadsheet size={13} />}
               {uploading ? "Parsing..." : "Upload Excel / CSV"}
+            </button>
+            <button
+              onClick={() => {
+                const headers = ["First Name", "Last Name", "Mobile Number", "Email"];
+                const csv = headers.join(",") + "\n";
+                const blob = new Blob([csv], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "GFA_Driver_Template.csv";
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.375rem",
+                background: "rgba(96,165,250,0.1)",
+                border: "1px solid rgba(96,165,250,0.3)",
+                borderRadius: "0.375rem",
+                padding: "0.375rem 0.625rem",
+                color: "#60a5fa",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              <Download size={13} />
+              Download Template
             </button>
           </div>
         )}
