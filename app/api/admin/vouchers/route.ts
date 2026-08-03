@@ -209,6 +209,115 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "resend") {
+    const { data: voucher } = await supabaseAdmin
+      .from("trial_vouchers")
+      .select("id, code, seats, expires_at, welcome_message, brochure_url, prospect_name, prospect_email, prospect_phone, prospect_company, status")
+      .eq("id", voucherId)
+      .single();
+
+    if (!voucher) {
+      return NextResponse.json({ error: "Voucher not found" }, { status: 404 });
+    }
+
+    if (voucher.status === "activated" || voucher.status === "converted") {
+      return NextResponse.json({ error: "This voucher has already been activated" }, { status: 400 });
+    }
+
+    // Check if expired — if so, extend by the original expires_days
+    let expiresAt = voucher.expires_at;
+    let refreshed = false;
+    if (new Date(voucher.expires_at) < new Date()) {
+      const newExpiry = new Date();
+      newExpiry.setDate(newExpiry.getDate() + 30);
+      expiresAt = newExpiry.toISOString();
+      refreshed = true;
+      await supabaseAdmin
+        .from("trial_vouchers")
+        .update({ expires_at: expiresAt })
+        .eq("id", voucherId);
+    }
+
+    const activationUrl = `${process.env.NEXT_PUBLIC_GFA_URL ?? ""}/trial?code=${voucher.code}`;
+
+    // Send via email
+    if (voucher.prospect_email && process.env.BREVO_SMTP_PASSWORD) {
+      try {
+        await sendEmail({
+          from: "abdool@transportactiongroup.co.za",
+          fromName: "GreenFreightAcademy",
+          to: voucher.prospect_email,
+          subject: `Your GFA Trial Access — ${voucher.seats} seat${voucher.seats > 1 ? "s" : ""} ready`,
+          html: buildVoucherEmail({
+            prospectName: voucher.prospect_name ?? "there",
+            prospectCompany: voucher.prospect_company ?? "",
+            seats: voucher.seats,
+            welcomeMessage: voucher.welcome_message ?? "",
+            brochureUrl: voucher.brochure_url ?? "",
+            activationUrl,
+            expiresAt: new Date(expiresAt).toLocaleDateString("en-ZA"),
+            code: voucher.code,
+          }),
+        });
+      } catch (emailErr) {
+        console.error("Voucher resend email error:", emailErr);
+        return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
+      }
+    }
+
+    // Send via WhatsApp
+    if (voucher.prospect_phone) {
+      const config = await getConfigs(["whatsapp_phone_id", "whatsapp_access_token", "whatsapp_trial_template"]);
+      if (config.whatsapp_phone_id && config.whatsapp_access_token) {
+        try {
+          const waTemplate = config.whatsapp_trial_template || "";
+          const waBody = waTemplate
+            ? renderTemplate(waTemplate, {
+                contact_name: voucher.prospect_name ?? "there",
+                company_name: voucher.prospect_company ?? "",
+                seats: String(voucher.seats),
+                expires_date: new Date(expiresAt).toLocaleDateString("en-ZA"),
+                activation_link: activationUrl,
+                welcome_message: voucher.welcome_message ?? "",
+              })
+            : `Hi ${voucher.prospect_name ?? "there"} 👋\n\nYou have been invited to trial the GreenFreightAcademy platform with ${voucher.seats} driver seat${voucher.seats > 1 ? "s" : ""}.\n\n${voucher.welcome_message ? voucher.welcome_message + "\n\n" : ""}Activate your trial here:\n${activationUrl}\n\nYour trial code: *${voucher.code}*\nExpires: ${new Date(expiresAt).toLocaleDateString("en-ZA")}`;
+
+          await fetch(
+            `https://graph.facebook.com/v18.0/${config.whatsapp_phone_id}/messages`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${config.whatsapp_access_token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                messaging_product: "whatsapp",
+                to: voucher.prospect_phone.replace(/\D/g, ""),
+                type: "text",
+                text: { body: waBody },
+              }),
+            }
+          );
+        } catch (waErr) {
+          console.error("WhatsApp voucher resend error:", waErr);
+        }
+      }
+    }
+
+    // Update voucher status and sent_at
+    await supabaseAdmin
+      .from("trial_vouchers")
+      .update({ status: "sent", sent_at: new Date().toISOString() })
+      .eq("id", voucherId);
+
+    return NextResponse.json({
+      ok: true,
+      refreshed,
+      activationUrl,
+      message: refreshed ? "Voucher extended and email resent" : "Voucher email resent",
+    });
+  }
+
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 }
 

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, ArrowUpDown, ArrowUp, ArrowDown, Filter } from "lucide-react";
+import { Search, ArrowUpDown, ArrowUp, ArrowDown, Filter, Mail, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
 
 interface CompanyRow {
   id: string;
@@ -13,6 +13,10 @@ interface CompanyRow {
   account_type: string;
   subscription_status: string;
   trial_expires_at: string | null;
+  setup_token: string | null;
+  setup_token_used: boolean | null;
+  setup_expires_at: string | null;
+  credit_balance: string | number | null;
   created_at: string;
 }
 
@@ -25,6 +29,8 @@ export default function CompaniesTable({ companies }: { companies: CompanyRow[] 
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [resendResult, setResendResult] = useState<{ id: string; ok: boolean; message: string } | null>(null);
 
   const statusOptions = useMemo(() => {
     const set = new Set(companies.map(c => c.subscription_status).filter(Boolean));
@@ -96,6 +102,30 @@ export default function CompaniesTable({ companies }: { companies: CompanyRow[] 
   };
 
   const selectClass = "bg-[#0a1628] border border-slate-700/50 text-slate-300 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-[#2ecc71]/50 cursor-pointer";
+
+  async function handleResendSetup(companyId: string, companyName: string) {
+    if (!confirm(`Resend the setup email for ${companyName}? If the link has expired, a new one will be generated.`)) return;
+    setResendingId(companyId);
+    setResendResult(null);
+    try {
+      const res = await fetch("/api/admin/companies/resend-setup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setResendResult({ id: companyId, ok: false, message: data.error ?? "Failed to resend" });
+      } else {
+        setResendResult({ id: companyId, ok: true, message: data.message ?? "Email resent" });
+      }
+      setTimeout(() => setResendResult(null), 5000);
+    } catch {
+      setResendResult({ id: companyId, ok: false, message: "Network error" });
+    } finally {
+      setResendingId(null);
+    }
+  }
 
   return (
     <div>
@@ -220,12 +250,36 @@ export default function CompaniesTable({ companies }: { companies: CompanyRow[] 
                   {new Date(c.created_at).toLocaleDateString("en-ZA")}
                 </td>
                 <td className="px-6 py-4">
-                  <Link
-                    href={`/admin/companies/${c.id}`}
-                    className="text-[#2ecc71] hover:underline text-xs"
-                  >
-                    View
-                  </Link>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href={`/admin/companies/${c.id}`}
+                      className="text-[#2ecc71] hover:underline text-xs"
+                    >
+                      View
+                    </Link>
+                    {c.account_type === "trial" && !c.setup_token_used && (
+                      <button
+                        onClick={() => handleResendSetup(c.id, c.name)}
+                        disabled={resendingId === c.id}
+                        className="flex items-center gap-1 text-blue-400 hover:text-blue-300 text-xs disabled:opacity-50"
+                        title="Resend setup email"
+                      >
+                        {resendingId === c.id ? (
+                          <><RefreshCw size={11} className="animate-spin" /> Sending…</>
+                        ) : (
+                          <><Mail size={11} /> Resend</>
+                        )}
+                      </button>
+                    )}
+                    {c.account_type === "trial" && c.setup_token_used && (
+                      <span className="text-slate-600 text-xs">Setup complete</span>
+                    )}
+                  </div>
+                  {resendResult?.id === c.id && (
+                    <div className={`mt-1.5 flex items-center gap-1 text-xs ${resendResult.ok ? "text-green-400" : "text-red-400"}`}>
+                      {resendResult.ok ? <CheckCircle2 size={10} /> : <AlertTriangle size={10} />} {resendResult.message}
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}

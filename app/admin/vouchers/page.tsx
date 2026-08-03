@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Copy, CheckCircle2, Clock, AlertTriangle, RefreshCw, ArrowUpRight } from "lucide-react";
+import { Plus, Copy, CheckCircle2, Clock, AlertTriangle, RefreshCw, ArrowUpRight, Mail } from "lucide-react";
 
 interface Voucher {
   id: string;
@@ -60,6 +60,8 @@ export default function VouchersPage() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [lastCreated, setLastCreated] = useState<{ code: string; url: string } | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [resendResult, setResendResult] = useState<{ id: string; ok: boolean; message: string } | null>(null);
 
   useEffect(() => { fetchVouchers(); }, []);
 
@@ -111,6 +113,31 @@ export default function VouchersPage() {
     navigator.clipboard.writeText(text);
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(null), 2000);
+  }
+
+  async function handleResend(voucherId: string) {
+    if (!confirm("Resend the trial invitation email? If the voucher has expired, it will be extended by 30 days.")) return;
+    setResendingId(voucherId);
+    setResendResult(null);
+    try {
+      const res = await fetch("/api/admin/vouchers", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voucherId, action: "resend" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setResendResult({ id: voucherId, ok: false, message: data.error ?? "Failed to resend" });
+      } else {
+        setResendResult({ id: voucherId, ok: true, message: data.message ?? "Email resent" });
+        fetchVouchers();
+      }
+      setTimeout(() => setResendResult(null), 5000);
+    } catch {
+      setResendResult({ id: voucherId, ok: false, message: "Network error" });
+    } finally {
+      setResendingId(null);
+    }
   }
 
   const cardStyle: React.CSSProperties = { background: "#0a1628", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "0.875rem", padding: "1.5rem" };
@@ -285,6 +312,16 @@ export default function VouchersPage() {
                       >
                         {copiedCode === v.code ? <><CheckCircle2 size={12} style={{ color: "#22c55e" }} /> Copied</> : <><Copy size={12} /> Copy link</>}
                       </button>
+                      {(v.status === "sent" || v.status === "pending") && (
+                        <button
+                          onClick={() => handleResend(v.id)}
+                          disabled={resendingId === v.id}
+                          title="Resend invitation email"
+                          style={{ display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.4375rem 0.75rem", background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.3)", borderRadius: "0.5rem", color: "#60a5fa", fontSize: "0.8125rem", cursor: resendingId === v.id ? "default" : "pointer", opacity: resendingId === v.id ? 0.6 : 1 }}
+                        >
+                          {resendingId === v.id ? <><RefreshCw size={12} className="animate-spin" /> Sending…</> : <><Mail size={12} /> Resend</>}
+                        </button>
+                      )}
                       {v.status === "activated" && (
                         <button
                           onClick={() => handleConvert(v.id)}
@@ -294,6 +331,11 @@ export default function VouchersPage() {
                         </button>
                       )}
                     </div>
+                    {resendResult?.id === v.id && (
+                      <div style={{ marginTop: "0.75rem", fontSize: "0.8125rem", color: resendResult.ok ? "#22c55e" : "#f87171", display: "flex", alignItems: "center", gap: "0.375rem" }}>
+                        {resendResult.ok ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />} {resendResult.message}
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: "flex", gap: "1.25rem", marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
                     <div style={{ fontSize: "0.75rem", color: "#4b5563", display: "flex", alignItems: "center", gap: "0.25rem" }}>

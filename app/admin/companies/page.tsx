@@ -10,7 +10,7 @@ export default async function AdminCompaniesPage() {
 
   const { data: companies } = await supabaseAdmin
     .from("companies")
-    .select("id, name, contact_name, contact_email, contact_phone, account_type, subscription_status, trial_expires_at, created_at")
+    .select("id, name, contact_name, contact_email, contact_phone, account_type, subscription_status, trial_expires_at, setup_token, setup_token_used, setup_expires_at, credit_balance, created_at")
     .order("created_at", { ascending: false });
 
   return (
