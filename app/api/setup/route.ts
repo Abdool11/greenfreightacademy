@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     .update({
       password_hash: passwordHash,
       setup_token_used: true,
-      status: "active",
+      subscription_status: "active",
     })
     .eq("id", company.id);
 

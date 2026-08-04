@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
   const { data: existingCompany } = await supabaseAdmin
     .from("companies")
     .select("id")
-    .eq("email", email.toLowerCase())
+    .eq("contact_email", email.toLowerCase())
     .single();
 
   if (existingCompany) {
@@ -107,16 +107,16 @@ export async function POST(req: NextRequest) {
     .insert({
       name: companyName.trim(),
       contact_name: contactName.trim(),
-      email: email.toLowerCase().trim(),
-      phone: phone?.trim() ?? null,
+      contact_email: email.toLowerCase().trim(),
+      contact_phone: phone?.trim() ?? null,
       password_hash: passwordHash,
       account_type: "trial",
       trial_seats: voucher.seats,
       trial_expires_at: voucher.expires_at,
-      status: "active",
+      subscription_status: "active",
       created_at: new Date().toISOString(),
     })
-    .select("id, name, email, account_type, trial_seats, trial_expires_at")
+    .select("id, name, contact_email, account_type, trial_seats, trial_expires_at")
     .single();
 
   if (companyError || !company) {
