@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
+import { adminNotify, writeLedgerEntry } from "@/lib/adminNotify";
 
 // POST /api/company/eft-payment — client submits EFT payment notification
 export async function POST(req: NextRequest) {
@@ -83,6 +84,31 @@ export async function POST(req: NextRequest) {
       // Non-blocking — payment is still recorded
     }
   }
+
+  // ── Notify admin via configured channels (WhatsApp + email matrix) ──────────
+  await adminNotify("eft_submitted", {
+    message: `${session.companyName} has submitted an EFT payment — action required to verify and approve.`,
+    actionUrl: "/admin/dashboard",
+    details: {
+      Company:        session.companyName,
+      "Quote Ref":    quote.reference,
+      "Amount Claimed": `R ${Number(eftAmount).toFixed(2)}`,
+      "EFT Reference": eftReference,
+      "Payment Date":  new Date(eftDate).toLocaleDateString("en-ZA"),
+    },
+  });
+
+  // ── Write ledger entry ────────────────────────────────────────────────────
+  await writeLedgerEntry({
+    company_id:  session.companyId,
+    entry_type:  "eft_submitted",
+    amount:      Number(eftAmount),
+    description: `EFT submitted — ${quote.reference}`,
+    reference:   eftReference,
+    quote_id:    quoteId,
+    status:      "pending",
+    created_by:  "client",
+  });
 
   return NextResponse.json({
     ok: true,

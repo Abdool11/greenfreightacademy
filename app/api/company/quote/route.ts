@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
+import { adminNotify, writeLedgerEntry } from "@/lib/adminNotify";
 
 interface QuoteLineItem {
   driverId: string;
@@ -205,6 +206,31 @@ export async function POST(req: NextRequest) {
   } else {
     console.warn("BREVO_SMTP_PASSWORD not set — quote email skipped for", ref);
   }
+
+  // ── Admin notification matrix ─────────────────────────────────────────────────
+  await adminNotify("quote_generated", {
+    message: `${session.companyName} has generated a new training quote.`,
+    actionUrl: "/admin/dashboard",
+    details: {
+      Company:  session.companyName,
+      "Quote Ref": ref,
+      Drivers:  String(items.length),
+      Total:    `R ${total.toFixed(2)}`,
+    },
+  });
+
+  // ── Write ledger entry ────────────────────────────────────────────────────
+  await writeLedgerEntry({
+    company_id:   session.companyId,
+    entry_type:   "quote_issued",
+    amount:       total,
+    description:  `Quote issued — ${items.length} driver(s) — ${ref}`,
+    reference:    ref,
+    quote_id:     quote.id,
+    driver_count: items.length,
+    status:       "pending",
+    created_by:   "client",
+  });
 
   return NextResponse.json({ ok: true, reference: ref, total, quoteId: quote.id });
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { signSession, setSessionCookie } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
+import { adminNotify } from "@/lib/adminNotify";
 import bcrypt from "bcryptjs";
 
 async function sendWelcomeEmail(to: string, contactName: string, companyName: string) {
@@ -95,6 +96,18 @@ export async function POST(req: NextRequest) {
 
   // Send welcome email (non-blocking — don't fail registration if email fails)
   await sendWelcomeEmail(email, contactName, companyName);
+
+  // ── Admin notification matrix ─────────────────────────────────────────────────
+  await adminNotify("company_registered", {
+    message: `New company registered on GFA.`,
+    actionUrl: "/admin/companies",
+    details: {
+      Company:  companyName,
+      Contact:  contactName,
+      Email:    email,
+      Phone:    phone ?? "",
+    },
+  });
 
   const session = { companyId: company.id, companyName: company.name, email: company.contact_email, role: "client" as const };
   const token = await signSession(session);

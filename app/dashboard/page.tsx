@@ -12,6 +12,8 @@ import CampaignSetupModal from "@/components/CampaignSetupModal";
 import AddDriversModal from "@/components/AddDriversModal";
 import BuyCreditsModal from "@/components/BuyCreditsModal";
 import QuoteDriverForm from "@/components/QuoteDriverForm";
+import DemoTourBanner from "@/components/onboarding/DemoTourBanner";
+import FirstLoginWalkthrough from "@/components/onboarding/FirstLoginWalkthrough";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -441,6 +443,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ── Onboarding: first-login walkthrough (localStorage-gated, no DB) ── */}
+      <FirstLoginWalkthrough />
+
       <div className="container-gfa" style={{ padding: "2.5rem 0 4rem" }}>
         {loading ? (
           <div style={{ textAlign: "center", padding: "4rem", color: "#6b7280" }}>
@@ -467,6 +472,9 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+
+            {/* ── Demo tour discoverability banner (dismissable, localStorage-gated) ── */}
+            <DemoTourBanner driverCount={totalDrivers} />
 
             {quoteSent && (
               <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "0.875rem", padding: "1rem 1.25rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.75rem", color: "#22c55e" }}>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
+import { adminNotify, writeLedgerEntry } from "@/lib/adminNotify";
 import crypto from "crypto";
 
 // POST /api/paystack/webhook — receives Paystack payment events
@@ -255,7 +256,41 @@ export async function POST(req: NextRequest) {
         console.error("Paystack webhook: email notification error:", emailErr);
       }
     }
+
+    // ── Admin notification matrix (WhatsApp + email) ────────────────────────────
+    // Runs after emails so it never blocks the Paystack acknowledgement
+    try {
+      const { data: notifQuote } = await supabaseAdmin
+        .from("quotes")
+        .select("reference, total, subtotal, company_id, companies(name)")
+        .eq("id", quoteId)
+        .single();
+      const notifCompany = (notifQuote?.companies as { name?: string } | null)?.name ?? "Unknown";
+      await adminNotify("payment_received_paystack", {
+        message: `Paystack card payment confirmed — auto-approved. Client can now deploy training.`,
+        details: {
+          Company:           notifCompany,
+          "Quote Ref":       notifQuote?.reference ?? quoteId,
+          "Amount":          `R ${Number(notifQuote?.total ?? 0).toFixed(2)}`,
+          "Paystack Ref":    paystackReference,
+        },
+      });
+      // ── Write ledger entry ──────────────────────────────────────────────────
+      await writeLedgerEntry({
+        company_id:  companyId,
+        entry_type:  "payment_received",
+        amount:      Number(notifQuote?.total ?? 0),
+        description: `Paystack payment — ${notifQuote?.reference ?? quoteId}`,
+        reference:   paystackReference,
+        quote_id:    quoteId,
+        status:      "confirmed",
+        created_by:  "paystack_webhook",
+      });
+    } catch (notifErr) {
+      console.error("Paystack webhook: adminNotify error (non-blocking):", notifErr);
+    }
   }
 
   return NextResponse.json({ ok: true });
 }
+
