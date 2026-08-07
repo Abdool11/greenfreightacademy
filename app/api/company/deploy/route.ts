@@ -425,6 +425,9 @@ export async function POST(req: NextRequest) {
 
   // ── 7. Notify GFA admin by email ───────────────────────────────────────────
   const adminEmail = config.email_booking_to || "durbanroadtransport@gmail.com";
+  const whatsappSentCount = results.filter((r) => r.whatsapp).length;
+  const whatsappFailed = results.filter((r) => !r.whatsapp);
+
   if (process.env.BREVO_SMTP_PASSWORD) {
     try {
       await sendEmail({
@@ -436,7 +439,7 @@ export async function POST(req: NextRequest) {
           <p><strong>${session.companyName}</strong> has confirmed payment and deployed training.</p>
           <p>Quote reference: <strong>${quote.reference}</strong></p>
           <p>Drivers enrolled: <strong>${items.length}</strong></p>
-          <p>Magic links sent via WhatsApp: <strong>${results.filter((r) => r.whatsapp).length}</strong></p>
+          <p>Magic links sent via WhatsApp: <strong>${whatsappSentCount}</strong></p>
           <p>Total value: <strong>R ${quote.total?.toFixed(2)}</strong></p>
           <hr/>
           <p style="font-size:12px;color:#666;">
@@ -447,6 +450,39 @@ export async function POST(req: NextRequest) {
       });
     } catch (emailErr) {
       console.error("Deploy notification email error:", emailErr);
+    }
+
+    // ── 7b. Alert if any WhatsApp sends failed ──────────────────────────────
+    if (whatsappFailed.length > 0) {
+      const failedList = whatsappFailed
+        .map((r) => {
+          const driver = items.find((i) => i.driverId === r.driverId);
+          return `<li><strong>${driver?.driverName ?? r.driverId}</strong> — magic link: <a href="${r.magicLink}">${r.magicLink}</a></li>`;
+        })
+        .join("");
+
+      try {
+        await sendEmail({
+          from: "abdool@transportactiongroup.co.za",
+          fromName: "GFA Platform Alerts",
+          to: adminEmail,
+          subject: `⚠️ WhatsApp delivery failed — ${whatsappFailed.length} driver(s) — Ref: ${quote.reference}`,
+          html: `
+            <p><strong>WARNING:</strong> WhatsApp magic links were NOT delivered to ${whatsappFailed.length} of ${results.length} driver(s) during a deployment.</p>
+            <p>Company: <strong>${session.companyName}</strong></p>
+            <p>Quote reference: <strong>${quote.reference}</strong></p>
+            <p>Likely cause: WhatsApp credentials not configured or Meta API error.</p>
+            <p>The following drivers did NOT receive their WhatsApp message. Their magic links are below — you may need to send these manually:</p>
+            <ul>${failedList}</ul>
+            <hr/>
+            <p style="font-size:12px;color:#666;">
+              Check that <code>whatsapp_phone_id</code> and <code>whatsapp_access_token</code> are set in site_config or .env.local.
+            </p>
+          `,
+        });
+      } catch (alertErr) {
+        console.error("WhatsApp failure alert email error:", alertErr);
+      }
     }
   }
 

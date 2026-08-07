@@ -271,6 +271,36 @@ export async function POST(
     .update({ credit_balance: Math.max(0, balanceAfter) })
     .eq("id", session.companyId);
 
+  // ── Alert GFA admin if WhatsApp failed ──────────────────────────────────────
+  if (!whatsappSent && process.env.BREVO_SMTP_PASSWORD) {
+    const adminEmail = config.email_booking_to || "durbanroadtransport@gmail.com";
+    const driverName = `${driver.first_name ?? ""} ${driver.last_name ?? ""}`.trim();
+    const magicLink = `${bdBaseUrl}/join/${token}`;
+    try {
+      await sendEmail({
+        from: "abdool@transportactiongroup.co.za",
+        fromName: "GFA Platform Alerts",
+        to: adminEmail,
+        subject: `⚠️ WhatsApp delivery failed — ${driverName} — Ref: ${quote.reference}`,
+        html: `
+          <p><strong>WARNING:</strong> WhatsApp magic link was NOT delivered to a driver during deployment.</p>
+          <p>Company: <strong>${session.companyName ?? "Unknown"}</strong></p>
+          <p>Quote reference: <strong>${quote.reference}</strong></p>
+          <p>Driver: <strong>${driverName}</strong></p>
+          <p>Mobile: <strong>${driver.mobile ?? "N/A"}</strong></p>
+          <p>Magic link: <a href="${magicLink}">${magicLink}</a></p>
+          <p>Likely cause: WhatsApp credentials not configured or Meta API error.</p>
+          <hr/>
+          <p style="font-size:12px;color:#666;">
+            Check that <code>whatsapp_phone_id</code> and <code>whatsapp_access_token</code> are set in site_config or .env.local.
+          </p>
+        `,
+      });
+    } catch (alertErr) {
+      console.error("WhatsApp failure alert email error:", alertErr);
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     driverId,
