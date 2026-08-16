@@ -42,6 +42,9 @@ export async function GET(
   const lineItems: QuoteLineItem[] = Array.isArray(quote.line_items) ? quote.line_items : [];
   const fallbackSubtotal = lineItems.reduce((sum, item) => sum + Number(item.price || 0), 0);
   const subtotal = Number(quote.subtotal ?? fallbackSubtotal);
+  const discountAmount = Number(quote.discount_amount ?? 0);
+  const listSubtotal = Number(quote.list_subtotal ?? (subtotal + discountAmount));
+  const discountPercent = Number(quote.discount_percent ?? 0);
   const vat = Number(quote.vat ?? Math.round(subtotal * 0.15 * 100) / 100);
   const total = Number(quote.total ?? subtotal + vat);
 
@@ -175,6 +178,14 @@ export async function GET(
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(75, 85, 99);
+  if (discountAmount > 0) {
+    doc.text(`List subtotal: ${money(listSubtotal)}`, rightX, y, { align: "right" });
+    y += 6;
+    doc.setTextColor(180, 83, 9);
+    doc.text(`Approved discount${discountPercent ? ` (${discountPercent.toFixed(2)}%)` : ""}: -${money(discountAmount)}`, rightX, y, { align: "right" });
+    y += 6;
+    doc.setTextColor(75, 85, 99);
+  }
   doc.text(`Subtotal: ${money(subtotal)}`, rightX, y, { align: "right" });
   y += 6;
   doc.text(`VAT (15%): ${money(vat)}`, rightX, y, { align: "right" });
