@@ -21,6 +21,7 @@ Key platform capabilities include:
 - **Guided Client Enrolment** — the client dashboard now leads the user through Add Drivers → Select Programme → Quote & Pay → Deploy, filters the training matrix by programme, shows the selected driver count and estimated VAT-inclusive total, and keeps the formal-quote action visible while selecting
 - **Resilient Demo Tour** — all 14 simulated dashboard steps remain inside `/demo`; explicit Back, Forward and Exit controls can no longer redirect a visitor into an authenticated real dashboard mid-tour
 - **Daily Operations** — an admin daily management report combines confirmed platform receipts, card/EFT split, quotes, discounts, drivers added, training starts, completions, certificates and an actionable finance queue; the detailed cashbook exports to CSV
+- **Learning Event Foundation** — idempotent BetterDriver/Moodle event and per-enrolment revenue-recognition tables provide the protected central ledger required before wiring signed training-start, progress and certificate events
 
 ---
 
@@ -126,6 +127,7 @@ cp .env.local.example .env.local
 #   supabase/migrations/20260816_r1_billing_quotes.sql
 #   supabase/migrations/20260817_r2_eft_reconciliation.sql
 #   supabase/migrations/20260818_r3_discount_governance.sql
+#   supabase/migrations/20260819_r6_learning_events.sql
 npm run dev
 ```
 
