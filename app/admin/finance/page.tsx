@@ -1,429 +1,84 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  TrendingUp, Clock, CheckCircle2, AlertTriangle, Loader2,
-  RefreshCw, Download, ChevronRight, CreditCard, Landmark,
-  Building2, FileText,
-} from "lucide-react";
+import { AlertTriangle, Building2, CheckCircle2, CreditCard, Download, Landmark, Loader2, RefreshCw, TrendingUp } from "lucide-react";
+import EftReconciliationPanel, { EftReconciliationPayment } from "@/components/admin/EftReconciliationPanel";
 
 type Tab = "overview" | "transactions" | "pending" | "client";
+interface PendingQuote { id: string; reference: string; total: number; created_at: string; companies?: { id: string; name: string } | null; }
+interface FinanceData { totalRevenue?: number; monthlyRevenue?: number; paystackRevenue?: number; eftRevenue?: number; eftPendingCount?: number; quotePendingCount?: number; totalCompanies?: number; eftPending: EftReconciliationPayment[]; quotePending: PendingQuote[]; }
+interface LedgerEntry { id: string; entry_type: string; amount: number; description: string; reference?: string; status: string; created_at: string; companies?: { name?: string } | null; }
 
-interface OverviewData {
-  totalRevenue: number;
-  monthlyRevenue: number;
-  paystackRevenue: number;
-  eftRevenue: number;
-  eftPendingCount: number;
-  quotePendingCount: number;
-  totalCompanies: number;
-  eftPending: EftQuote[];
-  quotePending: PendingQuote[];
-}
-
-interface EftQuote {
-  id: string;
-  reference: string;
-  total: number;
-  eft_submitted_at: string;
-  eft_reference?: string;
-  companies: { id: string; name: string; contact_email: string } | null;
-}
-
-interface PendingQuote {
-  id: string;
-  reference: string;
-  total: number;
-  created_at: string;
-  companies: { id: string; name: string; contact_email: string } | null;
-}
-
-interface LedgerEntry {
-  id: string;
-  entry_type: string;
-  amount: number;
-  description: string;
-  reference?: string;
-  status: string;
-  created_at: string;
-  companies?: { name: string } | null;
-}
-
-const fmt = (n: number) =>
-  new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR", maximumFractionDigits: 0 }).format(n);
-
-const ageLabel = (dateStr: string) => {
-  const hrs = Math.floor((Date.now() - new Date(dateStr).getTime()) / 3600000);
-  if (hrs < 1)  return { label: "<1h ago",  color: "#22c55e" };
-  if (hrs < 24) return { label: `${hrs}h ago`, color: "#22c55e" };
-  if (hrs < 48) return { label: `${Math.floor(hrs/24)}d ago`, color: "#f59e0b" };
-  return { label: `${Math.floor(hrs/24)}d ago — OVERDUE`, color: "#ef4444" };
-};
-
-const entryTypeColor: Record<string, string> = {
-  quote_issued:         "#6b7280",
-  payment_received:     "#22c55e",
-  eft_submitted:        "#f59e0b",
-  eft_confirmed:        "#22c55e",
-  credits_allocated:    "#3b82f6",
-  credits_used:         "#a78bfa",
-  trial_credits:        "#3b82f6",
-  bulletin_payment:     "#f59e0b",
-};
+const fmt = (value: number) => new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR", maximumFractionDigits: 0 }).format(value || 0);
+const entryColor: Record<string, string> = { quote_issued: "#94a3b8", payment_received: "#22c55e", eft_submitted: "#f59e0b", eft_confirmed: "#22c55e", credits_allocated: "#60a5fa", credits_used: "#a78bfa" };
 
 export default function AdminFinancePage() {
-  const [tab, setTab]         = useState<Tab>("overview");
-  const [data, setData]       = useState<OverviewData | null>(null);
+  const [tab, setTab] = useState<Tab>("overview");
+  const [data, setData] = useState<FinanceData | null>(null);
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [approving, setApproving] = useState<string | null>(null);
-  const [approved, setApproved]   = useState<string | null>(null);
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
   const [clientData, setClientData] = useState<{ company: Record<string, unknown>; entries: LedgerEntry[]; quotes: Record<string, unknown>[]; driverCount: number } | null>(null);
 
-  const load = useCallback(async (t: Tab) => {
+  const load = useCallback(async (requestedTab: Tab) => {
     setLoading(true);
     try {
-      if (t === "overview" || t === "pending") {
-        const res = await fetch(`/api/admin/finance?tab=${t}`);
-        const d = await res.json();
-        setData(d);
-      } else if (t === "transactions") {
-        const res = await fetch("/api/admin/finance?tab=transactions");
-        const d = await res.json();
-        setEntries(d.entries ?? []);
+      if (requestedTab === "overview") {
+        const response = await fetch("/api/admin/finance?tab=overview");
+        setData(await response.json());
+      } else if (requestedTab === "pending") {
+        const response = await fetch("/api/admin/finance?tab=pending");
+        const result = await response.json();
+        setData({ eftPending: result.eftPayments ?? [], quotePending: result.staleQuotes ?? [], eftPendingCount: (result.eftPayments ?? []).length, quotePendingCount: (result.staleQuotes ?? []).length });
+      } else if (requestedTab === "transactions") {
+        const response = await fetch("/api/admin/finance?tab=transactions");
+        const result = await response.json();
+        setEntries(result.entries ?? []);
       }
     } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { load(tab); }, [tab, load]);
+  useEffect(() => { if (tab !== "client") load(tab); }, [tab, load]);
 
   const loadClient = async (companyId: string) => {
-    setSelectedCompany(companyId);
-    setTab("client");
-    setLoading(true);
+    if (!companyId) return;
+    setSelectedCompany(companyId); setTab("client"); setLoading(true);
     try {
-      const res = await fetch(`/api/admin/finance?tab=client&company_id=${companyId}`);
-      const d = await res.json();
-      setClientData(d);
+      const response = await fetch(`/api/admin/finance?tab=client&company_id=${companyId}`);
+      setClientData(await response.json());
     } finally { setLoading(false); }
   };
 
-  const approveEft = async (quoteId: string) => {
-    setApproving(quoteId);
-    try {
-      const res = await fetch("/api/admin/quotes/approve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quoteId }),
-      });
-      if (res.ok) {
-        setApproved(quoteId);
-        setTimeout(() => { setApproved(null); load("overview"); }, 2000);
-      }
-    } finally { setApproving(null); }
-  };
-
   const exportCsv = () => {
-    const rows = entries.map(e => [
-      new Date(e.created_at).toLocaleDateString("en-ZA"),
-      (e.companies as { name?: string } | null)?.name ?? "",
-      e.entry_type,
-      e.description,
-      e.reference ?? "",
-      e.amount.toFixed(2),
-      e.status,
-    ]);
-    const csv = ["Date,Company,Type,Description,Reference,Amount,Status", ...rows.map(r => r.map(v => `"${v}"`).join(","))].join("\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `GFA-Ledger-${new Date().toISOString().slice(0,10)}.csv`; a.click();
-    URL.revokeObjectURL(url);
+    const rows = entries.map((entry) => [new Date(entry.created_at).toLocaleDateString("en-ZA"), entry.companies?.name ?? "", entry.entry_type, entry.description, entry.reference ?? "", entry.amount.toFixed(2), entry.status]);
+    const content = ["Date,Company,Type,Description,Reference,Amount,Status", ...rows.map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))].join("\n");
+    const url = URL.createObjectURL(new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a"); link.href = url; link.download = `GFA-Ledger-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(url);
   };
 
-  const s = {
-    page:  { paddingTop: "5rem", background: "#0a1628", minHeight: "100vh", color: "#f9fafb" } as React.CSSProperties,
-    nav:   { background: "#111f3a", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "1rem 1.5rem" } as React.CSSProperties,
-    inner: { maxWidth: "1100px", margin: "0 auto", padding: "2rem 1.5rem 4rem" } as React.CSSProperties,
-    card:  { background: "#0d1526", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "0.875rem", padding: "1.25rem", marginBottom: "1.25rem" } as React.CSSProperties,
-    stat:  (accent: string) => ({ background: "#0d1526", border: `1px solid ${accent}25`, borderLeft: `3px solid ${accent}`, borderRadius: "0.75rem", padding: "1.125rem" }) as React.CSSProperties,
-    th:    { padding: "0.625rem 0.875rem", color: "#6b7280", fontSize: "0.75rem", fontWeight: 700, textAlign: "left" as const, whiteSpace: "nowrap" as const, borderBottom: "1px solid rgba(255,255,255,0.06)" },
-    td:    { padding: "0.75rem 0.875rem", borderBottom: "1px solid rgba(255,255,255,0.04)", fontSize: "0.875rem", verticalAlign: "middle" as const },
-  };
+  const card: React.CSSProperties = { background: "#0d1526", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "0.875rem", padding: "1.25rem", marginBottom: "1.25rem" };
+  const th: React.CSSProperties = { padding: "0.65rem 0.8rem", color: "#94a3b8", fontSize: "0.72rem", fontWeight: 700, textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.06)", whiteSpace: "nowrap" };
+  const td: React.CSSProperties = { padding: "0.75rem 0.8rem", borderBottom: "1px solid rgba(255,255,255,0.04)", fontSize: "0.84rem" };
+  const pendingCount = data?.eftPendingCount ?? data?.eftPending.length ?? 0;
+  const tabs: { id: Tab; label: string }[] = [{ id: "overview", label: "Overview" }, { id: "transactions", label: "All Transactions" }, { id: "pending", label: pendingCount ? `Reconciliation (${pendingCount})` : "Reconciliation" }, { id: "client", label: "Per Client" }];
 
-  const TABS: { id: Tab; label: string }[] = [
-    { id: "overview",     label: "Overview" },
-    { id: "transactions", label: "All Transactions" },
-    { id: "pending",      label: data?.eftPendingCount ? `Pending (${data.eftPendingCount})` : "Pending" },
-    { id: "client",       label: "Per Client" },
-  ];
-
-  return (
-    <div style={s.page}>
-      <nav style={s.nav}>
-        <div style={{ maxWidth: "1100px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <Link href="/admin/dashboard" style={{ color: "#6b7280", fontSize: "0.875rem", textDecoration: "none" }}>← Dashboard</Link>
-            <span style={{ color: "#374151" }}>/</span>
-            <span style={{ color: "#f9fafb", fontSize: "0.875rem", fontWeight: 600 }}>Finance & Ledger</span>
-          </div>
-          <button onClick={() => load(tab)} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.5rem", padding: "0.375rem 0.75rem", color: "#6b7280", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.8125rem" }}>
-            <RefreshCw size={13} /> Refresh
-          </button>
-        </div>
-      </nav>
-
-      <div style={s.inner}>
-        {/* Tab bar */}
-        <div style={{ display: "flex", gap: "0.25rem", marginBottom: "1.75rem", background: "#0d1526", borderRadius: "0.75rem", padding: "0.25rem", width: "fit-content" }}>
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              style={{
-                padding: "0.5rem 1rem", borderRadius: "0.5rem", border: "none", cursor: "pointer", fontSize: "0.875rem", fontWeight: 600,
-                background: tab === t.id ? "#22c55e" : "transparent",
-                color: tab === t.id ? "#000" : "#9ca3af",
-                transition: "all 0.15s",
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {loading ? (
-          <div style={{ textAlign: "center", padding: "4rem", color: "#6b7280" }}>
-            <Loader2 size={28} className="animate-spin" style={{ margin: "0 auto 1rem", display: "block" }} />
-            Loading…
-          </div>
-        ) : (
-          <>
-            {/* ── OVERVIEW ── */}
-            {tab === "overview" && data && (
-              <>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
-                  {[
-                    { label: "Total Revenue",    value: fmt(data.totalRevenue),   accent: "#22c55e", Icon: TrendingUp },
-                    { label: "This Month",        value: fmt(data.monthlyRevenue), accent: "#3b82f6", Icon: TrendingUp },
-                    { label: "Card (Paystack)",   value: fmt(data.paystackRevenue), accent: "#a78bfa", Icon: CreditCard },
-                    { label: "EFT Revenue",       value: fmt(data.eftRevenue),     accent: "#f59e0b", Icon: Landmark },
-                    { label: "EFT Awaiting",      value: String(data.eftPendingCount),   accent: data.eftPendingCount > 0 ? "#ef4444" : "#22c55e", Icon: Clock },
-                    { label: "Quotes Unpaid",     value: String(data.quotePendingCount), accent: data.quotePendingCount > 0 ? "#f59e0b" : "#22c55e", Icon: FileText },
-                  ].map(m => (
-                    <div key={m.label} style={s.stat(m.accent)}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                        <m.Icon size={14} style={{ color: m.accent }} />
-                        <span style={{ color: "#6b7280", fontSize: "0.75rem" }}>{m.label}</span>
-                      </div>
-                      <div style={{ fontSize: "1.5rem", fontWeight: 700, color: m.accent }}>{m.value}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* EFT pending — action required */}
-                {data.eftPending.length > 0 && (
-                  <div style={s.card}>
-                    <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "#ef4444", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <AlertTriangle size={16} /> EFT Payments Awaiting Verification
-                    </h3>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <thead>
-                        <tr>{["Company", "Quote Ref", "Amount", "EFT Ref", "Submitted", "Action"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
-                      </thead>
-                      <tbody>
-                        {data.eftPending.map(q => {
-                          const age = ageLabel(q.eft_submitted_at);
-                          return (
-                            <tr key={q.id}>
-                              <td style={s.td}>
-                                <button onClick={() => loadClient((q.companies as { id: string } | null)?.id ?? "")} style={{ background: "none", border: "none", color: "#f9fafb", cursor: "pointer", fontWeight: 600, padding: 0, display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                                  {(q.companies as { name?: string } | null)?.name ?? "—"} <ChevronRight size={12} style={{ color: "#6b7280" }} />
-                                </button>
-                              </td>
-                              <td style={{ ...s.td, color: "#9ca3af", fontFamily: "monospace" }}>{q.reference}</td>
-                              <td style={{ ...s.td, fontWeight: 700, color: "#22c55e" }}>{fmt(q.total)}</td>
-                              <td style={{ ...s.td, color: "#9ca3af", fontFamily: "monospace" }}>{q.eft_reference ?? "—"}</td>
-                              <td style={{ ...s.td, color: age.color, fontWeight: 600 }}>{age.label}</td>
-                              <td style={s.td}>
-                                {approved === q.id ? (
-                                  <span style={{ color: "#22c55e", fontSize: "0.8125rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.25rem" }}><CheckCircle2 size={14} /> Approved</span>
-                                ) : (
-                                  <button
-                                    onClick={() => approveEft(q.id)}
-                                    disabled={approving === q.id}
-                                    style={{ background: "#22c55e", border: "none", borderRadius: "0.375rem", padding: "0.375rem 0.875rem", color: "#000", fontWeight: 700, fontSize: "0.8125rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.25rem" }}
-                                  >
-                                    {approving === q.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
-                                    Confirm EFT
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* ── ALL TRANSACTIONS ── */}
-            {tab === "transactions" && (
-              <div style={s.card}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-                  <h3 style={{ margin: 0, fontSize: "1rem" }}>Ledger — All Companies ({entries.length} entries)</h3>
-                  <button onClick={exportCsv} style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.5rem", padding: "0.375rem 0.875rem", color: "#9ca3af", fontSize: "0.8125rem", cursor: "pointer" }}>
-                    <Download size={13} /> Export CSV
-                  </button>
-                </div>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr>{["Date", "Company", "Type", "Description", "Reference", "Amount", "Status"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
-                    </thead>
-                    <tbody>
-                      {entries.map(e => {
-                        const color = entryTypeColor[e.entry_type] ?? "#6b7280";
-                        return (
-                          <tr key={e.id}>
-                            <td style={{ ...s.td, color: "#9ca3af", whiteSpace: "nowrap" }}>{new Date(e.created_at).toLocaleDateString("en-ZA")}</td>
-                            <td style={{ ...s.td, fontWeight: 600 }}>{(e.companies as { name?: string } | null)?.name ?? "—"}</td>
-                            <td style={s.td}><span style={{ background: color + "18", color, borderRadius: "0.25rem", padding: "0.125rem 0.375rem", fontSize: "0.75rem", fontWeight: 700 }}>{e.entry_type}</span></td>
-                            <td style={{ ...s.td, color: "#d1d5db" }}>{e.description}</td>
-                            <td style={{ ...s.td, color: "#9ca3af", fontFamily: "monospace", fontSize: "0.8125rem" }}>{e.reference ?? "—"}</td>
-                            <td style={{ ...s.td, fontWeight: 700, color: e.amount >= 0 ? "#22c55e" : "#ef4444", whiteSpace: "nowrap" }}>
-                              {e.amount >= 0 ? "+" : ""}{fmt(e.amount)}
-                            </td>
-                            <td style={s.td}>
-                              <span style={{ background: e.status === "confirmed" ? "rgba(34,197,94,0.12)" : "rgba(245,158,11,0.12)", color: e.status === "confirmed" ? "#22c55e" : "#f59e0b", borderRadius: "9999px", padding: "0.125rem 0.5rem", fontSize: "0.6875rem", fontWeight: 700 }}>
-                                {e.status}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* ── PENDING ── */}
-            {tab === "pending" && data && (
-              <>
-                {data.eftPending.length === 0 && data.quotePendingCount === 0 ? (
-                  <div style={{ ...s.card, textAlign: "center", padding: "3rem", color: "#22c55e" }}>
-                    <CheckCircle2 size={32} style={{ margin: "0 auto 0.75rem", display: "block" }} />
-                    <p style={{ margin: 0, fontWeight: 700 }}>No pending items — all clear!</p>
-                  </div>
-                ) : (
-                  <>
-                    {data.eftPending.length > 0 && (
-                      <div style={s.card}>
-                        <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "#ef4444", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                          <AlertTriangle size={16} /> EFT Payments Awaiting Verification ({data.eftPending.length})
-                        </h3>
-                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                          <thead>
-                            <tr>{["Company", "Quote Ref", "Amount", "EFT Ref", "Waiting", "Action"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
-                          </thead>
-                          <tbody>
-                            {data.eftPending.map(q => {
-                              const age = ageLabel(q.eft_submitted_at);
-                              return (
-                                <tr key={q.id}>
-                                  <td style={{ ...s.td, fontWeight: 600 }}>{(q.companies as { name?: string } | null)?.name ?? "—"}</td>
-                                  <td style={{ ...s.td, color: "#9ca3af", fontFamily: "monospace" }}>{q.reference}</td>
-                                  <td style={{ ...s.td, fontWeight: 700, color: "#22c55e" }}>{fmt(q.total)}</td>
-                                  <td style={{ ...s.td, color: "#9ca3af", fontFamily: "monospace" }}>{q.eft_reference ?? "—"}</td>
-                                  <td style={{ ...s.td, color: age.color, fontWeight: 600 }}>{age.label}</td>
-                                  <td style={s.td}>
-                                    {approved === q.id ? (
-                                      <span style={{ color: "#22c55e", fontSize: "0.8125rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.25rem" }}><CheckCircle2 size={14} /> Approved</span>
-                                    ) : (
-                                      <button onClick={() => approveEft(q.id)} disabled={approving === q.id} style={{ background: "#22c55e", border: "none", borderRadius: "0.375rem", padding: "0.375rem 0.875rem", color: "#000", fontWeight: 700, fontSize: "0.8125rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                                        {approving === q.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
-                                        Confirm EFT
-                                      </button>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-
-            {/* ── PER CLIENT ── */}
-            {tab === "client" && (
-              <>
-                {!selectedCompany || !clientData ? (
-                  <div style={s.card}>
-                    <p style={{ color: "#6b7280", margin: 0 }}>Select a company from the EFT pending list or the <Link href="/admin/companies" style={{ color: "#22c55e" }}>Companies page</Link> to view their account.</p>
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.25rem" }}>
-                      <Building2 size={18} style={{ color: "#22c55e" }} />
-                      <h2 style={{ margin: 0, fontSize: "1.125rem" }}>{String(clientData.company?.name ?? "")}</h2>
-                      <span style={{ color: "#6b7280", fontSize: "0.875rem" }}>{String(clientData.company?.contact_email ?? "")}</span>
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "0.875rem", marginBottom: "1.25rem" }}>
-                      {[
-                        { label: "Credit Balance", value: fmt(Number(clientData.company?.credit_balance ?? 0)), accent: "#22c55e" },
-                        { label: "Total Quotes",   value: String(clientData.quotes.length), accent: "#3b82f6" },
-                        { label: "Drivers",        value: String(clientData.driverCount), accent: "#a78bfa" },
-                        { label: "Discount",       value: clientData.company?.discount_percent ? `${clientData.company.discount_percent}%` : "None", accent: "#f59e0b" },
-                      ].map(m => (
-                        <div key={m.label} style={s.stat(m.accent)}>
-                          <div style={{ color: "#6b7280", fontSize: "0.75rem", marginBottom: "0.375rem" }}>{m.label}</div>
-                          <div style={{ fontSize: "1.375rem", fontWeight: 700, color: m.accent }}>{m.value}</div>
-                        </div>
-                      ))}
-                    </div>
-                    <div style={s.card}>
-                      <h3 style={{ margin: "0 0 1rem", fontSize: "0.9375rem" }}>Transaction History</h3>
-                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                        <thead>
-                          <tr>{["Date", "Type", "Description", "Reference", "Amount", "Status"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
-                        </thead>
-                        <tbody>
-                          {clientData.entries.map((e: LedgerEntry) => {
-                            const color = entryTypeColor[e.entry_type] ?? "#6b7280";
-                            return (
-                              <tr key={e.id}>
-                                <td style={{ ...s.td, color: "#9ca3af", whiteSpace: "nowrap" }}>{new Date(e.created_at).toLocaleDateString("en-ZA")}</td>
-                                <td style={s.td}><span style={{ background: color + "18", color, borderRadius: "0.25rem", padding: "0.125rem 0.375rem", fontSize: "0.75rem", fontWeight: 700 }}>{e.entry_type}</span></td>
-                                <td style={{ ...s.td, color: "#d1d5db" }}>{e.description}</td>
-                                <td style={{ ...s.td, color: "#9ca3af", fontFamily: "monospace", fontSize: "0.8125rem" }}>{e.reference ?? "—"}</td>
-                                <td style={{ ...s.td, fontWeight: 700, color: e.amount >= 0 ? "#22c55e" : "#ef4444" }}>{e.amount >= 0 ? "+" : ""}{fmt(e.amount)}</td>
-                                <td style={s.td}><span style={{ background: e.status === "confirmed" ? "rgba(34,197,94,0.12)" : "rgba(245,158,11,0.12)", color: e.status === "confirmed" ? "#22c55e" : "#f59e0b", borderRadius: "9999px", padding: "0.125rem 0.5rem", fontSize: "0.6875rem", fontWeight: 700 }}>{e.status}</span></td>
-                              </tr>
-                            );
-                          })}
-                          {clientData.entries.length === 0 && (
-                            <tr><td colSpan={6} style={{ ...s.td, textAlign: "center", color: "#4b5563", padding: "2rem" }}>No transactions recorded yet.</td></tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
+  return <div style={{ minHeight: "100vh", background: "#0a1628", color: "#f8fafc", paddingTop: "5rem" }}>
+    <nav style={{ background: "#111f3a", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "1rem 1.5rem" }}><div style={{ maxWidth: "1180px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}><div><Link href="/admin/dashboard" style={{ color: "#94a3b8", fontSize: "0.85rem", textDecoration: "none" }}>← Dashboard</Link><span style={{ margin: "0 0.6rem", color: "#475569" }}>/</span><strong style={{ fontSize: "0.9rem" }}>Finance & Ledger</strong></div><button onClick={() => tab !== "client" && load(tab)} style={{ background: "transparent", color: "#cbd5e1", border: "1px solid rgba(255,255,255,0.14)", borderRadius: "0.5rem", padding: "0.45rem 0.75rem", cursor: "pointer", display: "inline-flex", gap: "0.35rem", alignItems: "center" }}><RefreshCw size={14} /> Refresh</button></div></nav>
+    <main style={{ maxWidth: "1180px", margin: "0 auto", padding: "2rem 1.5rem 4rem" }}>
+      <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", marginBottom: "1.5rem", padding: "0.25rem", background: "#0d1526", borderRadius: "0.75rem", width: "fit-content" }}>{tabs.map((item) => <button key={item.id} onClick={() => setTab(item.id)} style={{ padding: "0.55rem 0.9rem", borderRadius: "0.5rem", border: "none", cursor: "pointer", background: tab === item.id ? "#22c55e" : "transparent", color: tab === item.id ? "#07130a" : "#cbd5e1", fontWeight: 800 }}>{item.label}</button>)}</div>
+      {loading ? <div style={{ textAlign: "center", padding: "4rem", color: "#94a3b8" }}><Loader2 className="animate-spin" size={28} style={{ margin: "0 auto 0.75rem" }} />Loading finance data…</div> : <>
+        {tab === "overview" && data && <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(165px, 1fr))", gap: "0.9rem", marginBottom: "1.25rem" }}>{[
+            ["Confirmed revenue", fmt(data.totalRevenue ?? 0), "#22c55e", TrendingUp], ["This month", fmt(data.monthlyRevenue ?? 0), "#60a5fa", TrendingUp], ["Card payments", fmt(data.paystackRevenue ?? 0), "#a78bfa", CreditCard], ["Confirmed EFT", fmt(data.eftRevenue ?? 0), "#f59e0b", Landmark], ["Needs reconciliation", String(pendingCount), pendingCount ? "#ef4444" : "#22c55e", AlertTriangle], ["Unpaid quotes", String(data.quotePendingCount ?? 0), "#f59e0b", AlertTriangle],
+          ].map(([label, value, color, Icon]) => { const MetricIcon = Icon as typeof TrendingUp; return <div key={String(label)} style={{ ...card, borderLeft: `3px solid ${color}`, marginBottom: 0 }}><MetricIcon size={15} color={String(color)} /><div style={{ color: "#94a3b8", fontSize: "0.76rem", marginTop: "0.5rem" }}>{String(label)}</div><strong style={{ display: "block", color: String(color), fontSize: "1.35rem", marginTop: "0.2rem" }}>{String(value)}</strong></div>; })}</div>
+          {data.eftPending.length > 0 ? <EftReconciliationPanel payments={data.eftPending} onComplete={() => load("overview")} /> : <div style={card}><CheckCircle2 color="#22c55e" size={19} style={{ verticalAlign: "middle", marginRight: "0.4rem" }} /><strong>No EFT payments are awaiting reconciliation.</strong></div>}
+        </>}
+        {tab === "pending" && data && <><h1 style={{ fontSize: "1.2rem", margin: "0 0 0.8rem" }}>EFT Reconciliation Inbox</h1><p style={{ color: "#94a3b8", marginTop: 0, marginBottom: "1.2rem" }}>Review company, quote, expected amount, claimed amount, EFT reference and proof before making a finance decision.</p><EftReconciliationPanel payments={data.eftPending} onComplete={() => load("pending")} /></>}
+        {tab === "transactions" && <div style={card}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}><h1 style={{ fontSize: "1.05rem", margin: 0 }}>Ledger — All Companies</h1><button onClick={exportCsv} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#e2e8f0", borderRadius: "0.5rem", padding: "0.45rem 0.7rem", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.35rem" }}><Download size={14} /> Export CSV</button></div><div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: "760px" }}><thead><tr>{["Date", "Company", "Type", "Description", "Reference", "Amount", "Status"].map((heading) => <th key={heading} style={th}>{heading}</th>)}</tr></thead><tbody>{entries.map((entry) => { const color = entryColor[entry.entry_type] || "#94a3b8"; return <tr key={entry.id}><td style={td}>{new Date(entry.created_at).toLocaleDateString("en-ZA")}</td><td style={{ ...td, fontWeight: 700 }}>{entry.companies?.name || "—"}</td><td style={td}><span style={{ color, background: `${color}18`, padding: "0.15rem 0.35rem", borderRadius: "0.25rem", fontSize: "0.72rem", fontWeight: 800 }}>{entry.entry_type}</span></td><td style={{ ...td, color: "#cbd5e1" }}>{entry.description}</td><td style={{ ...td, fontFamily: "monospace", color: "#94a3b8" }}>{entry.reference || "—"}</td><td style={{ ...td, color: entry.amount >= 0 ? "#86efac" : "#fca5a5", fontWeight: 800 }}>{entry.amount >= 0 ? "+" : ""}{fmt(entry.amount)}</td><td style={td}>{entry.status}</td></tr>; })}</tbody></table></div></div>}
+        {tab === "client" && <>{!selectedCompany || !clientData ? <div style={card}>Select a company from an EFT record or the <Link href="/admin/companies" style={{ color: "#86efac" }}>Companies page</Link> to view its account.</div> : <><div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "1rem" }}><Building2 color="#86efac" size={20} /><h1 style={{ margin: 0, fontSize: "1.15rem" }}>{String(clientData.company?.name || "Company")}</h1></div><div style={card}><h2 style={{ fontSize: "0.95rem", marginTop: 0 }}>Account history</h2><table style={{ width: "100%", borderCollapse: "collapse" }}><thead><tr>{["Date", "Type", "Description", "Reference", "Amount", "Status"].map((heading) => <th key={heading} style={th}>{heading}</th>)}</tr></thead><tbody>{clientData.entries.map((entry) => <tr key={entry.id}><td style={td}>{new Date(entry.created_at).toLocaleDateString("en-ZA")}</td><td style={td}>{entry.entry_type}</td><td style={td}>{entry.description}</td><td style={td}>{entry.reference || "—"}</td><td style={td}>{fmt(entry.amount)}</td><td style={td}>{entry.status}</td></tr>)}</tbody></table></div></>}</>}
+      </>}
+    </main>
+  </div>;
 }
