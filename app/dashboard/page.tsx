@@ -152,8 +152,27 @@ export default function DashboardPage() {
       if (driversRes.status === 401) { window.location.href = "/login"; return; }
       const driversData = await driversRes.json();
       const quotesData = quotesRes.ok ? await quotesRes.json() : { quotes: [] };
-      setDrivers(driversData.drivers ?? []);
+      const loadedDrivers = driversData.drivers ?? [];
+      setDrivers(loadedDrivers);
       setQuotes(quotesData.quotes ?? []);
+      // A formal quote may require a first-time Billing Profile. Restore the
+      // client’s original driver/programme selection after that short redirect.
+      try {
+        const savedQuoteItems = sessionStorage.getItem("gfa_pending_quote_items");
+        if (savedQuoteItems) {
+          const parsed = JSON.parse(savedQuoteItems) as QuoteItemJson[];
+          const restored: Record<string, Set<string>> = {};
+          for (const item of parsed) {
+            if (loadedDrivers.some((driver: Driver) => driver.id === item.driverId) && item.courseIds?.length) {
+              restored[item.driverId] = new Set(item.courseIds);
+            }
+          }
+          if (Object.keys(restored).length) setSelectedEnrolments(restored);
+          sessionStorage.removeItem("gfa_pending_quote_items");
+        }
+      } catch {
+        sessionStorage.removeItem("gfa_pending_quote_items");
+      }
       if (driversData.companyName) setCompanyName(driversData.companyName);
       if (coursesRes.ok) {
         const cData = await coursesRes.json();
@@ -259,7 +278,19 @@ export default function DashboardPage() {
       const res = await fetch("/api/company/quote", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }),
       });
-      if (res.ok) { setQuoteSent(true); setSelectedEnrolments({}); await fetchData(); }
+      const data = await res.json();
+      if (res.status === 409 && data.code === "billing_profile_required") {
+        sessionStorage.setItem("gfa_pending_quote_items", JSON.stringify(items));
+        window.location.href = `${data.redirectTo || "/dashboard/billing"}?returnTo=/dashboard`;
+        return;
+      }
+      if (!res.ok) {
+        alert(data.error || "We could not generate your quote. Please try again.");
+        return;
+      }
+      setQuoteSent(true);
+      setSelectedEnrolments({});
+      await fetchData();
     } finally { setQuoting(false); }
   };
 
