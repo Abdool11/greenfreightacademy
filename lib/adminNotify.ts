@@ -27,7 +27,9 @@ export type AdminEventKey =
   | "driver_certified"
   | "bulletin_payment_received"
   | "quote_pending_24h"
-  | "eft_pending_48h";
+  | "eft_pending_48h"
+  | "discount_requested"
+  | "discount_approved";
 
 interface NotifyOptions {
   /** Short summary for WhatsApp (plain text, max ~300 chars) */

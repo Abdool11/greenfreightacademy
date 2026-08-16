@@ -17,6 +17,7 @@ Key platform capabilities include:
 - **Import Reliability** — the driver import screen downloads the same server-generated `.xlsx` template accepted by the primary import parser
 - **EFT Reconciliation Inbox** — clients submit an EFT reference, amount, date and optional private proof of payment; finance reviews the expected-versus-claimed amount, bank reference, variance and evidence before confirming, requesting clarification or rejecting
 - **Private Payment Evidence** — proof files are stored in a private Supabase Storage bucket and are accessed only through short-lived, admin-authenticated URLs
+- **Governed Discounts** — staff request concessions against unpaid quotes with a required commercial reason; an independent authorised approver creates a revised quote version, writes an immutable event trail, records the concession in the ledger, and notifies the client/accounts contact
 
 ---
 
@@ -75,6 +76,7 @@ app/
     settings/messaging/       # WhatsApp message template settings
     settings/quote-profile/   # Supplier legal details, EFT instructions and formal quote terms
     finance/                  # Ledger, reconciliation inbox and per-client account view
+    discounts/                # Governed discount requests, approvals and audit status
     video-library/            # GFA Video Library (Bunny.net upload, manage, assign)
   dashboard/                  # Client dashboard pages
     bulletins/                # CPD bulletin creation and management
@@ -119,6 +121,7 @@ cp .env.local.example .env.local
 #   ... apply the remaining migrations in filename order, including:
 #   supabase/migrations/20260816_r1_billing_quotes.sql
 #   supabase/migrations/20260817_r2_eft_reconciliation.sql
+#   supabase/migrations/20260818_r3_discount_governance.sql
 npm run dev
 ```
 
@@ -131,6 +134,8 @@ npm run dev
 > **Release 1 setup:** After applying `20260816_r1_billing_quotes.sql`, an admin must complete **Admin → Formal Quote Settings** before issuing formal client quotations. This supplies the legal supplier identity, VAT, EFT and payment-term details that are copied into each quote snapshot.
 >
 > **Release 2 setup:** Apply `20260817_r2_eft_reconciliation.sql` after Release 1. It creates the private `payment-proofs` storage bucket and the immutable EFT reconciliation audit trail. Review pending EFTs under **Admin → Finance & Ledger → Reconciliation**; never approve an EFT outside this controlled workflow.
+>
+> **Release 3 setup:** Apply `20260818_r3_discount_governance.sql` after Releases 1–2. The seeded policy permits an `admin` to request up to 25% but not approve; a `super_admin` may approve up to 100% but can never approve their own request. Change these policy values directly in `discount_authority_rules` only after formal commercial approval.
 
 ---
 
