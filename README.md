@@ -20,6 +20,7 @@ Key platform capabilities include:
 - **Governed Discounts** — staff request concessions against unpaid quotes with a required commercial reason; an independent authorised approver creates a revised quote version, writes an immutable event trail, records the concession in the ledger, and notifies the client/accounts contact
 - **Guided Client Enrolment** — the client dashboard now leads the user through Add Drivers → Select Programme → Quote & Pay → Deploy, filters the training matrix by programme, shows the selected driver count and estimated VAT-inclusive total, and keeps the formal-quote action visible while selecting
 - **Resilient Demo Tour** — all 14 simulated dashboard steps remain inside `/demo`; explicit Back, Forward and Exit controls can no longer redirect a visitor into an authenticated real dashboard mid-tour
+- **Daily Operations** — an admin daily management report combines confirmed platform receipts, card/EFT split, quotes, discounts, drivers added, training starts, completions, certificates and an actionable finance queue; the detailed cashbook exports to CSV
 
 ---
 
@@ -79,6 +80,7 @@ app/
     settings/quote-profile/   # Supplier legal details, EFT instructions and formal quote terms
     finance/                  # Ledger, reconciliation inbox and per-client account view
     discounts/                # Governed discount requests, approvals and audit status
+    operations/               # Daily cashbook, delivery metrics and operational exception queue
     video-library/            # GFA Video Library (Bunny.net upload, manage, assign)
   dashboard/                  # Client dashboard pages, guided enrolment workflow and payment/deployment actions
     bulletins/                # CPD bulletin creation and management
