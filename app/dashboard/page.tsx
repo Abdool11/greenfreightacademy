@@ -139,6 +139,7 @@ export default function DashboardPage() {
   const [expandedQuoteId, setExpandedQuoteId] = useState<string | null>(null);
   // All active courses for Buy Credits modal (not filtered to ptdp)
   const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [programmeFilter, setProgrammeFilter] = useState("");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -178,7 +179,7 @@ export default function DashboardPage() {
         const cData = await coursesRes.json();
         const allActive = (cData.programmes ?? []).filter((p: Course) => p.status === "active");
         setAllCourses(allActive);
-        setCourses(allActive.filter((p: Course) => p.slug === "ptdp"));
+        setCourses(allActive);
       }
       if (creditsRes.ok) {
         const creditsData = await creditsRes.json();
@@ -234,7 +235,7 @@ export default function DashboardPage() {
     const driver = drivers.find(d => d.id === driverId);
     if (!driver) return;
     const enrolledIds = new Set(driver.enrolments.map(e => e.programme_id));
-    const unenrolled = courses.filter(c => !enrolledIds.has(c.id)).map(c => c.id);
+    const unenrolled = visibleCourses.filter(c => !enrolledIds.has(c.id)).map(c => c.id);
     setSelectedEnrolments(prev => ({ ...prev, [driverId]: new Set(unenrolled) }));
   };
 
@@ -254,6 +255,10 @@ export default function DashboardPage() {
   };
 
   const totalSelected = Object.values(selectedEnrolments).reduce((sum, set) => sum + set.size, 0);
+  const selectedDriverCount = Object.values(selectedEnrolments).filter((set) => set.size > 0).length;
+  const visibleCourses = programmeFilter ? courses.filter((course) => course.id === programmeFilter) : courses;
+  const estimatedSubtotal = Object.values(selectedEnrolments).reduce((sum, selected) => sum + [...selected].reduce((courseTotal, courseId) => courseTotal + Number(courses.find((course) => course.id === courseId)?.price_corporate ?? 0), 0), 0);
+  const estimatedTotal = Math.round(estimatedSubtotal * 1.15 * 100) / 100;
 
   // ── Nudge selection ──────────────────────────────────────────────────────────
   const toggleNudge = (enrolmentId: string) => {
@@ -367,7 +372,7 @@ export default function DashboardPage() {
     <div style={{ paddingTop: "5rem", background: "var(--color-slate-900)", minHeight: "100vh" }}>
       {/* Add Drivers Modal */}
       {showAddDriversModal && (
-        <AddDriversModal
+      <AddDriversModal
           onClose={() => setShowAddDriversModal(false)}
           onSuccess={() => {
             fetchData();
@@ -504,6 +509,12 @@ export default function DashboardPage() {
               ))}
             </div>
 
+            {/* ── Guided enrolment start: reduces a complex matrix to one clear job ── */}
+            <section style={{ marginBottom: "1.25rem", border: "1px solid rgba(34,197,94,0.24)", background: "linear-gradient(135deg, rgba(34,197,94,0.09), rgba(15,31,61,0.4))", borderRadius: "1rem", padding: "1.25rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" }}><div><span style={{ color: "#86efac", fontSize: "0.72rem", fontWeight: 800, letterSpacing: "0.06em" }}>START TRAINING</span><h2 style={{ margin: "0.3rem 0", fontSize: "1.15rem" }}>Add drivers, choose a programme, then get a formal quote</h2><p style={{ margin: 0, color: "#cbd5e1", fontSize: "0.85rem" }}>Your selected drivers and programme stay visible below. You can pay by card or EFT after reviewing the formal quote.</p></div><div style={{ color: "#94a3b8", fontSize: "0.8rem", textAlign: "right" }}><strong style={{ color: "#86efac" }}>1</strong> Add drivers &nbsp;→&nbsp; <strong style={{ color: "#86efac" }}>2</strong> Select programme &nbsp;→&nbsp; <strong style={{ color: "#86efac" }}>3</strong> Quote & pay &nbsp;→&nbsp; <strong style={{ color: "#86efac" }}>4</strong> Deploy</div></div>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: "0.75rem", marginTop: "1rem" }}><div style={{ minWidth: "250px", flex: "1 1 250px" }}><label style={{ display: "block", color: "#cbd5e1", fontSize: "0.75rem", fontWeight: 800, marginBottom: "0.35rem" }}>Choose a programme to enrol</label><select value={programmeFilter} onChange={(event) => setProgrammeFilter(event.target.value)} style={{ width: "100%", background: "#0a1628", color: "#f8fafc", border: "1px solid rgba(255,255,255,0.16)", padding: "0.68rem", borderRadius: "0.5rem" }}><option value="">Show all active programmes</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.name}{course.price_corporate ? ` — R${Number(course.price_corporate).toLocaleString("en-ZA")} per driver` : ""}</option>)}</select></div>{totalSelected > 0 && <div style={{ background: "#0a1628", borderRadius: "0.6rem", padding: "0.65rem 0.85rem", fontSize: "0.82rem" }}><strong style={{ color: "#86efac" }}>{selectedDriverCount} driver{selectedDriverCount === 1 ? "" : "s"} · {totalSelected} enrolment{totalSelected === 1 ? "" : "s"}</strong><br /><span style={{ color: "#94a3b8" }}>Estimated total: R{estimatedTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })} incl. VAT</span></div>}</div>
+            </section>
+
             {/* ── Demo tour discoverability banner (dismissable, localStorage-gated) ── */}
             <DemoTourBanner driverCount={totalDrivers} />
 
@@ -531,8 +542,7 @@ export default function DashboardPage() {
                 <div>
                   <h2 style={{ margin: 0, fontSize: "1.125rem", color: "#f9fafb" }}>Training Matrix</h2>
                   <p style={{ margin: "0.25rem 0 0", color: "#6b7280", fontSize: "0.875rem" }}>
-                    Select drivers to deploy using your credits. Tick <strong style={{ color: "#22c55e" }}>Enrol</strong> for each driver and programme, then click <strong style={{ color: "#22c55e" }}>Get Quote</strong> to deploy.
-                    Need more credits? Click <strong style={{ color: "#2ecc71" }}>Add Credits</strong> above.
+                    Choose a programme above, then tick <strong style={{ color: "#22c55e" }}>Enrol</strong> beside each driver. Your selection and estimated price stay visible until you create a formal quote.
                   </p>
                 </div>
                 <div style={{ display: "flex", gap: "0.625rem", flexWrap: "wrap" }}>
@@ -564,19 +574,19 @@ export default function DashboardPage() {
                     </Link>
                   </div>
                 </div>
-              ) : courses.length === 0 ? (
+              ) : visibleCourses.length === 0 ? (
                 <div style={{ background: "#0d1520", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: "0.875rem", padding: "3rem", textAlign: "center", color: "#4b5563" }}>
                   <BookOpen size={36} style={{ margin: "0 auto 1rem", display: "block" }} />
                   <p style={{ margin: 0 }}>No active programmes available. Contact GFA to set up your training programmes.</p>
                 </div>
               ) : (
                 <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", background: "#0d1520", borderRadius: "0.875rem", overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)", minWidth: `${280 + courses.length * 300}px` }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", background: "#0d1520", borderRadius: "0.875rem", overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)", minWidth: `${280 + visibleCourses.length * 300}px` }}>
                     <thead>
                       {/* Programme name spanning row */}
                       <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", background: "rgba(0,0,0,0.15)" }}>
                         <th colSpan={2} style={{ padding: "0.625rem 1rem", textAlign: "left", color: "#4b5563", fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Driver</th>
-                        {courses.map(c => (
+                        {visibleCourses.map(c => (
                           <th key={c.id} colSpan={5} style={{ padding: "0.625rem 0.5rem", textAlign: "center", color: "#f9fafb", fontSize: "0.75rem", fontWeight: 700, borderLeft: "1px solid rgba(255,255,255,0.06)", whiteSpace: "nowrap" }}>
                             {c.name}
                           </th>
@@ -587,7 +597,7 @@ export default function DashboardPage() {
                       <tr style={{ borderBottom: "2px solid rgba(255,255,255,0.08)" }}>
                         <th style={{ padding: "0.625rem 1rem", textAlign: "left", color: "#6b7280", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>Name</th>
                         <th style={{ padding: "0.625rem 1rem", textAlign: "left", color: "#6b7280", fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Contact</th>
-                        {courses.map(c => (
+                        {visibleCourses.map(c => (
                           <>
                             <th key={`${c.id}-e`} style={{ padding: "0.5rem 0.375rem", textAlign: "center", color: "#22c55e", fontSize: "0.5625rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", borderLeft: "1px solid rgba(255,255,255,0.06)" }}>
                               <div>Enrol</div>
@@ -801,6 +811,14 @@ export default function DashboardPage() {
           </>
         )}
       </div>
+      {totalSelected > 0 && (
+        <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 50, background: "#0d1526", borderTop: "1px solid rgba(34,197,94,0.35)", boxShadow: "0 -12px 28px rgba(0,0,0,0.35)", padding: "0.75rem 1.25rem" }}>
+          <div className="container-gfa" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+            <div><strong style={{ color: "#86efac" }}>{selectedDriverCount} driver{selectedDriverCount === 1 ? "" : "s"} selected for {totalSelected} enrolment{totalSelected === 1 ? "" : "s"}</strong><span style={{ color: "#94a3b8", fontSize: "0.82rem", marginLeft: "0.55rem" }}>Estimated total: R{estimatedTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })} incl. VAT</span></div>
+            <button onClick={handleGetQuote} disabled={quoting} style={{ background: "#22c55e", color: "#07130a", border: "none", borderRadius: "0.55rem", padding: "0.68rem 1rem", fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>{quoting ? <Loader2 className="animate-spin" size={15} /> : <FileText size={15} />}Review selection & get formal quote</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
