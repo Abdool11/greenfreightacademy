@@ -18,6 +18,8 @@ Key platform capabilities include:
 - **EFT Reconciliation Inbox** — clients submit an EFT reference, amount, date and optional private proof of payment; finance reviews the expected-versus-claimed amount, bank reference, variance and evidence before confirming, requesting clarification or rejecting
 - **Private Payment Evidence** — proof files are stored in a private Supabase Storage bucket and are accessed only through short-lived, admin-authenticated URLs
 - **Governed Discounts** — staff request concessions against unpaid quotes with a required commercial reason; an independent authorised approver creates a revised quote version, writes an immutable event trail, records the concession in the ledger, and notifies the client/accounts contact
+- **Guided Client Enrolment** — the client dashboard now leads the user through Add Drivers → Select Programme → Quote & Pay → Deploy, filters the training matrix by programme, shows the selected driver count and estimated VAT-inclusive total, and keeps the formal-quote action visible while selecting
+- **Resilient Demo Tour** — all 14 simulated dashboard steps remain inside `/demo`; explicit Back, Forward and Exit controls can no longer redirect a visitor into an authenticated real dashboard mid-tour
 
 ---
 
@@ -78,7 +80,7 @@ app/
     finance/                  # Ledger, reconciliation inbox and per-client account view
     discounts/                # Governed discount requests, approvals and audit status
     video-library/            # GFA Video Library (Bunny.net upload, manage, assign)
-  dashboard/                  # Client dashboard pages
+  dashboard/                  # Client dashboard pages, guided enrolment workflow and payment/deployment actions
     bulletins/                # CPD bulletin creation and management
     campaigns/                # Bulletin campaign management
     training-campaigns/       # Training campaign lifecycle management (progress, nudges, close, HR feedback)

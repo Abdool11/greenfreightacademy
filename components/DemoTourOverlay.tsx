@@ -1,20 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useDemo, TOUR_STEPS } from "@/lib/demo-context";
 import { X, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
-
-// ─── Page navigation map ──────────────────────────────────────────────────────
-// Maps tour step pages to actual dashboard routes
-const PAGE_ROUTES: Record<string, string> = {
-  "/demo":                          "/demo",
-  "/dashboard/import":              "/dashboard/import",
-  "/dashboard":                     "/dashboard",
-  "/dashboard/training-campaigns":  "/dashboard/training-campaigns",
-  "/dashboard/bulletins":           "/dashboard/bulletins",
-  "/dashboard/reports":             "/dashboard/reports",
-};
 
 // ─── Tooltip position calculator ─────────────────────────────────────────────
 function getTooltipStyle(
@@ -123,17 +111,11 @@ export default function DemoTourOverlay() {
     next, prev, exitDemo,
   } = useDemo();
 
-  const router = useRouter();
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const rafRef = useRef<number | null>(null);
 
-  // Navigate to the correct page when the step changes
-  useEffect(() => {
-    const route = PAGE_ROUTES[currentStep.page] ?? currentStep.page;
-    if (typeof window !== "undefined" && window.location.pathname !== route) {
-      router.push(route);
-    }
-  }, [currentStep.page, router]);
+  // All simulated dashboard states render inside /demo. Moving to real dashboard
+  // routes here would trigger authentication and interrupt the first Forward click.
 
   // Track the target element's bounding rect (re-measured on each animation frame)
   useEffect(() => {
@@ -243,8 +225,9 @@ export default function DemoTourOverlay() {
         </p>
 
         {/* Navigation */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
           <button
+            type="button"
             onClick={prev}
             disabled={isFirst}
             style={{
@@ -260,7 +243,10 @@ export default function DemoTourOverlay() {
             {currentStep.prevLabel ?? "Back"}
           </button>
 
+          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+          <button type="button" onClick={exitDemo} style={{ background: "transparent", border: "none", color: "#9ca3af", fontSize: "0.78rem", cursor: "pointer", padding: "0.45rem" }}>Exit</button>
           <button
+            type="button"
             onClick={handleNext}
             style={{
               display: "flex", alignItems: "center", gap: "0.375rem",
@@ -284,6 +270,7 @@ export default function DemoTourOverlay() {
               </>
             )}
           </button>
+          </div>
         </div>
       </div>
 
