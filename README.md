@@ -15,6 +15,8 @@ Key platform capabilities include:
 - **Billing Profiles & Formal Quotes** — companies complete a secure billing profile before issuing their first quotation; buyer and supplier details, payment terms, validity date and procurement references are copied into immutable quote snapshots
 - **Admin Quote Settings** — authorised admins configure the legal supplier identity, VAT details, EFT instructions and quote terms without hard-coding sensitive commercial information into the application
 - **Import Reliability** — the driver import screen downloads the same server-generated `.xlsx` template accepted by the primary import parser
+- **EFT Reconciliation Inbox** — clients submit an EFT reference, amount, date and optional private proof of payment; finance reviews the expected-versus-claimed amount, bank reference, variance and evidence before confirming, requesting clarification or rejecting
+- **Private Payment Evidence** — proof files are stored in a private Supabase Storage bucket and are accessed only through short-lived, admin-authenticated URLs
 
 ---
 
@@ -72,6 +74,7 @@ app/
     email-settings/           # Email template settings
     settings/messaging/       # WhatsApp message template settings
     settings/quote-profile/   # Supplier legal details, EFT instructions and formal quote terms
+    finance/                  # Ledger, reconciliation inbox and per-client account view
     video-library/            # GFA Video Library (Bunny.net upload, manage, assign)
   dashboard/                  # Client dashboard pages
     bulletins/                # CPD bulletin creation and management
@@ -79,6 +82,7 @@ app/
     training-campaigns/       # Training campaign lifecycle management (progress, nudges, close, HR feedback)
     import/                   # Driver Excel import using the authoritative server-generated template
     billing/                  # Client billing profile for formal quotations
+    eft/                      # Client EFT instructions, proof upload and verification notice
     reports/                  # Training reports
   programmes/                 # Public programme listing
   pricing/                    # Public pricing page
@@ -114,6 +118,7 @@ cp .env.local.example .env.local
 #   supabase/migrations/20260502_video_library_bulletin_fields.sql
 #   ... apply the remaining migrations in filename order, including:
 #   supabase/migrations/20260816_r1_billing_quotes.sql
+#   supabase/migrations/20260817_r2_eft_reconciliation.sql
 npm run dev
 ```
 
@@ -124,6 +129,8 @@ npm run dev
 > **GFA → BD magic link:** The deploy route (`app/api/company/deploy/route.ts`) generates a BD invitation token per driver and sends a WhatsApp message containing the magic link (`{BD_BASE_URL}/join/{token}`). Set `BD_BASE_URL=https://betterdriver.co.za` in `.env.local`.
 >
 > **Release 1 setup:** After applying `20260816_r1_billing_quotes.sql`, an admin must complete **Admin → Formal Quote Settings** before issuing formal client quotations. This supplies the legal supplier identity, VAT, EFT and payment-term details that are copied into each quote snapshot.
+>
+> **Release 2 setup:** Apply `20260817_r2_eft_reconciliation.sql` after Release 1. It creates the private `payment-proofs` storage bucket and the immutable EFT reconciliation audit trail. Review pending EFTs under **Admin → Finance & Ledger → Reconciliation**; never approve an EFT outside this controlled workflow.
 
 ---
 

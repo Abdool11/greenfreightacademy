@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   Users, Award, Upload, CheckCircle2, Loader2, Send,
   CreditCard, BarChart3, FileText, LogOut, RefreshCw, Bell, BookOpen, Zap, Target,
-  UserPlus, Download, ChevronDown, ChevronRight,
+  UserPlus, Download, ChevronDown, ChevronRight, Landmark,
 } from "lucide-react";
 import CampaignSetupModal from "@/components/CampaignSetupModal";
 import AddDriversModal from "@/components/AddDriversModal";
@@ -748,10 +748,15 @@ export default function DashboardPage() {
                             <Download size={13} /> PDF
                           </a>
                           {quote.status === "pending" && (
-                            <button onClick={() => handlePayNow(quote.id)} disabled={payingQuote === quote.id} style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "0.5rem", padding: "0.5rem 0.875rem", color: "#22c55e", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}>
-                              {payingQuote === quote.id ? <Loader2 size={13} className="animate-spin" /> : <CreditCard size={13} />}
-                              Pay Now
-                            </button>
+                            <>
+                              <Link href={`/dashboard/eft?quoteId=${quote.id}`} style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "rgba(59,130,246,0.11)", border: "1px solid rgba(96,165,250,0.3)", borderRadius: "0.5rem", padding: "0.5rem 0.875rem", color: "#93c5fd", fontSize: "0.8125rem", fontWeight: 700, textDecoration: "none" }}>
+                                <Landmark size={13} /> Pay by EFT
+                              </Link>
+                              <button onClick={() => handlePayNow(quote.id)} disabled={payingQuote === quote.id} style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "0.5rem", padding: "0.5rem 0.875rem", color: "#22c55e", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}>
+                                {payingQuote === quote.id ? <Loader2 size={13} className="animate-spin" /> : <CreditCard size={13} />}
+                                Pay by card
+                              </button>
+                            </>
                           )}
                           {(quote.status === "paid" || quote.status === "approved") && !quote.deployed_at &&
                             (!quote.items_json || !quote.items_json.some((item) => item.driverId.startsWith("placeholder-"))) && (
@@ -772,10 +777,9 @@ export default function DashboardPage() {
                         <div style={{ marginTop: "0.75rem", fontSize: "0.75rem", color: "#9ca3af", display: "flex", alignItems: "flex-start", gap: "0.375rem" }}>
                           <span style={{ color: "#f59e0b", flexShrink: 0 }}>💡</span>
                           <span>
-                            You can also pay via EFT to our Nedbank account — details were sent to your email.
                             {quote.status === "eft_submitted"
-                              ? " We are verifying your payment — the Deploy button will appear here once confirmed."
-                              : " Once we verify your payment, the Deploy button will appear here."}
+                              ? <>Your EFT notice is awaiting finance verification. <Link href={`/dashboard/eft?quoteId=${quote.id}`} style={{ color: "#93c5fd" }}>View or resubmit EFT details</Link> if requested. The Deploy button will appear once payment is confirmed.</>
+                              : <>Choose <strong>Pay by EFT</strong> above to view banking details, submit your payment reference, and optionally upload proof of payment. Training is ready to deploy once finance confirms the EFT.</>}
                           </span>
                         </div>
                       )}
