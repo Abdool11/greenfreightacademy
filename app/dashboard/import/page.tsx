@@ -45,12 +45,8 @@ export default function ImportPage() {
   };
 
   const downloadTemplate = () => {
-    const headers = ["First Name", "Last Name", "Mobile Number", "Alternative Number", "Email", "Branch", "Region"];
-    const csv = headers.join(",") + "\nJohn,Doe,0821234567,0831234567,john@example.com,Durban,KwaZulu-Natal";
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = "GFA_Driver_Import_Template.csv"; a.click();
-    URL.revokeObjectURL(url);
+    // The server generates the authoritative .xlsx template used by the import parser.
+    window.location.href = "/api/company/import";
   };
 
   return (
@@ -72,7 +68,7 @@ export default function ImportPage() {
             <div style={{ background: "#0d1520", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "1rem", padding: "1.5rem", marginBottom: "1.5rem" }}>
               <h3 style={{ margin: "0 0 0.75rem", fontSize: "0.9375rem", color: "#f9fafb" }}>Required columns</h3>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
-                {["First Name *", "Last Name *", "Mobile Number *", "Alternative Number", "Email", "Branch", "Region"].map(col => (
+                {["Employee Name *", "Mobile Number *", "Alternative Number", "Email", "Branch", "Region"].map(col => (
                   <div key={col} style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: col.includes("*") ? "#f9fafb" : "#9ca3af", fontSize: "0.8125rem" }}>
                     <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: col.includes("*") ? "#22c55e" : "#374151", flexShrink: 0 }} />
                     {col}
@@ -80,7 +76,7 @@ export default function ImportPage() {
                 ))}
               </div>
               <button onClick={downloadTemplate} style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "0.5rem", padding: "0.5rem 1rem", color: "#22c55e", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer", marginTop: "1rem" }}>
-                <Download size={14} /> Download Excel template
+                <Download size={14} /> Download Excel template (.xlsx)
               </button>
             </div>
 

@@ -12,6 +12,9 @@ Key platform capabilities include:
 - **HR Feedback (Self-Evaluation)** — a 3-question 5-star widget completed by drivers after course completion: (1) I understand the material, (2) I enjoyed the learning experience, (3) I want to learn more; aggregate scores are visible per campaign
 - **GFA Video Library** — admin-managed Bunny.net-backed video library for invite videos, teaser videos, portal walkthrough videos, and module content; videos are tagged by type, language (EN/ZU), and programme; invite videos are selectable when creating a training campaign and are delivered to drivers on first magic link tap
 - **WhatsApp Bulletin Notification Fields** — when creating a driver bulletin, the operator selects which fields to include in the WhatsApp message (topic, urgency level, category, driver action, mitigation message, portal link); a live preview shows exactly what each driver will receive before dissemination
+- **Billing Profiles & Formal Quotes** — companies complete a secure billing profile before issuing their first quotation; buyer and supplier details, payment terms, validity date and procurement references are copied into immutable quote snapshots
+- **Admin Quote Settings** — authorised admins configure the legal supplier identity, VAT details, EFT instructions and quote terms without hard-coding sensitive commercial information into the application
+- **Import Reliability** — the driver import screen downloads the same server-generated `.xlsx` template accepted by the primary import parser
 
 ---
 
@@ -68,12 +71,14 @@ app/
     stats/                    # Impact statistics
     email-settings/           # Email template settings
     settings/messaging/       # WhatsApp message template settings
+    settings/quote-profile/   # Supplier legal details, EFT instructions and formal quote terms
     video-library/            # GFA Video Library (Bunny.net upload, manage, assign)
   dashboard/                  # Client dashboard pages
     bulletins/                # CPD bulletin creation and management
     campaigns/                # Bulletin campaign management
     training-campaigns/       # Training campaign lifecycle management (progress, nudges, close, HR feedback)
-    import/                   # Driver CSV import
+    import/                   # Driver Excel import using the authoritative server-generated template
+    billing/                  # Client billing profile for formal quotations
     reports/                  # Training reports
   programmes/                 # Public programme listing
   pricing/                    # Public pricing page
@@ -107,6 +112,8 @@ cp .env.local.example .env.local
 #   supabase/migrations/20260501_base_schema.sql              <- RUN FIRST
 #   supabase/migrations/20260502_training_campaigns.sql
 #   supabase/migrations/20260502_video_library_bulletin_fields.sql
+#   ... apply the remaining migrations in filename order, including:
+#   supabase/migrations/20260816_r1_billing_quotes.sql
 npm run dev
 ```
 
@@ -115,6 +122,8 @@ npm run dev
 > **Fresh deployment shortcut:** Use `ALL_MIGRATIONS_RUN_ONCE.sql` in the repo root — all migrations concatenated in the correct order, ready to paste into the Supabase SQL editor in one go.
 >
 > **GFA → BD magic link:** The deploy route (`app/api/company/deploy/route.ts`) generates a BD invitation token per driver and sends a WhatsApp message containing the magic link (`{BD_BASE_URL}/join/{token}`). Set `BD_BASE_URL=https://betterdriver.co.za` in `.env.local`.
+>
+> **Release 1 setup:** After applying `20260816_r1_billing_quotes.sql`, an admin must complete **Admin → Formal Quote Settings** before issuing formal client quotations. This supplies the legal supplier identity, VAT, EFT and payment-term details that are copied into each quote snapshot.
 
 ---
 
