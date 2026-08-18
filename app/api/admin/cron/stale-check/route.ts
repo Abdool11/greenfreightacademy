@@ -61,11 +61,11 @@ export async function GET(req: NextRequest) {
     });
 
     // Record that we've alerted
-    await supabaseAdmin.from("stale_alert_log").insert({
+    await supabaseAdmin.from("stale_alert_log").upsert({
       entity_type: "quote",
       entity_id:   q.id,
       alert_type:  "quote_pending_24h",
-    }).on("conflict", "do-nothing" as never);
+    }, { onConflict: "entity_id,alert_type", ignoreDuplicates: true });
 
     alertsSent++;
   }
@@ -102,11 +102,11 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    await supabaseAdmin.from("stale_alert_log").insert({
+    await supabaseAdmin.from("stale_alert_log").upsert({
       entity_type: "eft",
       entity_id:   q.id,
       alert_type:  "eft_pending_48h",
-    }).on("conflict", "do-nothing" as never);
+    }, { onConflict: "entity_id,alert_type", ignoreDuplicates: true });
 
     alertsSent++;
   }

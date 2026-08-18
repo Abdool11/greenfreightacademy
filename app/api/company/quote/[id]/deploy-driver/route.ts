@@ -18,12 +18,12 @@ function generateOpaqueToken(): string {
 // POST /api/company/quote/[id]/deploy-driver — deploy a single driver from a paid quote
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const quoteId = params.id;
+  const { id: quoteId } = await params;
   const { driverId } = await req.json();
   if (!driverId) return NextResponse.json({ error: "driverId required" }, { status: 400 });
 

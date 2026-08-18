@@ -37,12 +37,12 @@ interface DriverDetail {
 // PATCH /api/company/quote/[id]/drivers — save driver details against a paid quote
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const quoteId = params.id;
+  const { id: quoteId } = await params;
   const { drivers: driverDetails } = await req.json() as { drivers: DriverDetail[] };
 
   if (!Array.isArray(driverDetails) || driverDetails.length === 0) {

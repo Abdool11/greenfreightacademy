@@ -13,6 +13,7 @@ const money = (value: number) => `R ${value.toFixed(2)}`;
 export async function POST(req: NextRequest) {
   const session = await requireAdminSession();
   if (session instanceof NextResponse) return session;
+  if (process.env.ENABLE_EFT_RECONCILIATION_V2 !== "true") return NextResponse.json({ error: "Enhanced EFT reconciliation is disabled for this release." }, { status: 503 });
 
   const body = await req.json();
   const paymentId = clean(body.paymentId);

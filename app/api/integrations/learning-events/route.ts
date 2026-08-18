@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 export const dynamic = "force-dynamic";
 const eventTypes = new Set(["training_link_activated","training_started","module_completed","training_completed","certificate_issued","briefing_delivered","briefing_acknowledged"]);
 export async function POST(req: NextRequest) {
+ if (process.env.ENABLE_R6_EVENT_INGEST !== "true") return NextResponse.json({ error: "Learning-event ingestion is disabled for this release." }, { status: 503 });
  const secret=process.env.BD_EVENT_SECRET;if(!secret)return NextResponse.json({error:"Integration not configured"},{status:503});
  const raw=await req.text(), signature=req.headers.get("x-gfa-event-signature")||"";
  const expected=createHmac("sha256",secret).update(raw).digest("hex");

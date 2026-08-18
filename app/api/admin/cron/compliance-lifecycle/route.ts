@@ -7,6 +7,7 @@ const stages = [30, 14, 7, 1] as const;
 export async function GET(req: NextRequest) {
   const secret = req.headers.get("x-cron-secret") ?? req.nextUrl.searchParams.get("secret");
   if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (process.env.ENABLE_R7_LIFECYCLE_CRON !== "true") return NextResponse.json({ error: "Compliance lifecycle is disabled for this release." }, { status: 503 });
   const today = new Date(); today.setHours(0, 0, 0, 0);
   let remindersSent = 0;
 

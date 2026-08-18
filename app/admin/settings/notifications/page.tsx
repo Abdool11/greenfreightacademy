@@ -181,7 +181,7 @@ export default function NotificationsSettingsPage() {
                 <label style={{ ...s.label, color: f.color }}>{f.label}</label>
                 <input
                   type="text"
-                  value={(recipients as Record<string, string>)[f.key] ?? ""}
+                  value={(recipients as unknown as Record<string, string>)[f.key] ?? ""}
                   onChange={e => setRecipients(r => ({ ...r, [f.key]: e.target.value }))}
                   placeholder={f.placeholder}
                   style={s.input}

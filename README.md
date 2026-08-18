@@ -22,6 +22,8 @@ Key platform capabilities include:
 - **Resilient Demo Tour** — all 14 simulated dashboard steps remain inside `/demo`; explicit Back, Forward and Exit controls can no longer redirect a visitor into an authenticated real dashboard mid-tour
 - **Daily Operations** — an admin daily management report combines confirmed platform receipts, card/EFT split, quotes, discounts, drivers added, training starts, completions, certificates and an actionable finance queue; the detailed cashbook exports to CSV
 - **Learning Event Foundation** — idempotent BetterDriver/Moodle event and per-enrolment revenue-recognition tables provide the protected central ledger required before wiring signed training-start, progress and certificate events
+- **Compliance & Evidence Reporting** — client RTMS profile, competency-review preferences, compliance dashboard, controlled evidence snapshots/PDFs, validation metadata and protected lifecycle automation are available behind safe release flags
+- **Deployment Experience** — GitHub build checks, a deployment-ready PR template, release labels and a versioned integration runbook reduce production release risk
 
 ---
 
@@ -128,6 +130,7 @@ cp .env.local.example .env.local
 #   supabase/migrations/20260817_r2_eft_reconciliation.sql
 #   supabase/migrations/20260818_r3_discount_governance.sql
 #   supabase/migrations/20260819_r6_learning_events.sql
+#   supabase/migrations/20260821_r7a_compliance_reporting.sql
 npm run dev
 ```
 
@@ -141,7 +144,9 @@ npm run dev
 >
 > **Release 2 setup:** Apply `20260817_r2_eft_reconciliation.sql` after Release 1. It creates the private `payment-proofs` storage bucket and the immutable EFT reconciliation audit trail. Review pending EFTs under **Admin → Finance & Ledger → Reconciliation**; never approve an EFT outside this controlled workflow.
 >
-> **Release 3 setup:** Apply `20260818_r3_discount_governance.sql` after Releases 1–2. The seeded policy permits an `admin` to request up to 25% but not approve; a `super_admin` may approve up to 100% but can never approve their own request. Change these policy values directly in `discount_authority_rules` only after formal commercial approval.
+> **Release 3 setup:** Apply `20260818_r3_discount_governance.sql` after Releases 1–2. An `admin` may approve a discount of **20% or less**; only a `super_admin` may approve a larger discount; and self-approval is always blocked. Change these policy values only after formal commercial approval.
+>
+> **Commercial & Compliance V1:** Follow [`docs/releases/2026-08-commercial-compliance-v1/00-RELEASE-SUMMARY.md`](docs/releases/2026-08-commercial-compliance-v1/00-RELEASE-SUMMARY.md) for the one-branch integration process, ordered migrations, Vercel configuration, preview tests, feature activation and rollback.
 
 ---
 
@@ -168,6 +173,12 @@ npm run dev
 | `BUNNY_CDN_HOSTNAME` | Optional | Bunny.net CDN hostname for playback URLs |
 | `BD_BASE_URL` | Yes | BetterDriver site URL |
 | `NEXT_PUBLIC_SITE_URL` | Yes | Full URL of this site in production |
+| `BD_EVENT_SECRET` | R6 only | Shared HMAC secret for trusted BetterDriver/Moodle learning events |
+| `CRON_SECRET` | R7 lifecycle only | Secret required by the compliance lifecycle endpoint |
+| `ENABLE_R6_EVENT_INGEST` | Release controlled | Leave `false` until signed-event preview test passes |
+| `ENABLE_R7_LIFECYCLE_CRON` | Release controlled | Leave `false` until lifecycle preview test passes |
+| `ENABLE_EVIDENCE_REPORTS` | Release controlled | Leave `false` until evidence report/validation preview test passes |
+| `ENABLE_EFT_RECONCILIATION_V2` | Release controlled | Leave `false` until finance preview test passes |
 
 ---
 
@@ -183,24 +194,26 @@ All changes go through a branch and Pull Request — nothing is pushed directly 
 | Bug fix | `fix/short-description` | `fix/paystack-webhook-signature` |
 | Content update | `content/short-description` | `content/update-pricing-page` |
 | Hotfix (urgent) | `hotfix/short-description` | `hotfix/login-redirect-broken` |
+| Integration release | `release/short-description` | `release/gfa-commercial-compliance-v1` |
 
 ### Step-by-Step Workflow
 
 1. Create a branch from `main`: `git checkout -b feature/your-feature-name`
 2. Make changes and commit: `git commit -m "feat: describe what changed and why"`
-3. Push the branch: `git push origin feature/your-feature-name`
-4. Open a Pull Request on GitHub against `main`
-5. Review the diff — GitHub flags any conflicts before merge
-6. Approve and merge to `main`
-7. Delete the feature branch after merging
+3. Run `npm ci`, `npm run type-check` and `npm run build`.
+4. Push the branch: `git push origin feature/your-feature-name`.
+5. Complete the deployment-ready PR template, including migration, environment, feature-flag and rollback details.
+6. Wait for the GitHub **Build Check** and a Vercel Preview deployment.
+7. For a cumulative release, merge feature commits into a `release/...` branch, complete its versioned runbook, then open one final PR to `main`.
+8. Approve and merge only after the preview checklist passes; delete the source branch after the release is stable.
 
 ---
 
 ## Deployment
 
-Packaged as a standalone tar.gz including `server.js`, `pm2.config.js`, `nginx.conf`, `deploy.sh`, `QUICK-START-CARD.md`, and `.env.local.example`.
+Vercel deploys `main` to production. Feature and release branches should be reviewed on their Vercel Preview deployment before a PR is merged. The required deployment record is the PR template plus the relevant versioned folder under `docs/releases/`.
 
-> **Important:** The Nginx config must include a `location /_next/static/` block. Without this the site loads without any styling. This is already included in the provided `nginx.conf`.
+> **Important:** Do not push directly to `main`. Use a release PR, preserve the preview URL and use feature flags to activate high-risk functionality one capability at a time.
 
 ---
 
