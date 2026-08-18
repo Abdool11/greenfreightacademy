@@ -7,6 +7,7 @@ import { calculateDiscount, DiscountType, formatZar } from "@/lib/discounts";
 
 export const dynamic = "force-dynamic";
 const clean = (value: unknown) => typeof value === "string" ? value.trim() : "";
+const roleCap = (role: "admin" | "super_admin") => role === "super_admin" ? 100 : 20;
 
 export async function GET() {
   const session = await requireAdminSession();
@@ -43,7 +44,8 @@ export async function POST(req: NextRequest) {
 
     let calculation;
     try { calculation = calculateDiscount(Number(quote.subtotal ?? 0), discountType, requestedValue); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid discount." }, { status: 400 }); }
-    if (!rule || calculation.requestedPercent > Number(rule.max_request_percent ?? 0)) return NextResponse.json({ error: `Your role may request discounts up to ${Number(rule?.max_request_percent ?? 0)}%.` }, { status: 403 });
+    const requestCap = Math.min(roleCap(session.role), Number(rule?.max_request_percent ?? 0));
+    if (!rule || calculation.requestedPercent > requestCap) return NextResponse.json({ error: `Your role may request discounts up to ${requestCap}%.` }, { status: 403 });
 
     const requestReference = `DISC-${Date.now().toString(36).toUpperCase()}`;
     const now = new Date().toISOString();
@@ -73,8 +75,9 @@ export async function POST(req: NextRequest) {
     ]);
     if (!request) return NextResponse.json({ error: "Discount request not found." }, { status: 404 });
     if (request.status !== "pending") return NextResponse.json({ error: `This request is already ${request.status}.` }, { status: 409 });
-    if (!rule || Number(request.requested_percent) > Number(rule.max_approval_percent ?? 0)) return NextResponse.json({ error: "Your role does not have authority to approve this discount level." }, { status: 403 });
-    if (rule.require_different_approver && request.requested_by === session.adminId) return NextResponse.json({ error: "The requesting admin cannot approve their own discount request." }, { status: 403 });
+    const approvalCap = Math.min(roleCap(session.role), Number(rule?.max_approval_percent ?? 0));
+    if (!rule || Number(request.requested_percent) > approvalCap) return NextResponse.json({ error: `Your role does not have authority to approve discounts above ${approvalCap}%.` }, { status: 403 });
+    if (request.requested_by === session.adminId) return NextResponse.json({ error: "The requesting admin cannot approve their own discount request." }, { status: 403 });
 
     const quote = Array.isArray(request.quotes) ? request.quotes[0] : request.quotes;
     if (!quote || !["pending", "eft_submitted"].includes(quote.status)) return NextResponse.json({ error: "The linked quote is no longer eligible for revision." }, { status: 409 });

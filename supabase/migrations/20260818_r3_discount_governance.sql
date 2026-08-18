@@ -14,9 +14,13 @@ CREATE TABLE IF NOT EXISTS discount_authority_rules (
 
 INSERT INTO discount_authority_rules (role, max_request_percent, max_approval_percent, require_different_approver)
 VALUES
-  ('admin', 25.00, 0.00, TRUE),
+  ('admin', 20.00, 20.00, TRUE),
   ('super_admin', 100.00, 100.00, TRUE)
-ON CONFLICT (role) DO NOTHING;
+ON CONFLICT (role) DO UPDATE SET
+  max_request_percent = EXCLUDED.max_request_percent,
+  max_approval_percent = EXCLUDED.max_approval_percent,
+  require_different_approver = EXCLUDED.require_different_approver,
+  updated_at = NOW();
 
 -- ─── 2. Controlled discount request records ────────────────────────────────────
 CREATE TABLE IF NOT EXISTS discount_requests (
