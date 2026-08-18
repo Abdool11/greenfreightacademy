@@ -3,7 +3,7 @@
 **Release branch:** `release/gfa-commercial-compliance-v1`  
 **BetterDriver companion branch:** `release/betterdriver-driver-experience-v1`  
 **Owner:** Asif  
-**Last updated:** `2026-08-18 17:30 SAST`
+**Last updated:** `2026-08-18 17:50 SAST`
 
 ## How to use this page
 
@@ -44,18 +44,18 @@ Update the **Evidence / notes** column with a Vercel URL, test identifier, GitHu
 | BetterDriver handover/re-access test | Not started | Blocked by repo structure issue. |
 | BetterDriver PWA installation test | Not started | Blocked by repo structure issue. Needs real Android device. |
 | BetterDriver push opt-in and WhatsApp fallback test | Not started | Blocked by repo structure issue. Needs real devices. |
-| Production GFA baseline smoke test | Not started | Pending preview test completion. |
+| Production GFA baseline smoke test | Live in production | Playwright suite run against greenfreightacademy.vercel.app — 24/24 tests passed. All 4 GFA flags activated. |
 | Production BetterDriver baseline smoke test | Not started | Blocked by repo structure issue. |
 
 ## Feature activation record
 
 | Flag | Preview status | Production status | Enabled by / time | Smoke-test result |
 |---|---|---|---|---|
-| `ENABLE_EFT_RECONCILIATION_V2` | Not started | Not started | | |
-| `ENABLE_EVIDENCE_REPORTS` | Not started | Not started | | |
-| `ENABLE_R6_EVENT_INGEST` | Not started | Not started | | |
-| `ENABLE_R7_LIFECYCLE_CRON` | Not started | Not started | | |
-| `ENABLE_PUSH_NOTIFICATIONS` | Not started | Not started | | |
+| `ENABLE_EFT_RECONCILIATION_V2` | Verified in preview | Live in production | Asif / 2026-08-18 17:40 SAST | EFT reconciliation panel accessible, payments API working, queue visible. |
+| `ENABLE_EVIDENCE_REPORTS` | Verified in preview | Live in production | Asif / 2026-08-18 17:45 SAST | Evidence reports page loads, generation API reachable. |
+| `ENABLE_R6_EVENT_INGEST` | Verified in preview | Live in production | Asif / 2026-08-18 17:45 SAST | Learning events endpoint accepts signed events, rejects invalid signatures, handles duplicates. |
+| `ENABLE_R7_LIFECYCLE_CRON` | Verified in preview | Live in production | Asif / 2026-08-18 17:45 SAST | Compliance lifecycle endpoint responds, operations page loads, compliance dashboard accessible. |
+| `ENABLE_PUSH_NOTIFICATIONS` | Not started | Not started | | BetterDriver flag — blocked by repo structure issue. |
 
 ## Incident / rollback log
 
