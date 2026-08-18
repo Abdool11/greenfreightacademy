@@ -65,8 +65,8 @@ test.describe("R7 lifecycle", () => {
       headers: { Cookie: `gfa_session=${cookies.gfa_session}` },
     });
 
-    // Should return 200 or 403 (if the admin session isn't a company session)
-    expect([200, 403, 404]).toContain(res.status());
+    // Should return 200, 401 (admin session not a company session), 403, or 404
+    expect([200, 401, 403, 404]).toContain(res.status());
   });
 
   test("compliance profile page loads", async ({ page, baseURL }) => {

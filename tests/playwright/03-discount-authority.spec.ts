@@ -15,7 +15,7 @@ import { adminLogin, setSessionOnPage } from "./helpers";
 test.describe("Discount authority", () => {
   test("discount authority rules are seeded correctly", async () => {
     // Verify the discount_authority_rules table has the correct values
-    // by checking the discounts API
+    // by checking the discounts page
     test.skip(
       !process.env.GFA_TEST_ADMIN_EMAIL,
       "Admin test credentials not set"
@@ -30,12 +30,13 @@ test.describe("Discount authority", () => {
     const res = await ctx.get("/admin/discounts", {
       headers: { Cookie: `gfa_session=${cookies.gfa_session}` },
     });
+    const status = res.status();
+    const text = await res.text().catch(() => "");
     await ctx.dispose();
 
-    expect(res.ok()).toBeTruthy();
-    const html = await res.text();
+    expect(status).toBe(200);
     // The page should mention the 20% limit
-    expect(html).toContain("20");
+    expect(text).toContain("20");
   });
 
   test("admin can access discounts page", async ({ page, baseURL }) => {
