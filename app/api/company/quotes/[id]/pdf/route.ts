@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { supabaseAdmin, getConfigs } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { asBillingSnapshot, BillingProfile, getSupplierProfile, SupplierProfile } from "@/lib/quoteProfiles";
 
 export const dynamic = "force-dynamic";
 
@@ -13,19 +14,22 @@ interface QuoteLineItem {
   price?: number;
 }
 
+const asRecord = (value: unknown): Record<string, unknown> => (
+  value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}
+);
+const stringValue = (value: unknown) => typeof value === "string" ? value : "";
+const boolValue = (value: unknown) => Boolean(value);
+const money = (value: number) => `R ${value.toFixed(2)}`;
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
-  if (!session) {
-    return new NextResponse("Unauthorized", { status: 401 });
-  }
+  if (!session) return new NextResponse("Unauthorized", { status: 401 });
 
   const { id } = await params;
-  if (!id) {
-    return new NextResponse("Missing quote id", { status: 400 });
-  }
+  if (!id) return new NextResponse("Missing quote id", { status: 400 });
 
   const { data: quote, error } = await supabaseAdmin
     .from("quotes")
@@ -33,159 +37,187 @@ export async function GET(
     .eq("id", id)
     .eq("company_id", session.companyId)
     .single();
+  if (error || !quote) return new NextResponse("Quote not found", { status: 404 });
 
-  if (error || !quote) {
-    return new NextResponse("Quote not found", { status: 404 });
-  }
+  const lineItems: QuoteLineItem[] = Array.isArray(quote.line_items) ? quote.line_items : [];
+  const fallbackSubtotal = lineItems.reduce((sum, item) => sum + Number(item.price || 0), 0);
+  const subtotal = Number(quote.subtotal ?? fallbackSubtotal);
+  const discountAmount = Number(quote.discount_amount ?? 0);
+  const listSubtotal = Number(quote.list_subtotal ?? (subtotal + discountAmount));
+  const discountPercent = Number(quote.discount_percent ?? 0);
+  const vat = Number(quote.vat ?? Math.round(subtotal * 0.15 * 100) / 100);
+  const total = Number(quote.total ?? subtotal + vat);
 
-  const configs = await getConfigs([
-    "company_name",
-    "company_vat_number",
-    "company_address",
-    "company_email",
-    "company_phone",
-    "company_bank_name",
-    "company_bank_account",
-    "company_bank_branch",
+  const [supplierFallback, billingFallback] = await Promise.all([
+    getSupplierProfile(),
+    supabaseAdmin
+      .from("company_billing_profiles")
+      .select("*")
+      .eq("company_id", session.companyId)
+      .maybeSingle(),
   ]);
 
-  const lineItems: QuoteLineItem[] = Array.isArray(quote.line_items)
-    ? quote.line_items
-    : [];
-  // Always calculate subtotal from line items so the table and totals are consistent
-  const subtotal = lineItems.reduce((sum, l) => sum + Number(l.price || 0), 0);
-  const vat = Math.round(subtotal * 0.15 * 100) / 100;
-  const total = subtotal + vat;
+  const supplierRaw = asRecord(quote.supplier_snapshot);
+  const supplier: SupplierProfile = Object.keys(supplierRaw).length > 0
+    ? {
+        ...supplierFallback,
+        legal_name: stringValue(supplierRaw.legal_name) || supplierFallback.legal_name,
+        trading_name: stringValue(supplierRaw.trading_name),
+        registration_number: stringValue(supplierRaw.registration_number),
+        vat_number: stringValue(supplierRaw.vat_number),
+        address: stringValue(supplierRaw.address),
+        email: stringValue(supplierRaw.email) || supplierFallback.email,
+        phone: stringValue(supplierRaw.phone),
+        bank_name: stringValue(supplierRaw.bank_name),
+        bank_account: stringValue(supplierRaw.bank_account),
+        bank_branch: stringValue(supplierRaw.bank_branch),
+        bank_account_holder: stringValue(supplierRaw.bank_account_holder),
+        bank_account_type: stringValue(supplierRaw.bank_account_type),
+        bank_product_type: stringValue(supplierRaw.bank_product_type),
+        quote_validity_days: Number(supplierRaw.quote_validity_days) || supplierFallback.quote_validity_days,
+        payment_terms: stringValue(supplierRaw.payment_terms) || supplierFallback.payment_terms,
+        terms_note: stringValue(supplierRaw.terms_note),
+      }
+    : supplierFallback;
+
+  const billingRaw = asRecord(quote.billing_profile_snapshot);
+  const billingSource = billingFallback.data as BillingProfile | null;
+  const billing = Object.keys(billingRaw).length > 0
+    ? billingRaw
+    : billingSource ? asBillingSnapshot(billingSource) : {
+        legal_entity_name: session.companyName,
+        trading_name: "",
+        registration_number: "",
+        vat_registered: false,
+        vat_number: "",
+        billing_address: "",
+        accounts_contact_name: "",
+        accounts_email: session.email,
+        accounts_phone: "",
+      };
+
+  const billingName = stringValue(billing.trading_name)
+    ? `${stringValue(billing.legal_entity_name)} t/a ${stringValue(billing.trading_name)}`
+    : stringValue(billing.legal_entity_name) || session.companyName;
+  const supplierName = supplier.trading_name ? `${supplier.legal_name} t/a ${supplier.trading_name}` : supplier.legal_name;
 
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
   const rightX = pageWidth - 14;
 
-  // Header band
   doc.setFillColor(15, 31, 61);
-  doc.rect(0, 0, pageWidth, 32, "F");
+  doc.rect(0, 0, pageWidth, 35, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text("GreenFreightAcademy", 14, 15);
+  doc.text(supplierName, 14, 15);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.text("Training Quotation", 14, 23);
-
   doc.setTextColor(147, 197, 253);
-  doc.setFontSize(10);
-  doc.text(`Ref: ${quote.reference}`, rightX, 14, { align: "right" });
-  doc.text(
-    new Date(quote.created_at).toLocaleDateString("en-ZA"),
-    rightX,
-    20,
-    { align: "right" }
-  );
+  doc.setFontSize(9);
+  doc.text(`Ref: ${quote.reference} · Version ${quote.quote_version || 1}`, rightX, 14, { align: "right" });
+  doc.text(`Issued: ${new Date(quote.issued_at || quote.created_at).toLocaleDateString("en-ZA")}`, rightX, 20, { align: "right" });
+  if (quote.valid_until) doc.text(`Valid until: ${new Date(`${quote.valid_until}T00:00:00`).toLocaleDateString("en-ZA")}`, rightX, 26, { align: "right" });
 
-  // Company and bill-to block
   doc.setTextColor(17, 24, 39);
-  let y = 42;
-  doc.setFontSize(10);
+  let y = 45;
+  doc.setFontSize(9.5);
   doc.setFont("helvetica", "bold");
-  doc.text(configs.company_name || "GreenFreightAcademy", 14, y);
+  doc.text("Supplier", 14, y);
   doc.setFont("helvetica", "normal");
-  y += 6;
-  doc.text(`VAT: ${configs.company_vat_number || "TBC"}`, 14, y);
-  y += 6;
-  if (configs.company_address) {
-    doc.text(configs.company_address, 14, y);
-    y += 6;
+  y += 5;
+  doc.text(supplierName, 14, y);
+  y += 4.5;
+  if (supplier.registration_number) { doc.text(`Reg. no.: ${supplier.registration_number}`, 14, y); y += 4.5; }
+  if (supplier.vat_number) { doc.text(`VAT: ${supplier.vat_number}`, 14, y); y += 4.5; }
+  if (supplier.address) { const lines = doc.splitTextToSize(supplier.address, 75); doc.text(lines, 14, y); y += lines.length * 4.5; }
+
+  let buyerY = 45;
+  const buyerX = 108;
+  doc.setFont("helvetica", "bold");
+  doc.text("Bill to", buyerX, buyerY);
+  doc.setFont("helvetica", "normal");
+  buyerY += 5;
+  doc.text(billingName, buyerX, buyerY);
+  buyerY += 4.5;
+  if (stringValue(billing.registration_number)) { doc.text(`Reg. no.: ${stringValue(billing.registration_number)}`, buyerX, buyerY); buyerY += 4.5; }
+  if (boolValue(billing.vat_registered) && stringValue(billing.vat_number)) { doc.text(`VAT: ${stringValue(billing.vat_number)}`, buyerX, buyerY); buyerY += 4.5; }
+  if (stringValue(billing.billing_address)) { const lines = doc.splitTextToSize(stringValue(billing.billing_address), 85); doc.text(lines, buyerX, buyerY); buyerY += lines.length * 4.5; }
+  if (stringValue(billing.accounts_contact_name) || stringValue(billing.accounts_email)) {
+    doc.text(`Accounts: ${stringValue(billing.accounts_contact_name)} ${stringValue(billing.accounts_email) ? `· ${stringValue(billing.accounts_email)}` : ""}`, buyerX, buyerY);
+    buyerY += 4.5;
   }
+  if (quote.purchase_order_ref) { doc.text(`PO reference: ${quote.purchase_order_ref}`, buyerX, buyerY); buyerY += 4.5; }
+  if (quote.cost_centre) doc.text(`Cost centre: ${quote.cost_centre}`, buyerX, buyerY);
 
-  y += 6;
-  doc.setFont("helvetica", "bold");
-  doc.text("Bill to:", 14, y);
-  doc.setFont("helvetica", "normal");
-  y += 6;
-  doc.text(session.companyName, 14, y);
-  y += 6;
-  doc.text(session.email, 14, y);
-  y += 12;
-
-  // Group line items by course for conciseness
-  const courseGroups = lineItems.reduce((acc, l) => {
-    const key = l.courseName || "Unknown";
-    if (!acc[key]) acc[key] = { count: 0, price: Number(l.price || 0), subtotal: 0 };
+  y = Math.max(y, buyerY) + 8;
+  const courseGroups = lineItems.reduce((acc, line) => {
+    const key = line.courseName || "Unknown";
+    if (!acc[key]) acc[key] = { count: 0, price: Number(line.price || 0), subtotal: 0 };
     acc[key].count++;
-    acc[key].subtotal += Number(l.price || 0);
+    acc[key].subtotal += Number(line.price || 0);
     return acc;
   }, {} as Record<string, { count: number; price: number; subtotal: number }>);
 
-  // Line items table — grouped by course
   autoTable(doc, {
     startY: y,
     head: [["Programme", "Unit Price", "Amount"]],
-    body: Object.entries(courseGroups).map(([courseName, g]) => [
-      `${g.count} × ${courseName}`,
-      `R ${g.price.toFixed(2)}`,
-      `R ${g.subtotal.toFixed(2)}`,
+    body: Object.entries(courseGroups).map(([courseName, group]) => [
+      `${group.count} × ${courseName}`,
+      money(group.price),
+      money(group.subtotal),
     ]),
     theme: "grid",
-    headStyles: {
-      fillColor: [15, 31, 61],
-      textColor: [255, 255, 255],
-      fontStyle: "bold",
-    },
-    styles: {
-      font: "helvetica",
-      fontSize: 10,
-      cellPadding: 2.5,
-    },
-    columnStyles: {
-      0: { cellWidth: "auto" },
-      1: { halign: "right" },
-      2: { halign: "right" },
-    },
+    headStyles: { fillColor: [15, 31, 61], textColor: [255, 255, 255], fontStyle: "bold" },
+    styles: { font: "helvetica", fontSize: 9.5, cellPadding: 2.5 },
+    columnStyles: { 0: { cellWidth: "auto" }, 1: { halign: "right" }, 2: { halign: "right" } },
   });
 
-  // Totals
-  const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY || y + 40;
-  y = finalY + 10;
+  y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY + 9;
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(75, 85, 99);
-  doc.text(`Subtotal: R ${subtotal.toFixed(2)}`, rightX, y, { align: "right" });
+  if (discountAmount > 0) {
+    doc.text(`List subtotal: ${money(listSubtotal)}`, rightX, y, { align: "right" });
+    y += 6;
+    doc.setTextColor(180, 83, 9);
+    doc.text(`Approved discount${discountPercent ? ` (${discountPercent.toFixed(2)}%)` : ""}: -${money(discountAmount)}`, rightX, y, { align: "right" });
+    y += 6;
+    doc.setTextColor(75, 85, 99);
+  }
+  doc.text(`Subtotal: ${money(subtotal)}`, rightX, y, { align: "right" });
   y += 6;
-  doc.text(`VAT (15%): R ${vat.toFixed(2)}`, rightX, y, { align: "right" });
+  doc.text(`VAT (15%): ${money(vat)}`, rightX, y, { align: "right" });
   y += 8;
   doc.setFont("helvetica", "bold");
   doc.setTextColor(22, 163, 74);
-  doc.text(`TOTAL: R ${total.toFixed(2)}`, rightX, y, { align: "right" });
-  doc.setTextColor(17, 24, 39);
+  doc.text(`TOTAL: ${money(total)}`, rightX, y, { align: "right" });
 
-  // Payment details
-  y += 14;
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
+  y += 15;
   doc.setTextColor(17, 24, 39);
+  doc.setFontSize(10);
   doc.text("Payment Details", 14, y);
   y += 6;
   doc.setFont("helvetica", "normal");
-  doc.text(`Bank: ${configs.company_bank_name || "TBC"}`, 14, y);
-  y += 6;
-  doc.text(`Account: ${configs.company_bank_account || "TBC"}`, 14, y);
-  y += 6;
-  doc.text(`Branch Code: ${configs.company_bank_branch || "TBC"}`, 14, y);
-  y += 6;
-  doc.text(`Reference: ${quote.reference}`, 14, y);
-  y += 10;
-
   doc.setFontSize(9);
+  const paymentLines = [
+    `Bank: ${supplier.bank_name || "To be confirmed"}`,
+    `Account holder: ${supplier.bank_account_holder || supplier.legal_name}`,
+    `Account: ${supplier.bank_account || "To be confirmed"}`,
+    `Branch code: ${supplier.bank_branch || "To be confirmed"}`,
+    `Payment reference: ${quote.reference}`,
+  ];
+  doc.text(paymentLines, 14, y);
+  y += paymentLines.length * 4.5 + 4;
   doc.setTextColor(107, 114, 128);
-  doc.text(
-    `Pay online via "Pay Now" in your dashboard or email proof of payment to ${configs.company_email || "info@greenfreightacademy.com"}.`,
-    14,
-    y,
-    { maxWidth: pageWidth - 28 }
-  );
+  doc.text(doc.splitTextToSize(supplier.payment_terms, pageWidth - 28), 14, y);
+  if (supplier.terms_note) {
+    y += 9;
+    doc.text(doc.splitTextToSize(supplier.terms_note, pageWidth - 28), 14, y);
+  }
 
   const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
-
   return new NextResponse(pdfBuffer, {
     headers: {
       "Content-Type": "application/pdf",

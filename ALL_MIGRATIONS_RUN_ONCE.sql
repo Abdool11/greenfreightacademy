@@ -1,4 +1,12 @@
 -- =============================================================================
+-- GFA ALL MIGRATIONS — RUN ONCE ON A FRESH DATABASE OR APPLY INDIVIDUAL FILES
+-- Generated from supabase/migrations in filename order.
+-- =============================================================================
+
+-- =============================================================================
+-- BEGIN: 20260501_base_schema.sql
+-- =============================================================================
+-- =============================================================================
 -- BASE SCHEMA — TAG Ecosystem (GFA + BetterDriver)
 -- Run this FIRST on a fresh Supabase project.
 -- All statements are idempotent (safe to re-run).
@@ -498,6 +506,12 @@ ALTER TABLE training_campaigns ENABLE ROW LEVEL SECURITY;
 -- =============================================================================
 -- END OF BASE SCHEMA
 -- =============================================================================
+
+-- END: 20260501_base_schema.sql
+
+-- =============================================================================
+-- BEGIN: 20260502_training_campaigns.sql
+-- =============================================================================
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Migration: Training Campaign Lifecycle
 -- Adds training_campaigns table, links enrolments to campaigns,
@@ -558,6 +572,12 @@ BEGIN
   END IF;
 END
 $$;
+
+-- END: 20260502_training_campaigns.sql
+
+-- =============================================================================
+-- BEGIN: 20260502_video_library_bulletin_fields.sql
+-- =============================================================================
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Migration: GFA Video Library + Bulletin WhatsApp notification fields
 -- Date: 2026-05-02
@@ -627,6 +647,12 @@ ALTER TABLE training_campaigns
 
 ALTER TABLE driver_invitations
   ADD COLUMN IF NOT EXISTS invite_video_url TEXT;
+
+-- END: 20260502_video_library_bulletin_fields.sql
+
+-- =============================================================================
+-- BEGIN: 20260505_schema_gaps_fix.sql
+-- =============================================================================
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Migration: Schema Gaps Fix
 -- Date: 2026-05-05
@@ -820,6 +846,12 @@ CREATE INDEX IF NOT EXISTS idx_webhook_log_user ON moodle_webhook_log(moodle_use
 -- =============================================================================
 -- END OF GAPS FIX MIGRATION
 -- =============================================================================
+
+-- END: 20260505_schema_gaps_fix.sql
+
+-- =============================================================================
+-- BEGIN: 20260506_column_gaps_fix.sql
+-- =============================================================================
 -- =============================================================================
 -- MIGRATION: 20260506_column_gaps_fix.sql
 -- Fixes all column-level gaps identified by full code audit (May 2026)
@@ -970,9 +1002,11 @@ ON CONFLICT (key) DO NOTHING;
 -- END OF MIGRATION
 -- =============================================================================
 
--- ============================================================
--- MIGRATION: 20260506_enable_rls_all_tables.sql
--- ============================================================
+-- END: 20260506_column_gaps_fix.sql
+
+-- =============================================================================
+-- BEGIN: 20260506_enable_rls_all_tables.sql
+-- =============================================================================
 -- ============================================================
 -- TAG Ecosystem — Row-Level Security (RLS) Migration
 -- 20260506_enable_rls_all_tables.sql
@@ -1256,3 +1290,568 @@ CREATE POLICY "deny_anon_trial_vouchers"
 --
 -- Expected result: 0 rows.
 -- ============================================================
+
+-- END: 20260506_enable_rls_all_tables.sql
+
+-- =============================================================================
+-- BEGIN: 20260718_add_course_name_and_audience.sql
+-- =============================================================================
+-- Add columns the dashboard/admin code expects on the courses table
+ALTER TABLE courses
+  ADD COLUMN IF NOT EXISTS name TEXT,
+  ADD COLUMN IF NOT EXISTS audience TEXT,
+  ADD COLUMN IF NOT EXISTS price_model TEXT DEFAULT 'per_driver_per_month',
+  ADD COLUMN IF NOT EXISTS cpd_frequency TEXT DEFAULT 'quarterly',
+  ADD COLUMN IF NOT EXISTS moodle_course_id INT;
+
+-- Backfill display name from title on databases where the column exists
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'courses' AND column_name = 'title'
+  ) THEN
+    UPDATE courses
+      SET name = COALESCE(name, title)
+      WHERE name IS NULL OR name = '';
+  END IF;
+END $$;
+
+-- Classify existing programmes by audience based on their slug
+UPDATE courses
+  SET audience = CASE
+    WHEN slug IN ('edt', 'ettt', 'ptdp') THEN 'drivers'
+    WHEN slug IN ('gfp', 'grfm') THEN 'managers'
+    ELSE 'all_staff'
+  END
+  WHERE audience IS NULL OR audience = '';
+
+-- END: 20260718_add_course_name_and_audience.sql
+
+-- =============================================================================
+-- BEGIN: 20260720_setup_tokens.sql
+-- =============================================================================
+-- =============================================================================
+-- Setup tokens for trial account onboarding
+-- Allows admin to create trial companies with credits, company sets own password
+-- via a setup link sent in the welcome email.
+-- =============================================================================
+
+ALTER TABLE companies
+  ADD COLUMN IF NOT EXISTS setup_token       UUID DEFAULT gen_random_uuid(),
+  ADD COLUMN IF NOT EXISTS setup_expires_at  TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 days'),
+  ADD COLUMN IF NOT EXISTS setup_token_used  BOOLEAN DEFAULT FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_companies_setup_token ON companies(setup_token) WHERE setup_token_used = FALSE;
+
+-- END: 20260720_setup_tokens.sql
+
+-- =============================================================================
+-- BEGIN: 20260721_quote_approval_columns.sql
+-- =============================================================================
+-- Add approved_at and approved_by to quotes table
+-- Both Paystack auto-approve and EFT manual approval set these fields
+ALTER TABLE quotes
+  ADD COLUMN IF NOT EXISTS approved_at  TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS approved_by  TEXT;
+
+COMMENT ON COLUMN quotes.approved_at IS 'Timestamp when quote was approved (auto for Paystack, manual for EFT)';
+COMMENT ON COLUMN quotes.approved_by IS 'Who approved: paystack_auto or admin email/UUID';
+
+-- END: 20260721_quote_approval_columns.sql
+
+-- =============================================================================
+-- BEGIN: 20260806_accounting_notifications.sql
+-- =============================================================================
+-- =============================================================================
+-- MIGRATION: 20260806_accounting_notifications.sql
+-- Adds: ledger_entries, admin_notification_prefs, discount columns, promo_codes
+-- All statements are additive — safe to re-run with IF NOT EXISTS guards.
+-- No existing tables are dropped or structurally modified.
+-- =============================================================================
+
+-- =============================================================================
+-- 1. LEDGER ENTRIES
+-- Append-only financial event log. One row per financial event per company.
+-- Populated automatically by API routes — never edited manually.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS ledger_entries (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id      UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  entry_type      TEXT NOT NULL,
+  -- entry_type values:
+  --   'quote_issued'            quote sent to client
+  --   'payment_received'        Paystack card payment confirmed
+  --   'eft_submitted'           client submitted EFT notification (pending)
+  --   'eft_confirmed'           admin manually confirmed EFT
+  --   'credits_allocated'       credits added to company balance
+  --   'credits_used'            credits consumed by deployment
+  --   'credits_refunded'        credits returned (e.g. cancelled deployment)
+  --   'trial_credits'           trial credits granted by admin
+  --   'bulletin_payment'        urgent bulletin fee paid
+  amount          NUMERIC(10,2) NOT NULL,   -- positive = money in; negative = credits used
+  currency        TEXT DEFAULT 'ZAR',
+  balance_after   NUMERIC(10,2),            -- snapshot of credit_balance after this entry
+  quote_id        UUID REFERENCES quotes(id) ON DELETE SET NULL,
+  payment_id      UUID REFERENCES payments(id) ON DELETE SET NULL,
+  description     TEXT NOT NULL,            -- human-readable e.g. "12 drivers × PTDP — Aug 2026"
+  reference       TEXT,                     -- quote ref, paystack ref, or EFT ref
+  driver_count    INT DEFAULT 0,
+  programme_slug  TEXT,
+  status          TEXT DEFAULT 'confirmed', -- 'pending', 'confirmed', 'failed', 'reversed'
+  created_by      TEXT DEFAULT 'system',    -- 'system', 'paystack_webhook', or admin email
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ledger_company    ON ledger_entries(company_id);
+CREATE INDEX IF NOT EXISTS idx_ledger_type       ON ledger_entries(entry_type);
+CREATE INDEX IF NOT EXISTS idx_ledger_created    ON ledger_entries(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ledger_status     ON ledger_entries(status);
+CREATE INDEX IF NOT EXISTS idx_ledger_quote      ON ledger_entries(quote_id);
+
+-- =============================================================================
+-- 2. ADMIN NOTIFICATION PREFERENCES
+-- One row per event type. Stores which channels are enabled per event.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS admin_notification_prefs (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_key       TEXT UNIQUE NOT NULL,
+  label           TEXT NOT NULL,
+  description     TEXT,
+  group_name      TEXT DEFAULT 'general',   -- 'transactions', 'operations', 'alerts'
+  whatsapp_1      BOOLEAN DEFAULT TRUE,
+  whatsapp_2      BOOLEAN DEFAULT FALSE,
+  email_1         BOOLEAN DEFAULT TRUE,
+  email_2         BOOLEAN DEFAULT FALSE,
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Seed default notification preferences
+INSERT INTO admin_notification_prefs
+  (event_key, label, description, group_name, whatsapp_1, whatsapp_2, email_1, email_2)
+VALUES
+  ('company_registered',         'New Company Registered',          'Fires when a new company self-registers or is created by admin.',           'transactions', TRUE,  FALSE, TRUE,  FALSE),
+  ('quote_generated',            'New Quote Generated',             'Fires when a client generates a training quote.',                           'transactions', TRUE,  FALSE, TRUE,  FALSE),
+  ('eft_submitted',              'EFT Payment Submitted',           'Client has submitted EFT proof — action required to verify and approve.',   'transactions', TRUE,  TRUE,  TRUE,  FALSE),
+  ('payment_received_paystack',  'Paystack Payment Received',       'Card payment confirmed via Paystack — auto-approved, no action needed.',    'transactions', TRUE,  FALSE, TRUE,  FALSE),
+  ('payment_received_eft',       'EFT Payment Confirmed',           'Admin has manually confirmed an EFT payment.',                             'transactions', FALSE, FALSE, TRUE,  FALSE),
+  ('training_deployed',          'Training Deployed',               'A company has deployed training to their drivers.',                         'operations',   FALSE, FALSE, TRUE,  FALSE),
+  ('trial_activated',            'Trial Voucher Activated',         'A prospect has activated a trial voucher.',                                 'operations',   TRUE,  FALSE, TRUE,  FALSE),
+  ('driver_certified',           'Driver Certified',                'A driver has completed their programme and been certified.',                'operations',   FALSE, FALSE, FALSE, FALSE),
+  ('bulletin_payment_received',  'Bulletin Payment Received',       'A company has paid for an urgent driver bulletin.',                         'transactions', TRUE,  FALSE, TRUE,  FALSE),
+  ('quote_pending_24h',          'Quote Pending >24h',              'A quote has been unpaid for more than 24 hours — follow-up alert.',         'alerts',       TRUE,  TRUE,  TRUE,  FALSE),
+  ('eft_pending_48h',            'EFT Pending >48h',                'An EFT submission has not been confirmed for more than 48 hours.',          'alerts',       TRUE,  TRUE,  TRUE,  TRUE)
+ON CONFLICT (event_key) DO NOTHING;
+
+-- =============================================================================
+-- 3. ADMIN NOTIFICATION RECIPIENTS
+-- Stored in site_config as key/value pairs (consistent with existing pattern).
+-- =============================================================================
+INSERT INTO site_config (key, value, description) VALUES
+  ('admin_whatsapp_1',  '', 'Primary admin WhatsApp number for notifications (e.g. 27821234567)'),
+  ('admin_whatsapp_2',  '', 'Secondary admin WhatsApp number for notifications'),
+  ('admin_email_2',     '', 'Secondary admin email for notifications (email_1 = email_booking_to)')
+ON CONFLICT (key) DO NOTHING;
+
+-- =============================================================================
+-- 4. NOTIFICATION LOG
+-- Records every notification sent — used for the admin notifications log view.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS admin_notification_log (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_key       TEXT NOT NULL,
+  channel         TEXT NOT NULL,   -- 'whatsapp_1', 'whatsapp_2', 'email_1', 'email_2'
+  recipient       TEXT,            -- phone number or email address
+  message_preview TEXT,            -- first 200 chars of message
+  status          TEXT DEFAULT 'sent',  -- 'sent', 'failed'
+  error_message   TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notif_log_created ON admin_notification_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notif_log_event   ON admin_notification_log(event_key);
+
+-- =============================================================================
+-- 5. DISCOUNT COLUMNS ON COMPANIES AND QUOTES
+-- Additive columns only — no existing data affected.
+-- =============================================================================
+ALTER TABLE companies
+  ADD COLUMN IF NOT EXISTS discount_percent   NUMERIC(5,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS discount_note      TEXT,
+  ADD COLUMN IF NOT EXISTS discount_set_by    TEXT,
+  ADD COLUMN IF NOT EXISTS discount_set_at    TIMESTAMPTZ;
+
+ALTER TABLE quotes
+  ADD COLUMN IF NOT EXISTS discount_percent   NUMERIC(5,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS discount_amount    NUMERIC(10,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS discount_note      TEXT,
+  ADD COLUMN IF NOT EXISTS promo_code         TEXT;
+
+-- =============================================================================
+-- 6. PROMO CODES TABLE
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS promo_codes (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code            TEXT UNIQUE NOT NULL,
+  description     TEXT,
+  discount_type   TEXT NOT NULL DEFAULT 'percent',  -- 'percent' or 'fixed'
+  discount_value  NUMERIC(10,2) NOT NULL,
+  min_drivers     INT DEFAULT 1,
+  max_uses        INT,                               -- NULL = unlimited
+  uses_count      INT DEFAULT 0,
+  valid_from      TIMESTAMPTZ DEFAULT NOW(),
+  valid_until     TIMESTAMPTZ,
+  is_active       BOOLEAN DEFAULT TRUE,
+  created_by      TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_promo_code ON promo_codes(code) WHERE is_active = TRUE;
+
+-- =============================================================================
+-- 7. STALE ALERT TRACKING
+-- Prevents duplicate stale-pending alerts from the cron job.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS stale_alert_log (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  entity_type     TEXT NOT NULL,   -- 'quote' or 'eft'
+  entity_id       UUID NOT NULL,
+  alert_type      TEXT NOT NULL,   -- 'quote_pending_24h' or 'eft_pending_48h'
+  alerted_at      TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (entity_id, alert_type)
+);
+
+-- =============================================================================
+-- END OF MIGRATION
+-- =============================================================================
+
+-- END: 20260806_accounting_notifications.sql
+
+-- =============================================================================
+-- BEGIN: 20260816_r1_billing_quotes.sql
+-- =============================================================================
+-- =============================================================================
+-- RELEASE 1: Billing Profiles, Formal Quote Snapshots & Configurable Terms
+-- Safe to run repeatedly. All additions are additive and preserve existing data.
+-- =============================================================================
+
+-- ─── 1. Client billing profiles ────────────────────────────────────────────────
+-- One current billing profile per company. Formal quote data is copied into a
+-- quote snapshot at issue time so later profile edits never alter historic quotes.
+CREATE TABLE IF NOT EXISTS company_billing_profiles (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id            UUID NOT NULL UNIQUE REFERENCES companies(id) ON DELETE CASCADE,
+  legal_entity_name     TEXT NOT NULL,
+  trading_name          TEXT,
+  registration_number   TEXT,
+  vat_registered        BOOLEAN NOT NULL DEFAULT FALSE,
+  vat_number            TEXT,
+  billing_address       TEXT NOT NULL,
+  accounts_contact_name TEXT NOT NULL,
+  accounts_email        TEXT NOT NULL,
+  accounts_phone        TEXT,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_company_billing_profiles_company
+  ON company_billing_profiles(company_id);
+
+-- ─── 2. Immutable quote-version records ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS quote_versions (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  quote_id           UUID NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+  version_number     INT NOT NULL,
+  reference          TEXT NOT NULL,
+  status             TEXT NOT NULL DEFAULT 'issued',
+  line_items         JSONB NOT NULL DEFAULT '[]'::jsonb,
+  billing_snapshot   JSONB NOT NULL DEFAULT '{}'::jsonb,
+  supplier_snapshot  JSONB NOT NULL DEFAULT '{}'::jsonb,
+  subtotal           NUMERIC(12,2) NOT NULL DEFAULT 0,
+  vat                NUMERIC(12,2) NOT NULL DEFAULT 0,
+  total              NUMERIC(12,2) NOT NULL DEFAULT 0,
+  valid_until        DATE,
+  purchase_order_ref TEXT,
+  cost_centre        TEXT,
+  issued_by          UUID,
+  issued_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (quote_id, version_number)
+);
+CREATE INDEX IF NOT EXISTS idx_quote_versions_quote
+  ON quote_versions(quote_id, version_number DESC);
+
+-- ─── 3. Current formal-quote control fields ────────────────────────────────────
+ALTER TABLE quotes
+  ADD COLUMN IF NOT EXISTS quote_version             INT NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS valid_until               DATE,
+  ADD COLUMN IF NOT EXISTS billing_profile_snapshot  JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS supplier_snapshot         JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS purchase_order_ref        TEXT,
+  ADD COLUMN IF NOT EXISTS cost_centre               TEXT,
+  ADD COLUMN IF NOT EXISTS supersedes_quote_id       UUID REFERENCES quotes(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS issued_at                 TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_quotes_valid_until ON quotes(valid_until);
+
+-- ─── 4. Supplier and quote-term configuration ──────────────────────────────────
+-- Existing company_name/company_vat_number/company_address/company_email/company_phone
+-- remain the primary supplier fields. The entries below add formal procurement details.
+INSERT INTO site_config (key, value, description) VALUES
+  ('company_trading_name', '', 'Optional supplier trading name shown on formal quotes'),
+  ('company_registration_number', '', 'Supplier registration number shown on formal quotes'),
+  ('quote_validity_days', '14', 'Default number of calendar days a newly issued formal quote remains valid'),
+  ('quote_payment_terms', 'Payment is required before training is deployed.', 'Formal payment terms shown on quotations'),
+  ('quote_terms_note', '', 'Optional commercial terms or procurement note shown on quotations')
+ON CONFLICT (key) DO NOTHING;
+
+-- ─── 5. Updated-at helper for billing profiles ──────────────────────────────────
+CREATE OR REPLACE FUNCTION touch_company_billing_profile_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at := NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_company_billing_profiles_updated_at ON company_billing_profiles;
+CREATE TRIGGER trg_company_billing_profiles_updated_at
+  BEFORE UPDATE ON company_billing_profiles
+  FOR EACH ROW EXECUTE FUNCTION touch_company_billing_profile_updated_at();
+
+-- =============================================================================
+-- END RELEASE 1 MIGRATION
+-- =============================================================================
+
+-- END: 20260816_r1_billing_quotes.sql
+
+-- =============================================================================
+-- BEGIN: 20260817_r2_eft_reconciliation.sql
+-- =============================================================================
+-- =============================================================================
+-- RELEASE 2: EFT Reconciliation & Payment-Approval Controls
+-- Safe to re-run. Adds only additive payment-control fields and audit records.
+-- =============================================================================
+
+-- ─── 1. Expand payment records with submitted-EFT and reconciliation evidence ──
+ALTER TABLE payments
+  ADD COLUMN IF NOT EXISTS eft_reference              TEXT,
+  ADD COLUMN IF NOT EXISTS eft_date                   DATE,
+  ADD COLUMN IF NOT EXISTS notes                      TEXT,
+  ADD COLUMN IF NOT EXISTS proof_url                  TEXT,
+  ADD COLUMN IF NOT EXISTS proof_file_name            TEXT,
+  ADD COLUMN IF NOT EXISTS expected_amount_snapshot   NUMERIC(12,2),
+  ADD COLUMN IF NOT EXISTS variance_amount            NUMERIC(12,2),
+  ADD COLUMN IF NOT EXISTS bank_transaction_reference TEXT,
+  ADD COLUMN IF NOT EXISTS bank_transaction_date      DATE,
+  ADD COLUMN IF NOT EXISTS reconciliation_notes       TEXT,
+  ADD COLUMN IF NOT EXISTS reconciliation_status      TEXT DEFAULT 'not_required',
+  ADD COLUMN IF NOT EXISTS reconciled_at              TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS reconciled_by              TEXT,
+  ADD COLUMN IF NOT EXISTS rejected_at                TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS rejected_by                TEXT,
+  ADD COLUMN IF NOT EXISTS rejection_reason           TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_payments_quote_status ON payments(quote_id, status);
+CREATE INDEX IF NOT EXISTS idx_payments_eft_reference ON payments(eft_reference);
+CREATE INDEX IF NOT EXISTS idx_payments_reconciliation_status ON payments(reconciliation_status);
+
+-- ─── 2. Immutable audit trail for all payment-reconciliation decisions ─────────
+CREATE TABLE IF NOT EXISTS payment_reconciliation_events (
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  payment_id           UUID NOT NULL REFERENCES payments(id) ON DELETE CASCADE,
+  quote_id             UUID NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+  company_id           UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  event_type           TEXT NOT NULL,
+  -- submitted | clarification_requested | confirmed | rejected | variance_noted
+  expected_amount      NUMERIC(12,2),
+  submitted_amount     NUMERIC(12,2),
+  variance_amount      NUMERIC(12,2),
+  eft_reference        TEXT,
+  notes                TEXT,
+  performed_by         TEXT NOT NULL DEFAULT 'system',
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_payment_reconciliation_payment
+  ON payment_reconciliation_events(payment_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_payment_reconciliation_quote
+  ON payment_reconciliation_events(quote_id, created_at DESC);
+
+-- ─── 3. Private server-managed bucket for payment proof files ──────────────────
+-- Proof files are uploaded only through authenticated server routes using the
+-- Supabase service role. No public object policy is created.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'payment-proofs',
+  'payment-proofs',
+  FALSE,
+  10485760,
+  ARRAY['application/pdf', 'image/jpeg', 'image/png']
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- =============================================================================
+-- END RELEASE 2 MIGRATION
+-- =============================================================================
+
+-- END: 20260817_r2_eft_reconciliation.sql
+
+-- =============================================================================
+-- BEGIN: 20260818_r3_discount_governance.sql
+-- =============================================================================
+-- =============================================================================
+-- RELEASE 3: Discount Governance, Authority Controls & Audit Trail
+-- All operations are additive and safe to re-run.
+-- =============================================================================
+
+-- ─── 1. Role-based discount authority policy ───────────────────────────────────
+CREATE TABLE IF NOT EXISTS discount_authority_rules (
+  role                           TEXT PRIMARY KEY,
+  max_request_percent            NUMERIC(5,2) NOT NULL DEFAULT 0,
+  max_approval_percent           NUMERIC(5,2) NOT NULL DEFAULT 0,
+  require_different_approver     BOOLEAN NOT NULL DEFAULT TRUE,
+  updated_at                     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO discount_authority_rules (role, max_request_percent, max_approval_percent, require_different_approver)
+VALUES
+  ('admin', 25.00, 0.00, TRUE),
+  ('super_admin', 100.00, 100.00, TRUE)
+ON CONFLICT (role) DO NOTHING;
+
+-- ─── 2. Controlled discount request records ────────────────────────────────────
+CREATE TABLE IF NOT EXISTS discount_requests (
+  id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  quote_id                UUID NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+  company_id              UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  request_reference       TEXT UNIQUE NOT NULL,
+  discount_type           TEXT NOT NULL, -- percentage | fixed_amount
+  requested_value         NUMERIC(12,2) NOT NULL,
+  requested_percent       NUMERIC(5,2) NOT NULL DEFAULT 0,
+  list_subtotal           NUMERIC(12,2) NOT NULL,
+  discount_amount         NUMERIC(12,2) NOT NULL,
+  revised_subtotal        NUMERIC(12,2) NOT NULL,
+  revised_vat             NUMERIC(12,2) NOT NULL,
+  revised_total           NUMERIC(12,2) NOT NULL,
+  reason_category         TEXT NOT NULL,
+  reason_note             TEXT NOT NULL,
+  supporting_reference    TEXT,
+  status                  TEXT NOT NULL DEFAULT 'pending', -- pending | approved | rejected | applied | cancelled
+  requested_by            UUID REFERENCES gfa_admins(id) ON DELETE SET NULL,
+  requested_by_name       TEXT NOT NULL,
+  requested_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  approved_by             UUID REFERENCES gfa_admins(id) ON DELETE SET NULL,
+  approved_by_name        TEXT,
+  approved_at             TIMESTAMPTZ,
+  approval_note           TEXT,
+  rejected_by             UUID REFERENCES gfa_admins(id) ON DELETE SET NULL,
+  rejected_by_name        TEXT,
+  rejected_at             TIMESTAMPTZ,
+  rejection_reason        TEXT,
+  applied_at              TIMESTAMPTZ,
+  applied_quote_version   INT,
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_discount_requests_quote ON discount_requests(quote_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_discount_requests_status ON discount_requests(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_discount_requests_company ON discount_requests(company_id, created_at DESC);
+
+-- ─── 3. Immutable event history for each discount decision ──────────────────────
+CREATE TABLE IF NOT EXISTS discount_events (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  discount_request_id   UUID NOT NULL REFERENCES discount_requests(id) ON DELETE CASCADE,
+  event_type            TEXT NOT NULL, -- requested | approved | rejected | applied | cancelled
+  performed_by          UUID REFERENCES gfa_admins(id) ON DELETE SET NULL,
+  performed_by_name     TEXT NOT NULL,
+  note                  TEXT,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_discount_events_request ON discount_events(discount_request_id, created_at ASC);
+
+-- ─── 4. Link the current quote to its approved discount and preserve revisions ──
+ALTER TABLE quotes
+  ADD COLUMN IF NOT EXISTS discount_request_id UUID REFERENCES discount_requests(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS list_subtotal       NUMERIC(12,2),
+  ADD COLUMN IF NOT EXISTS discount_applied_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS discount_applied_by TEXT;
+
+ALTER TABLE quote_versions
+  ADD COLUMN IF NOT EXISTS discount_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+-- ─── 5. Notification defaults for governed discount decisions ──────────────────
+INSERT INTO admin_notification_prefs
+  (event_key, label, description, group_name, whatsapp_1, whatsapp_2, email_1, email_2)
+VALUES
+  ('discount_requested', 'Discount Approval Requested', 'A discount request needs an independent approval before a revised quote can be issued.', 'transactions', TRUE, FALSE, TRUE, FALSE),
+  ('discount_approved', 'Discount Applied to Quote', 'An approved discount has created a revised formal quote.', 'transactions', FALSE, FALSE, TRUE, FALSE)
+ON CONFLICT (event_key) DO NOTHING;
+
+-- ─── 6. Updated-at helper ──────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION touch_discount_request_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at := NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_discount_requests_updated_at ON discount_requests;
+CREATE TRIGGER trg_discount_requests_updated_at
+  BEFORE UPDATE ON discount_requests
+  FOR EACH ROW EXECUTE FUNCTION touch_discount_request_updated_at();
+
+-- =============================================================================
+-- END RELEASE 3 MIGRATION
+-- =============================================================================
+
+-- END: 20260818_r3_discount_governance.sql
+
+-- =============================================================================
+-- BEGIN: 20260819_r6_learning_events.sql
+-- =============================================================================
+-- Release 6: BetterDriver/Moodle event ledger and training-start revenue recognition
+CREATE TABLE IF NOT EXISTS learning_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  source TEXT NOT NULL CHECK (source IN ('betterdriver','moodle')),
+  external_event_id TEXT NOT NULL,
+  event_type TEXT NOT NULL CHECK (event_type IN ('training_link_activated','training_started','module_completed','training_completed','certificate_issued','briefing_delivered','briefing_acknowledged')),
+  company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
+  driver_id UUID REFERENCES drivers(id) ON DELETE SET NULL,
+  enrolment_id UUID REFERENCES enrolments(id) ON DELETE SET NULL,
+  occurred_at TIMESTAMPTZ NOT NULL,
+  payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  processed_at TIMESTAMPTZ,
+  processing_error TEXT,
+  UNIQUE(source, external_event_id)
+);
+CREATE INDEX IF NOT EXISTS idx_learning_events_enrolment_time ON learning_events(enrolment_id, occurred_at DESC);
+
+CREATE TABLE IF NOT EXISTS revenue_recognition_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  enrolment_id UUID NOT NULL REFERENCES enrolments(id) ON DELETE CASCADE,
+  learning_event_id UUID NOT NULL REFERENCES learning_events(id) ON DELETE RESTRICT,
+  recognised_at TIMESTAMPTZ NOT NULL,
+  net_amount NUMERIC(14,2) NOT NULL CHECK (net_amount >= 0),
+  vat_amount NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK (vat_amount >= 0),
+  gross_amount NUMERIC(14,2) NOT NULL CHECK (gross_amount >= 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(enrolment_id)
+);
+CREATE INDEX IF NOT EXISTS idx_revenue_recognition_company_time ON revenue_recognition_events(company_id, recognised_at DESC);
+
+ALTER TABLE enrolments ADD COLUMN IF NOT EXISTS training_started_event_id UUID REFERENCES learning_events(id) ON DELETE SET NULL;
+
+ALTER TABLE learning_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE revenue_recognition_events ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='learning_events' AND policyname='learning_events_service_only') THEN
+    CREATE POLICY "learning_events_service_only" ON learning_events FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='revenue_recognition_events' AND policyname='revenue_recognition_service_only') THEN
+    CREATE POLICY "revenue_recognition_service_only" ON revenue_recognition_events FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+  END IF;
+END $$;
+
+-- END: 20260819_r6_learning_events.sql

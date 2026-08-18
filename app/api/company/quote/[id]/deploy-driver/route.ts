@@ -18,12 +18,12 @@ function generateOpaqueToken(): string {
 // POST /api/company/quote/[id]/deploy-driver — deploy a single driver from a paid quote
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const quoteId = params.id;
+  const { id: quoteId } = await params;
   const { driverId } = await req.json();
   if (!driverId) return NextResponse.json({ error: "driverId required" }, { status: 400 });
 
@@ -220,7 +220,7 @@ export async function POST(
           },
         };
       } else {
-        const text = `Hi ${driver.first_name}, ${session.companyName ?? "Your company"} has enrolled you in the ${programmeName} programme on BetterDriver. Tap the link below to start your training:\n\n${magicLink}`;
+        const text = `Hi ${driver.first_name}, welcome to BetterDriver. ${session.companyName ?? "Your company"} has enrolled you in ${programmeName}.\n\nThis is your personal space to complete your training, receive safety briefings and build your professional record.\n\nTap your secure link to get started — no password is needed:\n${magicLink}\n\nPlease keep this message so you can return to BetterDriver easily.`;
         body = {
           messaging_product: "whatsapp",
           to: normaliseSAMobile(driver.mobile),

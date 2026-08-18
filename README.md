@@ -12,6 +12,18 @@ Key platform capabilities include:
 - **HR Feedback (Self-Evaluation)** — a 3-question 5-star widget completed by drivers after course completion: (1) I understand the material, (2) I enjoyed the learning experience, (3) I want to learn more; aggregate scores are visible per campaign
 - **GFA Video Library** — admin-managed Bunny.net-backed video library for invite videos, teaser videos, portal walkthrough videos, and module content; videos are tagged by type, language (EN/ZU), and programme; invite videos are selectable when creating a training campaign and are delivered to drivers on first magic link tap
 - **WhatsApp Bulletin Notification Fields** — when creating a driver bulletin, the operator selects which fields to include in the WhatsApp message (topic, urgency level, category, driver action, mitigation message, portal link); a live preview shows exactly what each driver will receive before dissemination
+- **Billing Profiles & Formal Quotes** — companies complete a secure billing profile before issuing their first quotation; buyer and supplier details, payment terms, validity date and procurement references are copied into immutable quote snapshots
+- **Admin Quote Settings** — authorised admins configure the legal supplier identity, VAT details, EFT instructions and quote terms without hard-coding sensitive commercial information into the application
+- **Import Reliability** — the driver import screen downloads the same server-generated `.xlsx` template accepted by the primary import parser
+- **EFT Reconciliation Inbox** — clients submit an EFT reference, amount, date and optional private proof of payment; finance reviews the expected-versus-claimed amount, bank reference, variance and evidence before confirming, requesting clarification or rejecting
+- **Private Payment Evidence** — proof files are stored in a private Supabase Storage bucket and are accessed only through short-lived, admin-authenticated URLs
+- **Governed Discounts** — staff request concessions against unpaid quotes with a required commercial reason; an independent authorised approver creates a revised quote version, writes an immutable event trail, records the concession in the ledger, and notifies the client/accounts contact
+- **Guided Client Enrolment** — the client dashboard now leads the user through Add Drivers → Select Programme → Quote & Pay → Deploy, filters the training matrix by programme, shows the selected driver count and estimated VAT-inclusive total, and keeps the formal-quote action visible while selecting
+- **Resilient Demo Tour** — all 14 simulated dashboard steps remain inside `/demo`; explicit Back, Forward and Exit controls can no longer redirect a visitor into an authenticated real dashboard mid-tour
+- **Daily Operations** — an admin daily management report combines confirmed platform receipts, card/EFT split, quotes, discounts, drivers added, training starts, completions, certificates and an actionable finance queue; the detailed cashbook exports to CSV
+- **Learning Event Foundation** — idempotent BetterDriver/Moodle event and per-enrolment revenue-recognition tables provide the protected central ledger required before wiring signed training-start, progress and certificate events
+- **Compliance & Evidence Reporting** — client RTMS profile, competency-review preferences, compliance dashboard, controlled evidence snapshots/PDFs, validation metadata and protected lifecycle automation are available behind safe release flags
+- **Deployment Experience** — GitHub build checks, a deployment-ready PR template, release labels and a versioned integration runbook reduce production release risk
 
 ---
 
@@ -68,12 +80,18 @@ app/
     stats/                    # Impact statistics
     email-settings/           # Email template settings
     settings/messaging/       # WhatsApp message template settings
+    settings/quote-profile/   # Supplier legal details, EFT instructions and formal quote terms
+    finance/                  # Ledger, reconciliation inbox and per-client account view
+    discounts/                # Governed discount requests, approvals and audit status
+    operations/               # Daily cashbook, delivery metrics and operational exception queue
     video-library/            # GFA Video Library (Bunny.net upload, manage, assign)
-  dashboard/                  # Client dashboard pages
+  dashboard/                  # Client dashboard pages, guided enrolment workflow and payment/deployment actions
     bulletins/                # CPD bulletin creation and management
     campaigns/                # Bulletin campaign management
     training-campaigns/       # Training campaign lifecycle management (progress, nudges, close, HR feedback)
-    import/                   # Driver CSV import
+    import/                   # Driver Excel import using the authoritative server-generated template
+    billing/                  # Client billing profile for formal quotations
+    eft/                      # Client EFT instructions, proof upload and verification notice
     reports/                  # Training reports
   programmes/                 # Public programme listing
   pricing/                    # Public pricing page
@@ -107,6 +125,12 @@ cp .env.local.example .env.local
 #   supabase/migrations/20260501_base_schema.sql              <- RUN FIRST
 #   supabase/migrations/20260502_training_campaigns.sql
 #   supabase/migrations/20260502_video_library_bulletin_fields.sql
+#   ... apply the remaining migrations in filename order, including:
+#   supabase/migrations/20260816_r1_billing_quotes.sql
+#   supabase/migrations/20260817_r2_eft_reconciliation.sql
+#   supabase/migrations/20260818_r3_discount_governance.sql
+#   supabase/migrations/20260819_r6_learning_events.sql
+#   supabase/migrations/20260821_r7a_compliance_reporting.sql
 npm run dev
 ```
 
@@ -115,6 +139,14 @@ npm run dev
 > **Fresh deployment shortcut:** Use `ALL_MIGRATIONS_RUN_ONCE.sql` in the repo root — all migrations concatenated in the correct order, ready to paste into the Supabase SQL editor in one go.
 >
 > **GFA → BD magic link:** The deploy route (`app/api/company/deploy/route.ts`) generates a BD invitation token per driver and sends a WhatsApp message containing the magic link (`{BD_BASE_URL}/join/{token}`). Set `BD_BASE_URL=https://betterdriver.co.za` in `.env.local`.
+>
+> **Release 1 setup:** After applying `20260816_r1_billing_quotes.sql`, an admin must complete **Admin → Formal Quote Settings** before issuing formal client quotations. This supplies the legal supplier identity, VAT, EFT and payment-term details that are copied into each quote snapshot.
+>
+> **Release 2 setup:** Apply `20260817_r2_eft_reconciliation.sql` after Release 1. It creates the private `payment-proofs` storage bucket and the immutable EFT reconciliation audit trail. Review pending EFTs under **Admin → Finance & Ledger → Reconciliation**; never approve an EFT outside this controlled workflow.
+>
+> **Release 3 setup:** Apply `20260818_r3_discount_governance.sql` after Releases 1–2. An `admin` may approve a discount of **20% or less**; only a `super_admin` may approve a larger discount; and self-approval is always blocked. Change these policy values only after formal commercial approval.
+>
+> **Commercial & Compliance V1:** Follow [`docs/releases/2026-08-commercial-compliance-v1/00-RELEASE-SUMMARY.md`](docs/releases/2026-08-commercial-compliance-v1/00-RELEASE-SUMMARY.md) for the one-branch integration process, ordered migrations, Vercel configuration, preview tests, feature activation and rollback.
 
 ---
 
@@ -141,6 +173,12 @@ npm run dev
 | `BUNNY_CDN_HOSTNAME` | Optional | Bunny.net CDN hostname for playback URLs |
 | `BD_BASE_URL` | Yes | BetterDriver site URL |
 | `NEXT_PUBLIC_SITE_URL` | Yes | Full URL of this site in production |
+| `BD_EVENT_SECRET` | R6 only | Shared HMAC secret for trusted BetterDriver/Moodle learning events |
+| `CRON_SECRET` | R7 lifecycle only | Secret required by the compliance lifecycle endpoint |
+| `ENABLE_R6_EVENT_INGEST` | Release controlled | Leave `false` until signed-event preview test passes |
+| `ENABLE_R7_LIFECYCLE_CRON` | Release controlled | Leave `false` until lifecycle preview test passes |
+| `ENABLE_EVIDENCE_REPORTS` | Release controlled | Leave `false` until evidence report/validation preview test passes |
+| `ENABLE_EFT_RECONCILIATION_V2` | Release controlled | Leave `false` until finance preview test passes |
 
 ---
 
@@ -156,24 +194,26 @@ All changes go through a branch and Pull Request — nothing is pushed directly 
 | Bug fix | `fix/short-description` | `fix/paystack-webhook-signature` |
 | Content update | `content/short-description` | `content/update-pricing-page` |
 | Hotfix (urgent) | `hotfix/short-description` | `hotfix/login-redirect-broken` |
+| Integration release | `release/short-description` | `release/gfa-commercial-compliance-v1` |
 
 ### Step-by-Step Workflow
 
 1. Create a branch from `main`: `git checkout -b feature/your-feature-name`
 2. Make changes and commit: `git commit -m "feat: describe what changed and why"`
-3. Push the branch: `git push origin feature/your-feature-name`
-4. Open a Pull Request on GitHub against `main`
-5. Review the diff — GitHub flags any conflicts before merge
-6. Approve and merge to `main`
-7. Delete the feature branch after merging
+3. Run `npm ci`, `npm run type-check` and `npm run build`.
+4. Push the branch: `git push origin feature/your-feature-name`.
+5. Complete the deployment-ready PR template, including migration, environment, feature-flag and rollback details.
+6. Wait for the GitHub **Build Check** and a Vercel Preview deployment.
+7. For a cumulative release, merge feature commits into a `release/...` branch, complete its versioned runbook, then open one final PR to `main`.
+8. Approve and merge only after the preview checklist passes; delete the source branch after the release is stable.
 
 ---
 
 ## Deployment
 
-Packaged as a standalone tar.gz including `server.js`, `pm2.config.js`, `nginx.conf`, `deploy.sh`, `QUICK-START-CARD.md`, and `.env.local.example`.
+Vercel deploys `main` to production. Feature and release branches should be reviewed on their Vercel Preview deployment before a PR is merged. The required deployment record is the PR template plus the relevant versioned folder under `docs/releases/`.
 
-> **Important:** The Nginx config must include a `location /_next/static/` block. Without this the site loads without any styling. This is already included in the provided `nginx.conf`.
+> **Important:** Do not push directly to `main`. Use a release PR, preserve the preview URL and use feature flags to activate high-risk functionality one capability at a time.
 
 ---
 
