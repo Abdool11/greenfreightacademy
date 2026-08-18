@@ -3,7 +3,7 @@
 **Release branch:** `release/gfa-commercial-compliance-v1`  
 **BetterDriver companion branch:** `release/betterdriver-driver-experience-v1`  
 **Owner:** Asif  
-**Last updated:** `2026-08-18 17:00 SAST`
+**Last updated:** `2026-08-18 17:30 SAST`
 
 ## How to use this page
 
@@ -32,15 +32,15 @@ Update the **Evidence / notes** column with a Vercel URL, test identifier, GitHu
 | GFA R7A migration | Verified in preview | Applied via Supabase MCP. company_compliance_profiles, driver_competency_reviews, evidence_reports, evidence_report_events, reporting_alert_log + 3 columns on quotes. Success. |
 | BetterDriver RBD-2 migration | Not started | Blocked by repo structure issue. |
 | BetterDriver RBD-4 migration | Not started | Blocked by repo structure issue. |
-| GFA baseline login/dashboard/certificate test | Not started | Requires browser access to Vercel preview (behind SSO). Needs admin/client credentials. |
-| GFA quote and billing test | Not started | Playwright spec created (01-quote-journey.spec.ts). Needs client credentials to run. |
-| GFA EFT reconciliation test | Not started | Playwright spec created (02-eft-reconciliation.spec.ts). Flag-off test passed. Needs admin credentials + flag flip for full test. |
-| GFA discount authority test | Not started | Playwright spec created (03-discount-authority.spec.ts). Needs admin credentials to run. |
-| GFA operations/client workflow test | Not started | Playwright spec created (04-client-workflow.spec.ts). Needs client credentials to run. |
-| R6 signed learning-event test | Verified in preview | Playwright spec created (05-learning-events.spec.ts). Flag-off test passed (503 confirmed). Signature validation and duplicate handling tests need flag flip + BD_EVENT_SECRET. |
-| R7 compliance dashboard/profile test | Not started | Playwright spec created (06-lifecycle.spec.ts). Needs admin credentials. |
-| R7 evidence report and validation test | Not started | Needs ENABLE_EVIDENCE_REPORTS=true + admin credentials. Manual test. |
-| R7 lifecycle test | Verified in preview | Playwright spec created (06-lifecycle.spec.ts). Flag-off test passed (503 confirmed on /api/admin/cron/compliance-lifecycle). Full test needs flag flip. |
+| GFA baseline login/dashboard/certificate test | Verified in preview | Playwright suite: admin login, client login, dashboard, transactions all load successfully. 21/24 tests passed, 3 skipped (R6 flag-dependent). |
+| GFA quote and billing test | Verified in preview | Playwright spec 01-quote-journey: billing page loads, pricing API returns correct data, quote validity 14 days confirmed. |
+| GFA EFT reconciliation test | Verified in preview | Playwright spec 02-eft-reconciliation: flag-off test passed (endpoint reachable), admin finance panel loads, payments API accessible, reconciliation queue accessible. Full EFT workflow test needs flag flip. |
+| GFA discount authority test | Verified in preview | Playwright spec 03-discount-authority: discounts page loads with 20% limit visible, admin access confirmed, >20% approval blocked (403/404), self-approval rule confirmed. |
+| GFA operations/client workflow test | Verified in preview | Playwright spec 04-client-workflow: client dashboard loads, demo tour page loads with tour controls, programmes page accessible, transactions page loads. |
+| R6 signed learning-event test | Verified in preview | Playwright spec 05-learning-events: flag-off test passed (503 confirmed). 3 signed-event tests skipped (need ENABLE_R6_EVENT_INGEST=true). Endpoint correctly rejects when disabled. |
+| R7 compliance dashboard/profile test | Verified in preview | Playwright spec 06-lifecycle: admin operations page loads, compliance dashboard API accessible, compliance profile page loads, evidence reports page loads. |
+| R7 evidence report and validation test | Not started | Needs ENABLE_EVIDENCE_REPORTS=true. Manual test — generate report, verify control number + SHA-256 checksum, public validation path. |
+| R7 lifecycle test | Verified in preview | Playwright spec 06-lifecycle: flag-off test passed (503 confirmed on /api/admin/cron/compliance-lifecycle). Full lifecycle test needs flag flip. |
 | BetterDriver handover/re-access test | Not started | Blocked by repo structure issue. |
 | BetterDriver PWA installation test | Not started | Blocked by repo structure issue. Needs real Android device. |
 | BetterDriver push opt-in and WhatsApp fallback test | Not started | Blocked by repo structure issue. Needs real devices. |
