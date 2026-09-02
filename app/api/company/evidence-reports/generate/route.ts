@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   if (process.env.ENABLE_EVIDENCE_REPORTS !== "true") return NextResponse.json({ error: "Evidence reports are disabled for this release." }, { status: 503 });
   const actorId = session.supabase_user_id ?? session.id ?? session.companyId;
   const body = await req.json().catch(() => ({}));
-  const reportType = String(body.reportType || "training_cohort");
+  const reportType = String(body.reportType || "on_demand_compliance_safety_report");
   const periodStart = body.periodStart || null, periodEnd = body.periodEnd || null;
   const [{ data: company }, { data: drivers }, { data: enrolments }, { data: certifications }] = await Promise.all([
     supabaseAdmin.from("companies").select("name").eq("id", session.companyId).single(),

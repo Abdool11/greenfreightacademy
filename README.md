@@ -22,7 +22,7 @@ Key platform capabilities include:
 - **Resilient Demo Tour** — all 14 simulated dashboard steps remain inside `/demo`; explicit Back, Forward and Exit controls can no longer redirect a visitor into an authenticated real dashboard mid-tour
 - **Daily Operations** — an admin daily management report combines confirmed platform receipts, card/EFT split, quotes, discounts, drivers added, training starts, completions, certificates and an actionable finance queue; the detailed cashbook exports to CSV
 - **Learning Event Foundation** — idempotent BetterDriver/Moodle event and per-enrolment revenue-recognition tables provide the protected central ledger required before wiring signed training-start, progress and certificate events
-- **Compliance & Evidence Reporting** — client RTMS profile, competency-review preferences, compliance dashboard, controlled evidence snapshots/PDFs, validation metadata and protected lifecycle automation are available behind safe release flags
+- **Compliance & Evidence Reporting** — client RTMS profile, competency-review preferences, compliance dashboard, controlled on-demand evidence snapshots/PDFs, privacy-preserving validation metadata and protected lifecycle automation are available behind safe release flags. Evidence-pack PDFs use the committed GFA letterhead, present driver training/completion/certification status, include summary counts, and retain a control number plus integrity checksum.
 - **Deployment Experience** — GitHub build checks, a deployment-ready PR template, release labels and a versioned integration runbook reduce production release risk
 
 ---
@@ -105,6 +105,7 @@ components/                   # Shared React components
   BulletinWhatsAppFieldSelector.tsx  # Selectable WhatsApp notification fields for bulletin dissemination
 lib/                          # Utilities, constants, Supabase client
 public/                       # Static assets
+  branding/                   # Committed Green Freight Academy report-letterhead asset
 supabase/migrations/          # SQL migration files (apply via Supabase SQL editor)
 ```
 
