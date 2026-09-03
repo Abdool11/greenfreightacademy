@@ -269,6 +269,7 @@ export async function writeLedgerEntry(entry: {
   description: string;
   reference?: string;
   quote_id?: string;
+  invoice_id?: string;
   payment_id?: string;
   driver_count?: number;
   programme_slug?: string;
@@ -284,6 +285,7 @@ export async function writeLedgerEntry(entry: {
       description:    entry.description,
       reference:      entry.reference ?? null,
       quote_id:       entry.quote_id ?? null,
+      invoice_id:     entry.invoice_id ?? null,
       payment_id:     entry.payment_id ?? null,
       driver_count:   entry.driver_count ?? 0,
       programme_slug: entry.programme_slug ?? null,

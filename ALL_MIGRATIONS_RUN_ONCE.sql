@@ -1,11 +1,10 @@
 -- =============================================================================
--- GFA ALL MIGRATIONS — RUN ONCE ON A FRESH DATABASE OR APPLY INDIVIDUAL FILES
--- Generated from supabase/migrations in filename order.
+-- GFA ALL MIGRATIONS RUN ONCE
+-- Generated from supabase/migrations in filename order. Review before production use.
 -- =============================================================================
 
--- =============================================================================
--- BEGIN: 20260501_base_schema.sql
--- =============================================================================
+
+-- BEGIN 20260501_base_schema.sql
 -- =============================================================================
 -- BASE SCHEMA — TAG Ecosystem (GFA + BetterDriver)
 -- Run this FIRST on a fresh Supabase project.
@@ -507,11 +506,10 @@ ALTER TABLE training_campaigns ENABLE ROW LEVEL SECURITY;
 -- END OF BASE SCHEMA
 -- =============================================================================
 
--- END: 20260501_base_schema.sql
+-- END 20260501_base_schema.sql
 
--- =============================================================================
--- BEGIN: 20260502_training_campaigns.sql
--- =============================================================================
+
+-- BEGIN 20260502_training_campaigns.sql
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Migration: Training Campaign Lifecycle
 -- Adds training_campaigns table, links enrolments to campaigns,
@@ -573,11 +571,10 @@ BEGIN
 END
 $$;
 
--- END: 20260502_training_campaigns.sql
+-- END 20260502_training_campaigns.sql
 
--- =============================================================================
--- BEGIN: 20260502_video_library_bulletin_fields.sql
--- =============================================================================
+
+-- BEGIN 20260502_video_library_bulletin_fields.sql
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Migration: GFA Video Library + Bulletin WhatsApp notification fields
 -- Date: 2026-05-02
@@ -648,11 +645,10 @@ ALTER TABLE training_campaigns
 ALTER TABLE driver_invitations
   ADD COLUMN IF NOT EXISTS invite_video_url TEXT;
 
--- END: 20260502_video_library_bulletin_fields.sql
+-- END 20260502_video_library_bulletin_fields.sql
 
--- =============================================================================
--- BEGIN: 20260505_schema_gaps_fix.sql
--- =============================================================================
+
+-- BEGIN 20260505_schema_gaps_fix.sql
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Migration: Schema Gaps Fix
 -- Date: 2026-05-05
@@ -847,11 +843,10 @@ CREATE INDEX IF NOT EXISTS idx_webhook_log_user ON moodle_webhook_log(moodle_use
 -- END OF GAPS FIX MIGRATION
 -- =============================================================================
 
--- END: 20260505_schema_gaps_fix.sql
+-- END 20260505_schema_gaps_fix.sql
 
--- =============================================================================
--- BEGIN: 20260506_column_gaps_fix.sql
--- =============================================================================
+
+-- BEGIN 20260506_column_gaps_fix.sql
 -- =============================================================================
 -- MIGRATION: 20260506_column_gaps_fix.sql
 -- Fixes all column-level gaps identified by full code audit (May 2026)
@@ -1002,11 +997,10 @@ ON CONFLICT (key) DO NOTHING;
 -- END OF MIGRATION
 -- =============================================================================
 
--- END: 20260506_column_gaps_fix.sql
+-- END 20260506_column_gaps_fix.sql
 
--- =============================================================================
--- BEGIN: 20260506_enable_rls_all_tables.sql
--- =============================================================================
+
+-- BEGIN 20260506_enable_rls_all_tables.sql
 -- ============================================================
 -- TAG Ecosystem — Row-Level Security (RLS) Migration
 -- 20260506_enable_rls_all_tables.sql
@@ -1291,11 +1285,10 @@ CREATE POLICY "deny_anon_trial_vouchers"
 -- Expected result: 0 rows.
 -- ============================================================
 
--- END: 20260506_enable_rls_all_tables.sql
+-- END 20260506_enable_rls_all_tables.sql
 
--- =============================================================================
--- BEGIN: 20260718_add_course_name_and_audience.sql
--- =============================================================================
+
+-- BEGIN 20260718_add_course_name_and_audience.sql
 -- Add columns the dashboard/admin code expects on the courses table
 ALTER TABLE courses
   ADD COLUMN IF NOT EXISTS name TEXT,
@@ -1326,11 +1319,10 @@ UPDATE courses
   END
   WHERE audience IS NULL OR audience = '';
 
--- END: 20260718_add_course_name_and_audience.sql
+-- END 20260718_add_course_name_and_audience.sql
 
--- =============================================================================
--- BEGIN: 20260720_setup_tokens.sql
--- =============================================================================
+
+-- BEGIN 20260720_setup_tokens.sql
 -- =============================================================================
 -- Setup tokens for trial account onboarding
 -- Allows admin to create trial companies with credits, company sets own password
@@ -1344,11 +1336,10 @@ ALTER TABLE companies
 
 CREATE INDEX IF NOT EXISTS idx_companies_setup_token ON companies(setup_token) WHERE setup_token_used = FALSE;
 
--- END: 20260720_setup_tokens.sql
+-- END 20260720_setup_tokens.sql
 
--- =============================================================================
--- BEGIN: 20260721_quote_approval_columns.sql
--- =============================================================================
+
+-- BEGIN 20260721_quote_approval_columns.sql
 -- Add approved_at and approved_by to quotes table
 -- Both Paystack auto-approve and EFT manual approval set these fields
 ALTER TABLE quotes
@@ -1358,11 +1349,10 @@ ALTER TABLE quotes
 COMMENT ON COLUMN quotes.approved_at IS 'Timestamp when quote was approved (auto for Paystack, manual for EFT)';
 COMMENT ON COLUMN quotes.approved_by IS 'Who approved: paystack_auto or admin email/UUID';
 
--- END: 20260721_quote_approval_columns.sql
+-- END 20260721_quote_approval_columns.sql
 
--- =============================================================================
--- BEGIN: 20260806_accounting_notifications.sql
--- =============================================================================
+
+-- BEGIN 20260806_accounting_notifications.sql
 -- =============================================================================
 -- MIGRATION: 20260806_accounting_notifications.sql
 -- Adds: ledger_entries, admin_notification_prefs, discount columns, promo_codes
@@ -1525,11 +1515,10 @@ CREATE TABLE IF NOT EXISTS stale_alert_log (
 -- END OF MIGRATION
 -- =============================================================================
 
--- END: 20260806_accounting_notifications.sql
+-- END 20260806_accounting_notifications.sql
 
--- =============================================================================
--- BEGIN: 20260816_r1_billing_quotes.sql
--- =============================================================================
+
+-- BEGIN 20260816_r1_billing_quotes.sql
 -- =============================================================================
 -- RELEASE 1: Billing Profiles, Formal Quote Snapshots & Configurable Terms
 -- Safe to run repeatedly. All additions are additive and preserve existing data.
@@ -1621,11 +1610,10 @@ CREATE TRIGGER trg_company_billing_profiles_updated_at
 -- END RELEASE 1 MIGRATION
 -- =============================================================================
 
--- END: 20260816_r1_billing_quotes.sql
+-- END 20260816_r1_billing_quotes.sql
 
--- =============================================================================
--- BEGIN: 20260817_r2_eft_reconciliation.sql
--- =============================================================================
+
+-- BEGIN 20260817_r2_eft_reconciliation.sql
 -- =============================================================================
 -- RELEASE 2: EFT Reconciliation & Payment-Approval Controls
 -- Safe to re-run. Adds only additive payment-control fields and audit records.
@@ -1692,11 +1680,10 @@ ON CONFLICT (id) DO NOTHING;
 -- END RELEASE 2 MIGRATION
 -- =============================================================================
 
--- END: 20260817_r2_eft_reconciliation.sql
+-- END 20260817_r2_eft_reconciliation.sql
 
--- =============================================================================
--- BEGIN: 20260818_r3_discount_governance.sql
--- =============================================================================
+
+-- BEGIN 20260818_r3_discount_governance.sql
 -- =============================================================================
 -- RELEASE 3: Discount Governance, Authority Controls & Audit Trail
 -- All operations are additive and safe to re-run.
@@ -1713,9 +1700,13 @@ CREATE TABLE IF NOT EXISTS discount_authority_rules (
 
 INSERT INTO discount_authority_rules (role, max_request_percent, max_approval_percent, require_different_approver)
 VALUES
-  ('admin', 25.00, 0.00, TRUE),
+  ('admin', 20.00, 20.00, TRUE),
   ('super_admin', 100.00, 100.00, TRUE)
-ON CONFLICT (role) DO NOTHING;
+ON CONFLICT (role) DO UPDATE SET
+  max_request_percent = EXCLUDED.max_request_percent,
+  max_approval_percent = EXCLUDED.max_approval_percent,
+  require_different_approver = EXCLUDED.require_different_approver,
+  updated_at = NOW();
 
 -- ─── 2. Controlled discount request records ────────────────────────────────────
 CREATE TABLE IF NOT EXISTS discount_requests (
@@ -1803,11 +1794,10 @@ CREATE TRIGGER trg_discount_requests_updated_at
 -- END RELEASE 3 MIGRATION
 -- =============================================================================
 
--- END: 20260818_r3_discount_governance.sql
+-- END 20260818_r3_discount_governance.sql
 
--- =============================================================================
--- BEGIN: 20260819_r6_learning_events.sql
--- =============================================================================
+
+-- BEGIN 20260819_r6_learning_events.sql
 -- Release 6: BetterDriver/Moodle event ledger and training-start revenue recognition
 CREATE TABLE IF NOT EXISTS learning_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1854,4 +1844,238 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- END: 20260819_r6_learning_events.sql
+-- END 20260819_r6_learning_events.sql
+
+
+-- BEGIN 20260821_r7a_compliance_reporting.sql
+-- R7A: Compliance profile, evidence reporting, RTMS review and quote lifecycle
+CREATE TABLE IF NOT EXISTS company_compliance_profiles (
+  company_id UUID PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
+  rtms_status TEXT NOT NULL DEFAULT 'not_applicable' CHECK (rtms_status IN ('not_applicable','preparing','certified')),
+  rtms_reference TEXT,
+  safety_manager_name TEXT,
+  safety_manager_email TEXT,
+  safety_manager_mobile TEXT,
+  annual_review_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  annual_review_lead_days INT NOT NULL DEFAULT 30 CHECK (annual_review_lead_days >= 1),
+  renewal_route TEXT NOT NULL DEFAULT 'client_decides' CHECK (renewal_route IN ('cpd','refresher','client_decides')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS driver_competency_reviews (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(), company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  driver_id UUID NOT NULL REFERENCES drivers(id) ON DELETE CASCADE,
+  last_qualifying_at TIMESTAMPTZ, next_review_due_at TIMESTAMPTZ,
+  status TEXT NOT NULL DEFAULT 'not_applicable' CHECK (status IN ('current','due_soon','overdue','not_applicable')),
+  evidence_type TEXT, evidence_id UUID, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(company_id, driver_id)
+);
+CREATE INDEX IF NOT EXISTS idx_competency_reviews_due ON driver_competency_reviews(company_id, next_review_due_at);
+
+CREATE TABLE IF NOT EXISTS evidence_reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(), company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  control_number TEXT UNIQUE NOT NULL, report_type TEXT NOT NULL, reporting_period_start DATE, reporting_period_end DATE,
+  filters_json JSONB NOT NULL DEFAULT '{}'::jsonb, snapshot_json JSONB NOT NULL, sha256_checksum TEXT NOT NULL,
+  pdf_storage_path TEXT, csv_storage_path TEXT, status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','revoked')),
+  generated_by UUID, generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), revoked_at TIMESTAMPTZ, revoked_by UUID, revoke_reason TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_evidence_reports_company_generated ON evidence_reports(company_id, generated_at DESC);
+
+CREATE TABLE IF NOT EXISTS evidence_report_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(), report_id UUID NOT NULL REFERENCES evidence_reports(id) ON DELETE CASCADE,
+  event_type TEXT NOT NULL CHECK (event_type IN ('generated','downloaded','validated','revoked')),
+  actor_id UUID, metadata JSONB NOT NULL DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS reporting_alert_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(), company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  driver_id UUID REFERENCES drivers(id) ON DELETE CASCADE, alert_type TEXT NOT NULL, alert_stage TEXT NOT NULL,
+  due_date DATE, sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE(company_id, driver_id, alert_type, alert_stage, due_date)
+);
+
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS expired_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_quotes_active_expiry ON quotes(company_id, expires_at) WHERE archived_at IS NULL;
+
+-- END 20260821_r7a_compliance_reporting.sql
+
+
+-- BEGIN 20260903_r8_invoices_vat_commercial_documents.sql
+-- =============================================================================
+-- RELEASE 8: Commercial Invoices, Configurable VAT & Document Snapshots
+-- Safe to run repeatedly. Additive only; preserves historic quotes and payments.
+-- =============================================================================
+
+-- ─── 1. Supplier commercial settings ───────────────────────────────────────────
+-- These settings are copied into quote/invoice snapshots at issue time. The VAT
+-- rate defaults to the historic GFA calculation rate so current quote behaviour
+-- does not change when this migration is applied.
+INSERT INTO site_config (key, value, description) VALUES
+  ('company_vat_rate', '15', 'VAT percentage applied to newly issued GFA commercial documents; confirm with a tax professional before changing'),
+  ('invoice_due_days', '14', 'Default calendar days from issue date to invoice due date'),
+  ('invoice_payment_terms', 'Payment is due by the date stated on this invoice.', 'Default payment terms copied into newly issued invoices')
+ON CONFLICT (key) DO NOTHING;
+
+-- ─── 2. Concurrency-safe annual invoice number sequence ─────────────────────────
+CREATE TABLE IF NOT EXISTS invoice_number_sequences (
+  invoice_year  INTEGER PRIMARY KEY,
+  last_number   INTEGER NOT NULL DEFAULT 0 CHECK (last_number >= 0),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE OR REPLACE FUNCTION next_gfa_invoice_number(p_issued_at TIMESTAMPTZ DEFAULT NOW())
+RETURNS TEXT
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_year INTEGER;
+  v_sequence INTEGER;
+BEGIN
+  v_year := EXTRACT(YEAR FROM COALESCE(p_issued_at, NOW()) AT TIME ZONE 'Africa/Johannesburg')::INTEGER;
+
+  INSERT INTO invoice_number_sequences (invoice_year, last_number, updated_at)
+  VALUES (v_year, 1, NOW())
+  ON CONFLICT (invoice_year) DO UPDATE
+    SET last_number = invoice_number_sequences.last_number + 1,
+        updated_at = NOW()
+  RETURNING last_number INTO v_sequence;
+
+  RETURN format('GFA-INV-%s-%s', v_year, LPAD(v_sequence::TEXT, 4, '0'));
+END;
+$$;
+
+-- ─── 3. Immutable invoice records ───────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS invoices (
+  id                         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id                 UUID NOT NULL REFERENCES companies(id) ON DELETE RESTRICT,
+  source_quote_id            UUID UNIQUE REFERENCES quotes(id) ON DELETE SET NULL,
+  invoice_number             TEXT NOT NULL UNIQUE,
+  status                     TEXT NOT NULL DEFAULT 'issued'
+                               CHECK (status IN ('draft', 'issued', 'part_paid', 'paid', 'void')),
+  currency                   TEXT NOT NULL DEFAULT 'ZAR' CHECK (currency = 'ZAR'),
+  supplier_snapshot          JSONB NOT NULL DEFAULT '{}'::jsonb,
+  billing_profile_snapshot   JSONB NOT NULL DEFAULT '{}'::jsonb,
+  line_items                 JSONB NOT NULL DEFAULT '[]'::jsonb,
+  subtotal                   NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (subtotal >= 0),
+  vat_rate                   NUMERIC(5,2) NOT NULL DEFAULT 0 CHECK (vat_rate >= 0 AND vat_rate <= 100),
+  vat                        NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (vat >= 0),
+  total                      NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (total >= 0),
+  amount_paid                NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (amount_paid >= 0),
+  amount_due                 NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (amount_due >= 0),
+  purchase_order_ref         TEXT,
+  cost_centre                TEXT,
+  payment_terms              TEXT NOT NULL DEFAULT '',
+  issued_at                  TIMESTAMPTZ,
+  due_at                     DATE,
+  paid_at                    TIMESTAMPTZ,
+  voided_at                  TIMESTAMPTZ,
+  void_reason                TEXT,
+  created_by                 UUID,
+  created_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (amount_paid <= total),
+  CHECK (amount_due = GREATEST(total - amount_paid, 0)),
+  CHECK (
+    (status <> 'void' OR voided_at IS NOT NULL)
+    AND (status <> 'paid' OR amount_due = 0)
+  )
+);
+CREATE INDEX IF NOT EXISTS idx_invoices_company_issued
+  ON invoices(company_id, issued_at DESC);
+CREATE INDEX IF NOT EXISTS idx_invoices_status_due
+  ON invoices(status, due_at);
+CREATE INDEX IF NOT EXISTS idx_invoices_source_quote
+  ON invoices(source_quote_id);
+
+-- ─── 4. Invoice lifecycle evidence and payment allocations ──────────────────────
+CREATE TABLE IF NOT EXISTS invoice_events (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  invoice_id   UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  event_type   TEXT NOT NULL CHECK (event_type IN ('created', 'issued', 'payment_allocated', 'voided', 'note')),
+  actor_id     UUID,
+  actor_label  TEXT,
+  details      JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_invoice_events_invoice
+  ON invoice_events(invoice_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS invoice_payment_allocations (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  invoice_id   UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  payment_id   UUID REFERENCES payments(id) ON DELETE SET NULL,
+  amount       NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+  allocated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  allocated_by UUID,
+  note         TEXT,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_invoice_payment_allocations_invoice
+  ON invoice_payment_allocations(invoice_id, allocated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_invoice_payment_allocations_payment
+  ON invoice_payment_allocations(payment_id);
+
+-- ─── 5. Optional direct invoice linkage for existing finance records ────────────
+ALTER TABLE payments
+  ADD COLUMN IF NOT EXISTS invoice_id UUID REFERENCES invoices(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_payments_invoice_status
+  ON payments(invoice_id, status)
+  WHERE invoice_id IS NOT NULL;
+
+ALTER TABLE ledger_entries
+  ADD COLUMN IF NOT EXISTS invoice_id UUID REFERENCES invoices(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_ledger_entries_invoice_created
+  ON ledger_entries(invoice_id, created_at DESC)
+  WHERE invoice_id IS NOT NULL;
+
+-- ─── 6. Invoice timestamp guard ─────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION touch_invoice_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at := NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_invoices_updated_at ON invoices;
+CREATE TRIGGER trg_invoices_updated_at
+  BEFORE UPDATE ON invoices
+  FOR EACH ROW EXECUTE FUNCTION touch_invoice_updated_at();
+
+-- ─── 7. Deny anonymous access; application routes use authenticated sessions or
+-- service-role server access and enforce tenant/admin checks in application code. ──
+ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invoice_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invoice_payment_allocations ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'invoices' AND policyname = 'deny_anon_invoices'
+  ) THEN
+    CREATE POLICY "deny_anon_invoices" ON invoices FOR ALL TO anon USING (false) WITH CHECK (false);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'invoice_events' AND policyname = 'deny_anon_invoice_events'
+  ) THEN
+    CREATE POLICY "deny_anon_invoice_events" ON invoice_events FOR ALL TO anon USING (false) WITH CHECK (false);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'invoice_payment_allocations' AND policyname = 'deny_anon_invoice_payment_allocations'
+  ) THEN
+    CREATE POLICY "deny_anon_invoice_payment_allocations" ON invoice_payment_allocations FOR ALL TO anon USING (false) WITH CHECK (false);
+  END IF;
+END
+$$;
+
+-- =============================================================================
+-- END RELEASE 8
+-- =============================================================================
+
+-- END 20260903_r8_invoices_vat_commercial_documents.sql

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
+import { getSupplierProfile } from "@/lib/quoteProfiles";
+import { calculateVat, formatVatLabel } from "@/lib/commercialTax";
 
 // POST /api/company/quote/simple — simplified quote creation for credit purchase
 export async function POST(req: NextRequest) {
@@ -16,19 +18,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Course selection is required" }, { status: 400 });
   }
 
-  const config = await getConfigs([
-    "email_booking_to",
-    "company_name",
-    "company_vat_number",
-    "company_address",
-    "company_phone",
-    "company_email",
-    "company_bank_name",
-    "company_bank_account",
-    "company_bank_branch",
-    "company_bank_account_holder",
-    "company_bank_account_type",
-    "company_bank_product_type",
+  const [config, supplier] = await Promise.all([
+    getConfigs([
+      "email_booking_to",
+      "company_name",
+      "company_vat_number",
+      "company_address",
+      "company_phone",
+      "company_email",
+      "company_bank_name",
+      "company_bank_account",
+      "company_bank_branch",
+      "company_bank_account_holder",
+      "company_bank_account_type",
+      "company_bank_product_type",
+    ]),
+    getSupplierProfile(),
   ]);
 
   // Fetch course price
@@ -44,8 +49,8 @@ export async function POST(req: NextRequest) {
 
   const pricePerDriver = Number(course.price_corporate ?? 0);
   const subtotal = pricePerDriver * numDrivers;
-  const vat = Math.round(subtotal * 0.15 * 100) / 100;
-  const total = subtotal + vat;
+  const vat = calculateVat(subtotal, supplier.vat_rate);
+  const total = Math.round((subtotal + vat) * 100) / 100;
 
   // Build placeholder line items (drivers not yet selected)
   const lineItems = Array.from({ length: numDrivers }, (_, i) => ({
@@ -138,8 +143,7 @@ export async function POST(req: NextRequest) {
               <td style="padding: 8px 12px; text-align: right;">R ${subtotal.toFixed(2)}</td>
             </tr>
             <tr>
-              <td colspan="2" style="padding: 8px 12px; text-align: right; color: #6b7280;">VAT (15%)</td>
-              <td style="padding: 8px 12px; text-align: right;">R ${vat.toFixed(2)}</td>
+              <td colspan="2" style="padding: 8px 12px; text-align: right; color: #6b7280;">${formatVatLabel(supplier.vat_rate)}</td><td style="padding: 8px 12px; text-align: right;">R ${vat.toFixed(2)}</td>
             </tr>
             <tr style="background: #f0fdf4;">
               <td colspan="2" style="padding: 10px 12px; text-align: right; font-weight: 700;">TOTAL</td>
@@ -182,7 +186,7 @@ export async function POST(req: NextRequest) {
         fromName: "GFA Platform",
         to: adminEmail,
         subject: `New quote generated — ${session.companyName} — ${ref}`,
-        html: `<p>A new quote has been generated for <strong>${session.companyName}</strong>.</p><p>Reference: <strong>${ref}</strong></p><p>Subtotal: R ${subtotal.toFixed(2)}</p><p>VAT (15%): R ${vat.toFixed(2)}</p><p>Total: <strong>R ${total.toFixed(2)}</strong></p><p>Drivers: ${numDrivers}</p>`,
+        html: `<p>A new quote has been generated for <strong>${session.companyName}</strong>.</p><p>Reference: <strong>${ref}</strong></p><p>Subtotal: R ${subtotal.toFixed(2)}</p><p>${formatVatLabel(supplier.vat_rate)}: R ${vat.toFixed(2)}</p><p>Total: <strong>R ${total.toFixed(2)}</strong></p><p>Drivers: ${numDrivers}</p>`,
       });
     } catch (emailErr) {
       console.error("Quote email send error:", emailErr);

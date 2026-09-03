@@ -4,6 +4,7 @@ import { supabaseAdmin, getConfigs } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
 import { adminNotify, writeLedgerEntry } from "@/lib/adminNotify";
 import { asBillingSnapshot, getQuoteValidUntil, getSupplierProfile } from "@/lib/quoteProfiles";
+import { calculateVat, formatVatLabel } from "@/lib/commercialTax";
 
 interface QuoteLineItem {
   driverId: string;
@@ -89,8 +90,8 @@ export async function POST(req: NextRequest) {
   })));
 
   const subtotal = lineItems.reduce((sum, line) => sum + line.price, 0);
-  const vat = Math.round(subtotal * 0.15 * 100) / 100;
-  const total = subtotal + vat;
+  const vat = calculateVat(subtotal, supplier.vat_rate);
+  const total = Math.round((subtotal + vat) * 100) / 100;
   const reference = `GFA-${Date.now().toString(36).toUpperCase()}`;
   const validUntil = getQuoteValidUntil(supplier.quote_validity_days);
   const billingSnapshot = asBillingSnapshot(billingProfile);
@@ -201,7 +202,7 @@ export async function POST(req: NextRequest) {
         <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
           <thead><tr style="background:#f9fafb;"><th style="padding:10px 12px;text-align:left;font-size:13px;color:#6b7280;border-bottom:2px solid #e5e7eb;">Programme</th><th style="padding:10px 12px;text-align:right;font-size:13px;color:#6b7280;border-bottom:2px solid #e5e7eb;">Unit price</th><th style="padding:10px 12px;text-align:right;font-size:13px;color:#6b7280;border-bottom:2px solid #e5e7eb;">Amount</th></tr></thead>
           <tbody>${lineItemsHtml}</tbody>
-          <tfoot><tr><td colspan="2" style="padding:8px 12px;text-align:right;color:#6b7280;">Subtotal</td><td style="padding:8px 12px;text-align:right;">${formatZar(subtotal)}</td></tr><tr><td colspan="2" style="padding:8px 12px;text-align:right;color:#6b7280;">VAT (15%)</td><td style="padding:8px 12px;text-align:right;">${formatZar(vat)}</td></tr><tr style="background:#f0fdf4;"><td colspan="2" style="padding:10px 12px;text-align:right;font-weight:700;">TOTAL</td><td style="padding:10px 12px;text-align:right;font-weight:700;color:#16a34a;">${formatZar(total)}</td></tr></tfoot>
+          <tfoot><tr><td colspan="2" style="padding:8px 12px;text-align:right;color:#6b7280;">Subtotal</td><td style="padding:8px 12px;text-align:right;">${formatZar(subtotal)}</td></tr><tr><td colspan="2" style="padding:8px 12px;text-align:right;color:#6b7280;">${formatVatLabel(supplier.vat_rate)}</td><td style="padding:8px 12px;text-align:right;">${formatZar(vat)}</td></tr><tr style="background:#f0fdf4;"><td colspan="2" style="padding:10px 12px;text-align:right;font-weight:700;">TOTAL</td><td style="padding:10px 12px;text-align:right;font-weight:700;color:#16a34a;">${formatZar(total)}</td></tr></tfoot>
         </table>
         <div style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:18px;">
           <p style="margin:0 0 8px;font-weight:700;font-size:14px;">Payment options</p>
@@ -235,7 +236,7 @@ export async function POST(req: NextRequest) {
         fromName: "GFA Platform",
         to: adminEmail,
         subject: `New quote generated — ${session.companyName} — ${reference}`,
-        html: `<p>A new formal quote was generated for <strong>${html(buyerName)}</strong>.</p><p>Reference: <strong>${html(reference)}</strong> · valid until ${html(validUntil)}</p><p>Subtotal: ${formatZar(subtotal)}</p><p>VAT: ${formatZar(vat)}</p><p>Total: <strong>${formatZar(total)}</strong></p><p>Drivers: ${items.length}</p>`,
+        html: `<p>A new formal quote was generated for <strong>${html(buyerName)}</strong>.</p><p>Reference: <strong>${html(reference)}</strong> · valid until ${html(validUntil)}</p><p>Subtotal: ${formatZar(subtotal)}</p><p>${formatVatLabel(supplier.vat_rate)}: ${formatZar(vat)}</p><p>Total: <strong>${formatZar(total)}</strong></p><p>Drivers: ${items.length}</p>`,
       });
     } catch (emailError) {
       console.error("Quote email send error:", emailError);
