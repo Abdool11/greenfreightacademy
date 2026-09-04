@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { adminNotify, writeLedgerEntry } from "@/lib/adminNotify";
 import { sendEmail } from "@/lib/email";
 import { calculateDiscount, DiscountType, formatZar } from "@/lib/discounts";
+import { deriveVatRate } from "@/lib/commercialTax";
 
 export const dynamic = "force-dynamic";
 const clean = (value: unknown) => typeof value === "string" ? value.trim() : "";
@@ -36,14 +37,21 @@ export async function POST(req: NextRequest) {
     if (!quoteId || !reasonCategory || !reasonNote || !Number.isFinite(requestedValue)) return NextResponse.json({ error: "Quote, discount value, reason category and reason are required." }, { status: 400 });
 
     const [{ data: quote }, { data: rule }] = await Promise.all([
-      supabaseAdmin.from("quotes").select("id, reference, company_id, subtotal, total, status, line_items, billing_profile_snapshot, supplier_snapshot, valid_until, purchase_order_ref, cost_centre, quote_version").eq("id", quoteId).single(),
+      supabaseAdmin.from("quotes").select("id, reference, company_id, subtotal, vat, total, status, line_items, billing_profile_snapshot, supplier_snapshot, valid_until, purchase_order_ref, cost_centre, quote_version").eq("id", quoteId).single(),
       supabaseAdmin.from("discount_authority_rules").select("*").eq("role", session.role).maybeSingle(),
     ]);
     if (!quote) return NextResponse.json({ error: "Quote not found." }, { status: 404 });
     if (!["pending", "eft_submitted"].includes(quote.status)) return NextResponse.json({ error: "Only unpaid quotes can receive a discount request." }, { status: 409 });
 
     let calculation;
-    try { calculation = calculateDiscount(Number(quote.subtotal ?? 0), discountType, requestedValue); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid discount." }, { status: 400 }); }
+    try {
+      calculation = calculateDiscount(
+        Number(quote.subtotal ?? 0),
+        discountType,
+        requestedValue,
+        deriveVatRate(Number(quote.subtotal ?? 0), Number(quote.vat ?? 0))
+      );
+    } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid discount." }, { status: 400 }); }
     const requestCap = Math.min(roleCap(session.role), Number(rule?.max_request_percent ?? 0));
     if (!rule || calculation.requestedPercent > requestCap) return NextResponse.json({ error: `Your role may request discounts up to ${requestCap}%.` }, { status: 403 });
 

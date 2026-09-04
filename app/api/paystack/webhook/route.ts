@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
 import { adminNotify, writeLedgerEntry } from "@/lib/adminNotify";
+import { allocateConfirmedPaymentToInvoice } from "@/lib/invoicePayments";
 import crypto from "crypto";
 
 // POST /api/paystack/webhook — receives Paystack payment events
@@ -72,14 +73,16 @@ export async function POST(req: NextRequest) {
     }
 
     // Update payment record
-    await supabaseAdmin
+    const { data: paymentRecord } = await supabaseAdmin
       .from("payments")
       .update({
         status: "paid",
         paid_at: new Date().toISOString(),
         paystack_data: JSON.stringify(data),
       })
-      .eq("paystack_reference", paystackReference);
+      .eq("paystack_reference", paystackReference)
+      .select("id, amount")
+      .maybeSingle();
 
     // Update quote status to "paid"
     await supabaseAdmin
@@ -283,9 +286,23 @@ export async function POST(req: NextRequest) {
         description: `Paystack payment — ${notifQuote?.reference ?? quoteId}`,
         reference:   paystackReference,
         quote_id:    quoteId,
+        payment_id:  paymentRecord?.id,
         status:      "confirmed",
         created_by:  "paystack_webhook",
       });
+      if (paymentRecord?.id) {
+        try {
+          await allocateConfirmedPaymentToInvoice({
+            quoteId,
+            paymentId: paymentRecord.id,
+            amount: Number(paymentRecord.amount ?? notifQuote?.total ?? 0),
+            actorLabel: "Paystack webhook",
+            note: `Allocated after confirmed Paystack payment ${paystackReference}.`,
+          });
+        } catch (invoiceAllocationError) {
+          console.error("Paystack webhook: invoice allocation error (non-blocking):", invoiceAllocationError);
+        }
+      }
     } catch (notifErr) {
       console.error("Paystack webhook: adminNotify error (non-blocking):", notifErr);
     }

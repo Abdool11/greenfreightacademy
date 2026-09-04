@@ -1,4 +1,5 @@
 import { getConfigs } from "@/lib/supabase";
+import { DEFAULT_VAT_RATE, parseVatRate } from "@/lib/commercialTax";
 
 export interface BillingProfileInput {
   legal_entity_name: string;
@@ -36,6 +37,9 @@ export interface SupplierProfile {
   quote_validity_days: number;
   payment_terms: string;
   terms_note: string;
+  vat_rate: number;
+  invoice_due_days: number;
+  invoice_payment_terms: string;
 }
 
 const trim = (value: unknown) => typeof value === "string" ? value.trim() : "";
@@ -87,9 +91,13 @@ export async function getSupplierProfile(): Promise<SupplierProfile> {
     "quote_validity_days",
     "quote_payment_terms",
     "quote_terms_note",
+    "company_vat_rate",
+    "invoice_due_days",
+    "invoice_payment_terms",
   ]);
 
   const parsedValidity = Number.parseInt(config.quote_validity_days ?? "14", 10);
+  const parsedInvoiceDueDays = Number.parseInt(config.invoice_due_days ?? "14", 10);
   return {
     legal_name: trim(config.company_name) || "GreenFreightAcademy",
     trading_name: trim(config.company_trading_name),
@@ -107,6 +115,9 @@ export async function getSupplierProfile(): Promise<SupplierProfile> {
     quote_validity_days: Number.isFinite(parsedValidity) && parsedValidity > 0 ? parsedValidity : 14,
     payment_terms: trim(config.quote_payment_terms) || "Payment is required before training is deployed.",
     terms_note: trim(config.quote_terms_note),
+    vat_rate: parseVatRate(config.company_vat_rate, DEFAULT_VAT_RATE),
+    invoice_due_days: Number.isFinite(parsedInvoiceDueDays) && parsedInvoiceDueDays >= 0 && parsedInvoiceDueDays <= 365 ? parsedInvoiceDueDays : 14,
+    invoice_payment_terms: trim(config.invoice_payment_terms) || "Payment is due by the date stated on this invoice.",
   };
 }
 

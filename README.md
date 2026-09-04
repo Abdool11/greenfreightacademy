@@ -13,7 +13,8 @@ Key platform capabilities include:
 - **GFA Video Library** — admin-managed Bunny.net-backed video library for invite videos, teaser videos, portal walkthrough videos, and module content; videos are tagged by type, language (EN/ZU), and programme; invite videos are selectable when creating a training campaign and are delivered to drivers on first magic link tap
 - **WhatsApp Bulletin Notification Fields** — when creating a driver bulletin, the operator selects which fields to include in the WhatsApp message (topic, urgency level, category, driver action, mitigation message, portal link); a live preview shows exactly what each driver will receive before dissemination
 - **Billing Profiles & Formal Quotes** — companies complete a secure billing profile before issuing their first quotation; buyer and supplier details, payment terms, validity date and procurement references are copied into immutable quote snapshots
-- **Admin Quote Settings** — authorised admins configure the legal supplier identity, VAT details, EFT instructions and quote terms without hard-coding sensitive commercial information into the application
+- **Admin Commercial Document Settings** — authorised admins configure the legal supplier identity, optional VAT registration number, VAT percentage, EFT instructions, quotation terms and invoice terms without hard-coding sensitive commercial information into the application
+- **Commercial Invoices** — authorised admins issue one immutable invoice from an eligible quote; the invoice retains supplier/buyer snapshots, a safe annual invoice number, commercial totals, payment allocation events and a matching GFA letterhead-aligned PDF
 - **Import Reliability** — the driver import screen downloads the same server-generated `.xlsx` template accepted by the primary import parser
 - **EFT Reconciliation Inbox** — clients submit an EFT reference, amount, date and optional private proof of payment; finance reviews the expected-versus-claimed amount, bank reference, variance and evidence before confirming, requesting clarification or rejecting
 - **Private Payment Evidence** — proof files are stored in a private Supabase Storage bucket and are accessed only through short-lived, admin-authenticated URLs
@@ -80,8 +81,9 @@ app/
     stats/                    # Impact statistics
     email-settings/           # Email template settings
     settings/messaging/       # WhatsApp message template settings
-    settings/quote-profile/   # Supplier legal details, EFT instructions and formal quote terms
+    settings/quote-profile/   # Supplier, VAT, EFT, quotation and invoice-term settings
     finance/                  # Ledger, reconciliation inbox and per-client account view
+    invoices/                 # Authorised invoice issue/list workflow
     discounts/                # Governed discount requests, approvals and audit status
     operations/               # Daily cashbook, delivery metrics and operational exception queue
     video-library/            # GFA Video Library (Bunny.net upload, manage, assign)
@@ -132,6 +134,7 @@ cp .env.local.example .env.local
 #   supabase/migrations/20260818_r3_discount_governance.sql
 #   supabase/migrations/20260819_r6_learning_events.sql
 #   supabase/migrations/20260821_r7a_compliance_reporting.sql
+#   supabase/migrations/20260903_r8_invoices_vat_commercial_documents.sql
 npm run dev
 ```
 
@@ -148,6 +151,8 @@ npm run dev
 > **Release 3 setup:** Apply `20260818_r3_discount_governance.sql` after Releases 1–2. An `admin` may approve a discount of **20% or less**; only a `super_admin` may approve a larger discount; and self-approval is always blocked. Change these policy values only after formal commercial approval.
 >
 > **Commercial & Compliance V1:** Follow [`docs/releases/2026-08-commercial-compliance-v1/00-RELEASE-SUMMARY.md`](docs/releases/2026-08-commercial-compliance-v1/00-RELEASE-SUMMARY.md) for the one-branch integration process, ordered migrations, Vercel configuration, preview tests, feature activation and rollback.
+>
+> **Commercial invoices and configurable VAT:** Apply `supabase/migrations/20260903_r8_invoices_vat_commercial_documents.sql` after the preceding commercial migrations. Then complete **Admin → Formal Commercial Document Settings** with the supplier legal entity, VAT number only when registered, VAT percentage, bank details, quotation terms, invoice due days and invoice terms. The values are copied into new document snapshots; historic documents are not retroactively changed. Use **Admin → Commercial Invoices** to issue exactly one invoice from an eligible quote. Confirm VAT registration, rate and tax-invoice wording with an appropriately qualified tax or accounting professional before issuing external documents.
 
 ---
 
@@ -180,6 +185,8 @@ npm run dev
 | `ENABLE_R7_LIFECYCLE_CRON` | Release controlled | Leave `false` until lifecycle preview test passes |
 | `ENABLE_EVIDENCE_REPORTS` | Release controlled | Leave `false` until evidence report/validation preview test passes |
 | `ENABLE_EFT_RECONCILIATION_V2` | Release controlled | Leave `false` until finance preview test passes |
+
+No new deployment environment variable is required for commercial invoices or VAT settings. VAT and invoice-term configuration is stored in the protected `site_config` settings flow, not in `.env.local`.
 
 ---
 

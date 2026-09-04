@@ -3,6 +3,7 @@ import { requireAdminSession } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
 import { adminNotify, writeLedgerEntry } from "@/lib/adminNotify";
+import { allocateConfirmedPaymentToInvoice } from "@/lib/invoicePayments";
 
 export const dynamic = "force-dynamic";
 
@@ -127,6 +128,19 @@ export async function POST(req: NextRequest) {
       status: "confirmed",
       created_by: adminIdentity,
     });
+    try {
+      await allocateConfirmedPaymentToInvoice({
+        quoteId: quote.id,
+        paymentId: payment.id,
+        amount: submittedAmount,
+        actorId: session.adminId,
+        actorLabel: adminIdentity,
+        note: `Allocated after confirmed EFT reconciliation ${bankTransactionReference}.`,
+      });
+    } catch (invoiceAllocationError) {
+      console.error("Invoice allocation after EFT confirmation failed:", invoiceAllocationError);
+    }
+
     if (creditCount > 0) {
       await writeLedgerEntry({
         company_id: quote.company_id,
