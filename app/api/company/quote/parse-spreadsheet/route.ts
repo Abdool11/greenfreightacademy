@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
       last_name: string;
       mobile: string;
       email: string;
+      id_number: string;
     }[] = [];
 
     const errors: { row: number; message: string }[] = [];
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
       const lastNameCol = String(row["Last Name"] || row["last_name"] || row["LastName"] || "").trim();
       const mobile = String(row["Mobile Number"] || row["Mobile"] || row["mobile"] || row["Phone"] || "").trim();
       const email = String(row["Email"] || row["email"] || "").trim().toLowerCase();
+      const id_number = String(row["ID Number"] || row["ID / Passport"] || row["Passport Number"] || row["id_number"] || "").trim();
 
       let first_name: string;
       let last_name: string;
@@ -60,7 +62,7 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      drivers.push({ first_name, last_name, mobile, email });
+      drivers.push({ first_name, last_name, mobile, email, id_number });
     }
 
     return NextResponse.json({ drivers, errors, total: rows.length });

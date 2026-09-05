@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { validateDriverIdentity } from "@/lib/driverIdentity";
 
 // ─── Mobile validation ──────────────────────────────────────────────────────
 
@@ -102,11 +103,14 @@ export async function POST(req: NextRequest) {
     // Fetch existing mobiles for this company to detect duplicates
     const { data: existingDrivers } = await supabaseAdmin
       .from("drivers")
-      .select("mobile")
+      .select("mobile, id_number")
       .eq("company_id", session.companyId);
 
     const existingMobiles = new Set(
       (existingDrivers ?? []).map((d) => normaliseSAMobile(d.mobile ?? ""))
+    );
+    const existingIdentities = new Set(
+      (existingDrivers ?? []).map((d) => String(d.id_number ?? "").trim().toUpperCase()).filter(Boolean)
     );
 
     const created: { id: string; name: string; mobile: string }[] = [];
@@ -143,6 +147,16 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
+      const identityCheck = validateDriverIdentity(d.id_number ?? "");
+      if (!identityCheck.ok) {
+        errors.push({ index: idx, field: "id_number", message: identityCheck.error });
+        continue;
+      }
+      if (existingIdentities.has(identityCheck.normalised)) {
+        errors.push({ index: idx, field: "id_number", message: "This ID or passport number already belongs to a driver in your company" });
+        continue;
+      }
+
       let email: string;
       if (d.email?.trim()) {
         if (!validateEmail(d.email.trim())) {
@@ -162,7 +176,7 @@ export async function POST(req: NextRequest) {
           last_name: d.last_name.trim(),
           mobile: normalisedMobile,
           email,
-          id_number: d.id_number?.trim() || null,
+          id_number: identityCheck.normalised,
           activation_status: "invited",
           status: "active",
         })
@@ -175,6 +189,7 @@ export async function POST(req: NextRequest) {
       }
 
       existingMobiles.add(normalisedMobile);
+      existingIdentities.add(identityCheck.normalised);
       created.push({
         id: data.id,
         name: `${d.first_name.trim()} ${d.last_name.trim()}`,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { validateDriverIdentity } from "@/lib/driverIdentity";
 
 const VALID_SA_PREFIXES = new Set([
   "60","61","62","63","64","65","66","67","68","69",
@@ -31,6 +32,7 @@ interface DriverDetail {
   last_name: string;
   mobile: string;
   email?: string;
+  id_number?: string;
   selected: boolean;
 }
 
@@ -72,13 +74,17 @@ export async function PATCH(
   // Fetch existing mobiles for duplicate detection
   const { data: existingDrivers } = await supabaseAdmin
     .from("drivers")
-    .select("id, mobile")
+          .select("id, mobile, id_number")
+
     .eq("company_id", session.companyId);
 
   const existingMobileMap = new Map<string, string>();
-  (existingDrivers ?? []).forEach(d => {
-    existingMobileMap.set(normaliseSAMobile(d.mobile ?? ""), d.id);
-  });
+    (existingDrivers ?? []).forEach(d => {
+      existingMobileMap.set(normaliseSAMobile(d.mobile ?? ""), d.id);
+    });
+    const existingIdentities = new Set(
+      (existingDrivers ?? []).map((driver) => String(driver.id_number ?? "").trim().toUpperCase()).filter(Boolean)
+    );
 
   const itemsJson: Array<{ driverId: string; driverName: string; courseIds: string[]; deployedAt?: string }> =
     quote.items_json ?? [];
@@ -118,6 +124,20 @@ export async function PATCH(
     }
 
     const normalisedMobile = mobileCheck.normalised;
+    if (existingMobileMap.has(normalisedMobile)) {
+      errors.push({ index: idx, field: "mobile", message: "This mobile number already belongs to a driver in your company" });
+      continue;
+    }
+
+    const identityCheck = validateDriverIdentity(d.id_number ?? "");
+    if (!identityCheck.ok) {
+      errors.push({ index: idx, field: "id_number", message: identityCheck.error });
+      continue;
+    }
+    if (existingIdentities.has(identityCheck.normalised)) {
+      errors.push({ index: idx, field: "id_number", message: "This ID or passport number already belongs to a driver in your company" });
+      continue;
+    }
 
     let email: string;
     if (d.email?.trim()) {
@@ -130,10 +150,9 @@ export async function PATCH(
       email = `driver_${session.companyId}_${normalisedMobile}@placeholder.local`;
     }
 
-    // Check if driver already exists (by mobile)
-    let driverId: string | undefined = existingMobileMap.get(normalisedMobile);
+    let driverId: string | undefined;
 
-    if (!driverId) {
+    {
       const { data: newDriver, error: insertErr } = await supabaseAdmin
         .from("drivers")
         .insert({
@@ -142,6 +161,7 @@ export async function PATCH(
           last_name: d.last_name.trim(),
           mobile: normalisedMobile,
           email,
+          id_number: identityCheck.normalised,
           activation_status: "invited",
           status: "active",
         })
@@ -155,6 +175,7 @@ export async function PATCH(
 
       driverId = newDriver.id;
       existingMobileMap.set(normalisedMobile, driverId!);
+      existingIdentities.add(identityCheck.normalised);
     }
 
     if (!driverId) continue; // safety guard

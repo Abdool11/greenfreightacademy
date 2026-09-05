@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { validateDriverIdentity } from "@/lib/driverIdentity";
 import * as XLSX from "xlsx";
 
 export async function POST(req: NextRequest) {
@@ -30,6 +31,7 @@ export async function POST(req: NextRequest) {
     const email = (row["Email"] || row["email"] || "").toString().trim().toLowerCase();
     const branch = (row["Branch"] || row["branch"] || "").toString().trim();
     const region = (row["Region"] || row["region"] || "").toString().trim();
+    const rawIdentity = (row["ID Number"] || row["ID / Passport"] || row["Passport Number"] || row["id_number"] || "").toString().trim();
 
     if (!name) {
       errors.push({ row: rowNum, message: "Employee name is required" });
@@ -37,6 +39,12 @@ export async function POST(req: NextRequest) {
     }
     if (!mobile) {
       errors.push({ row: rowNum, message: `Row ${rowNum}: Mobile number is required for ${name}` });
+      continue;
+    }
+
+    const identity = validateDriverIdentity(rawIdentity);
+    if (!identity.ok) {
+      errors.push({ row: rowNum, message: `Row ${rowNum}: ${identity.error}` });
       continue;
     }
 
@@ -57,6 +65,7 @@ export async function POST(req: NextRequest) {
         email: email || null,
         branch: branch || null,
         region: region || null,
+        id_number: identity.normalised,
         status: "active",
       }, {
         onConflict: "company_id,mobile",
@@ -82,14 +91,23 @@ export async function POST(req: NextRequest) {
 // Download Excel template
 export async function GET() {
   const wb = XLSX.utils.book_new();
-  const headers = [["Employee Name", "Mobile Number", "Alternative Number", "Email", "Branch", "Region"]];
-  const example = [
-    ["John Sithole", "0821234567", "0831234567", "john@company.co.za", "Durban Hub", "KwaZulu-Natal"],
-    ["Maria Dlamini", "0712345678", "", "", "Johannesburg North", "Gauteng"],
-  ];
-  const ws = XLSX.utils.aoa_to_sheet([...headers, ...example]);
-  ws["!cols"] = [{ wch: 20 }, { wch: 16 }, { wch: 18 }, { wch: 28 }, { wch: 20 }, { wch: 18 }];
+  const headers = [["Employee Name", "Mobile Number", "Alternative Number", "Email", "Branch", "Region", "ID Number"]];
+  const ws = XLSX.utils.aoa_to_sheet(headers);
+  ws["!cols"] = [{ wch: 24 }, { wch: 16 }, { wch: 18 }, { wch: 28 }, { wch: 20 }, { wch: 18 }, { wch: 20 }];
   XLSX.utils.book_append_sheet(wb, ws, "Drivers");
+
+  const instructions = XLSX.utils.aoa_to_sheet([
+    ["GFA Driver Import Instructions"],
+    ["Employee Name", "Required. Use the driver’s first and surname."],
+    ["Mobile Number", "Required. Enter a South African mobile number, for example 0821234567."],
+    ["Alternative Number", "Optional."],
+    ["Email", "Optional."],
+    ["Branch / Region", "Optional operational fields."],
+    ["ID Number", "Required. Enter a valid 13-digit South African ID or a 6–20 character passport number."],
+    ["Privacy", "The Drivers sheet is intentionally blank. Do not retain, share or reuse another company’s driver data."],
+  ]);
+  instructions["!cols"] = [{ wch: 24 }, { wch: 96 }];
+  XLSX.utils.book_append_sheet(wb, instructions, "Instructions");
   const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 
   return new NextResponse(buf, {

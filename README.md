@@ -238,3 +238,10 @@ Vercel deploys `main` to production. Feature and release branches should be revi
 Apply `supabase/migrations/20260905_r9_payment_credit_idempotency.sql` after Release 8. It creates the durable `payment_credit_allocations` ledger and the protected `allocate_quote_credits_once` function. Paystack browser verification, Paystack webhooks and confirmed EFT reconciliation use this one path to allocate purchased seats exactly once per payment/quote. No new environment variables are required.
 
 The public `/pricing` page now reads available course prices from the database-backed `courses` catalogue, the same controlled source used by the public pricing API and administrative pricing management. Before promoting this release, validate one two-seat synthetic Paystack payment through both redirect and webhook paths and verify that the company receives exactly two credits. Review any historic company balance that exceeds the seats purchased; Release 9 prevents new duplicate allocations and does not automatically reverse historic balances.
+
+
+### Release 10 — QA Stabilisation: Driver Identity and Deployment Controls
+
+Apply `supabase/migrations/20260905_r10_driver_deployment_idempotency.sql` after Release 9. It creates a durable quote-driver deployment ledger and an atomic credit-reservation function. Both individual and bulk deployment paths reserve each quote/driver pairing once before creating an invitation or sending WhatsApp, preventing repeated clicks or concurrent requests from creating duplicate magic links or deducting credits more than once.
+
+Driver entry, standard import and paid-quote driver capture now require an ID number or passport number. South African IDs are checksum-validated; passport values support 6–20 alphanumeric characters. The standard driver-import workbook has a blank **Drivers** sheet and a separate non-personal **Instructions** sheet, so generated templates never contain illustrative or previously entered driver details. Before deployment, test a synthetic duplicate mobile, duplicate identity, invalid identity, blank template download and repeated individual/bulk deployment attempt in Preview.

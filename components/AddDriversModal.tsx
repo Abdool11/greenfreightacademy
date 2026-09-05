@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useCallback } from "react";
+import { validateDriverIdentity } from "@/lib/driverIdentity";
 import { X, Loader2, Plus, Trash2, AlertCircle, CheckCircle2, UserPlus, Phone } from "lucide-react";
 
 interface DriverRow {
@@ -70,6 +71,10 @@ function getFieldError(row: DriverRow, field: keyof DriverRow): string | null {
     // Email is optional; if provided, validate format
     if (row.email.trim() && !validateEmail(row.email)) return "Invalid email";
   }
+  if (field === "id_number") {
+    const identity = validateDriverIdentity(row.id_number);
+    if (!identity.ok) return identity.error;
+  }
   return null;
 }
 
@@ -113,24 +118,25 @@ export default function AddDriversModal({ onClose, onSuccess }: AddDriversModalP
   }, []);
 
   const hasAnyData = rows.some((r) =>
-    r.first_name.trim() || r.last_name.trim() || r.mobile.trim() || r.email.trim()
+    r.first_name.trim() || r.last_name.trim() || r.mobile.trim() || r.email.trim() || r.id_number.trim()
   );
 
   const allRowsValid = rows.every((row) => {
-    const isPopulated = row.first_name.trim() || row.last_name.trim() || row.mobile.trim();
+    const isPopulated = row.first_name.trim() || row.last_name.trim() || row.mobile.trim() || row.id_number.trim();
     if (!isPopulated) return true; // empty rows are ignored by handleSubmit
     return (
       !getFieldError(row, "first_name") &&
       !getFieldError(row, "last_name") &&
       !getFieldError(row, "mobile") &&
-      !getFieldError(row, "email")
+      !getFieldError(row, "email") &&
+      !getFieldError(row, "id_number")
     );
   });
 
   const handleSubmit = async () => {
     // Filter out completely empty rows
     const populatedRows = rows.filter(
-      (r) => r.first_name.trim() || r.last_name.trim() || r.mobile.trim()
+      (r) => r.first_name.trim() || r.last_name.trim() || r.mobile.trim() || r.id_number.trim()
     );
 
     if (populatedRows.length === 0) {
@@ -151,6 +157,8 @@ export default function AddDriversModal({ onClose, onSuccess }: AddDriversModalP
       if (mErr) clientErrors.push({ index: idx, field: "mobile", message: mErr });
       const eErr = getFieldError(row, "email");
       if (eErr) clientErrors.push({ index: idx, field: "email", message: eErr });
+      const idErr = getFieldError(row, "id_number");
+      if (idErr) clientErrors.push({ index: idx, field: "id_number", message: idErr });
     }
 
     if (clientErrors.length > 0) {
@@ -445,7 +453,7 @@ export default function AddDriversModal({ onClose, onSuccess }: AddDriversModalP
                 <span style={labelStyle}>Last name *</span>
                 <span style={labelStyle}>Mobile *</span>
                 <span style={labelStyle}>Email (optional)</span>
-                <span style={labelStyle}>ID Number</span>
+                <span style={labelStyle}>ID / Passport *</span>
                 <span />
               </div>
 
@@ -455,8 +463,9 @@ export default function AddDriversModal({ onClose, onSuccess }: AddDriversModalP
                 const lErr = getFieldError(row, "last_name");
                 const mErr = getFieldError(row, "mobile");
                 const eErr = getFieldError(row, "email");
+                const idErr = getFieldError(row, "id_number");
                 const hasValue =
-                  row.first_name.trim() || row.last_name.trim() || row.mobile.trim();
+                  row.first_name.trim() || row.last_name.trim() || row.mobile.trim() || row.id_number.trim();
                 return (
                   <div
                     key={i}
@@ -527,11 +536,14 @@ export default function AddDriversModal({ onClose, onSuccess }: AddDriversModalP
                     <div style={fieldWrapperStyle}>
                       <input
                         type="text"
-                        placeholder="ID number"
+                        placeholder="SA ID or passport"
                         value={row.id_number}
                         onChange={(e) => updateRow(i, "id_number", e.target.value)}
-                        style={inputStyle(null)}
+                        style={inputStyle(idErr)}
                       />
+                      {idErr && (
+                        <span style={{ fontSize: "0.6875rem", color: "#f87171" }}>{idErr}</span>
+                      )}
                     </div>
                     <button
                       onClick={() => removeRow(i)}
@@ -614,7 +626,7 @@ export default function AddDriversModal({ onClose, onSuccess }: AddDriversModalP
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <Phone size={14} style={{ color: "#6b7280" }} />
               <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>
-                SA mobile numbers only. Auto-formatted to E.164 (27XXXXXXXXX).
+                SA mobile numbers only. ID: valid 13-digit SA ID or 6–20 character passport. Mobile numbers use E.164 (27XXXXXXXXX).
               </span>
             </div>
             <div style={{ display: "flex", gap: "0.625rem" }}>
@@ -652,7 +664,7 @@ export default function AddDriversModal({ onClose, onSuccess }: AddDriversModalP
                 }}
               >
                 {submitting ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
-                {submitting ? "Adding..." : `Add ${rows.filter((r) => r.first_name.trim() && r.last_name.trim() && r.mobile.trim()).length} driver${rows.filter((r) => r.first_name.trim() && r.last_name.trim() && r.mobile.trim()).length !== 1 ? "s" : ""}`}
+                {submitting ? "Adding..." : `Add ${rows.filter((r) => r.first_name.trim() && r.last_name.trim() && r.mobile.trim() && r.id_number.trim()).length} driver${rows.filter((r) => r.first_name.trim() && r.last_name.trim() && r.mobile.trim() && r.id_number.trim()).length !== 1 ? "s" : ""}`}
               </button>
             </div>
           </div>
