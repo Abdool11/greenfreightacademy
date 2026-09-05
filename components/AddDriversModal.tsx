@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { validateDriverIdentity } from "@/lib/driverIdentity";
 import { X, Loader2, Plus, Trash2, AlertCircle, CheckCircle2, UserPlus, Phone } from "lucide-react";
 
@@ -121,7 +121,18 @@ export default function AddDriversModal({ onClose, onSuccess }: AddDriversModalP
     r.first_name.trim() || r.last_name.trim() || r.mobile.trim() || r.email.trim() || r.id_number.trim()
   );
 
-  const allRowsValid = rows.every((row) => {
+  const duplicateMobileRows = useMemo(() => {
+    const positions = new Map<string, number[]>();
+    rows.forEach((row, index) => {
+      if (!row.mobile.trim()) return;
+      const mobile = validateSAMobile(row.mobile);
+      if (!mobile.ok) return;
+      positions.set(mobile.normalised, [...(positions.get(mobile.normalised) ?? []), index]);
+    });
+    return new Set([...positions.values()].filter((indexes) => indexes.length > 1).flat());
+  }, [rows]);
+
+  const allRowsValid = rows.every((row, index) => {
     const isPopulated = row.first_name.trim() || row.last_name.trim() || row.mobile.trim() || row.id_number.trim();
     if (!isPopulated) return true; // empty rows are ignored by handleSubmit
     return (
@@ -129,7 +140,8 @@ export default function AddDriversModal({ onClose, onSuccess }: AddDriversModalP
       !getFieldError(row, "last_name") &&
       !getFieldError(row, "mobile") &&
       !getFieldError(row, "email") &&
-      !getFieldError(row, "id_number")
+      !getFieldError(row, "id_number") &&
+      !duplicateMobileRows.has(index)
     );
   });
 
@@ -155,6 +167,9 @@ export default function AddDriversModal({ onClose, onSuccess }: AddDriversModalP
       if (lErr) clientErrors.push({ index: idx, field: "last_name", message: lErr });
       const mErr = getFieldError(row, "mobile");
       if (mErr) clientErrors.push({ index: idx, field: "mobile", message: mErr });
+      if (!mErr && duplicateMobileRows.has(rows.indexOf(row))) {
+        clientErrors.push({ index: idx, field: "mobile", message: "Duplicate mobile number in this batch" });
+      }
       const eErr = getFieldError(row, "email");
       if (eErr) clientErrors.push({ index: idx, field: "email", message: eErr });
       const idErr = getFieldError(row, "id_number");
@@ -461,7 +476,7 @@ export default function AddDriversModal({ onClose, onSuccess }: AddDriversModalP
               {rows.map((row, i) => {
                 const fErr = getFieldError(row, "first_name");
                 const lErr = getFieldError(row, "last_name");
-                const mErr = getFieldError(row, "mobile");
+                const mErr = getFieldError(row, "mobile") || (duplicateMobileRows.has(i) ? "Duplicate mobile number in this batch" : null);
                 const eErr = getFieldError(row, "email");
                 const idErr = getFieldError(row, "id_number");
                 const hasValue =
