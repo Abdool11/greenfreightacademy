@@ -3,6 +3,7 @@ import { supabaseAdmin, getConfigs } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
 import { adminNotify, writeLedgerEntry } from "@/lib/adminNotify";
 import { allocateConfirmedPaymentToInvoice } from "@/lib/invoicePayments";
+import { allocateQuoteCreditsOnce } from "@/lib/creditAllocations";
 import crypto from "crypto";
 
 // POST /api/paystack/webhook — receives Paystack payment events
@@ -95,29 +96,26 @@ export async function POST(req: NextRequest) {
       .eq("id", quoteId)
       .eq("company_id", companyId);
 
-    // ── Add credits to company balance ────────────────────────────────────────
-    const { data: paidQuote } = await supabaseAdmin
-      .from("quotes")
-      .select("line_items")
-      .eq("id", quoteId)
-      .single();
-
-    const lineItems = Array.isArray(paidQuote?.line_items) ? paidQuote.line_items : [];
-    const creditCount = lineItems.length;
-
-    if (creditCount > 0) {
-      const { data: companyForCredit } = await supabaseAdmin
-        .from("companies")
-        .select("credit_balance")
-        .eq("id", companyId)
-        .single();
-
-      const newBalance = Number(companyForCredit?.credit_balance ?? 0) + creditCount;
-      await supabaseAdmin
-        .from("companies")
-        .update({ credit_balance: newBalance })
-        .eq("id", companyId);
+    // Allocate purchased seats once. Paystack can deliver webhooks more than once
+    // and the browser return path can verify the same payment separately.
+    if (!paymentRecord?.id) {
+      console.error(`Paystack webhook: payment record not found for ${paystackReference}`);
+      return NextResponse.json({ error: "Payment record not found" }, { status: 500 });
     }
+
+    let creditAllocation: Awaited<ReturnType<typeof allocateQuoteCreditsOnce>>;
+    try {
+      creditAllocation = await allocateQuoteCreditsOnce({
+        paymentId: paymentRecord.id,
+        quoteId,
+        companyId,
+      });
+    } catch (err) {
+      console.error("Paystack webhook: credit allocation failed", err);
+      return NextResponse.json({ error: "Credit allocation failed" }, { status: 500 });
+    }
+
+    const creditCount = creditAllocation.creditCount;
 
     // Auto-approve: for Paystack payments, immediately mark as approved
     // (EFT requires manual admin verification; Paystack is instant)
@@ -134,7 +132,7 @@ export async function POST(req: NextRequest) {
     console.log(`Paystack payment confirmed for quote ${quoteId}, company ${companyId}`);
 
     // ── Send confirmation emails (client + admin) ───────────────────────────
-    if (process.env.BREVO_SMTP_PASSWORD) {
+    if (process.env.BREVO_SMTP_PASSWORD && creditAllocation.allocated) {
       try {
         // Fetch quote + company details for email
         const { data: quoteRow } = await supabaseAdmin

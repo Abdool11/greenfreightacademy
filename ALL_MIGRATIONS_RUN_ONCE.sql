@@ -1,10 +1,9 @@
--- =============================================================================
--- GFA ALL MIGRATIONS RUN ONCE
--- Generated from supabase/migrations in filename order. Review before production use.
--- =============================================================================
+-- Green Freight Academy — ALL MIGRATIONS RUN ONCE
+-- Generated from supabase/migrations in filename order.
 
-
--- BEGIN 20260501_base_schema.sql
+-- =============================================================================
+-- BEGIN supabase/migrations/20260501_base_schema.sql
+-- =============================================================================
 -- =============================================================================
 -- BASE SCHEMA — TAG Ecosystem (GFA + BetterDriver)
 -- Run this FIRST on a fresh Supabase project.
@@ -506,10 +505,13 @@ ALTER TABLE training_campaigns ENABLE ROW LEVEL SECURITY;
 -- END OF BASE SCHEMA
 -- =============================================================================
 
--- END 20260501_base_schema.sql
+-- =============================================================================
+-- END supabase/migrations/20260501_base_schema.sql
+-- =============================================================================
 
-
--- BEGIN 20260502_training_campaigns.sql
+-- =============================================================================
+-- BEGIN supabase/migrations/20260502_training_campaigns.sql
+-- =============================================================================
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Migration: Training Campaign Lifecycle
 -- Adds training_campaigns table, links enrolments to campaigns,
@@ -571,10 +573,13 @@ BEGIN
 END
 $$;
 
--- END 20260502_training_campaigns.sql
+-- =============================================================================
+-- END supabase/migrations/20260502_training_campaigns.sql
+-- =============================================================================
 
-
--- BEGIN 20260502_video_library_bulletin_fields.sql
+-- =============================================================================
+-- BEGIN supabase/migrations/20260502_video_library_bulletin_fields.sql
+-- =============================================================================
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Migration: GFA Video Library + Bulletin WhatsApp notification fields
 -- Date: 2026-05-02
@@ -645,10 +650,13 @@ ALTER TABLE training_campaigns
 ALTER TABLE driver_invitations
   ADD COLUMN IF NOT EXISTS invite_video_url TEXT;
 
--- END 20260502_video_library_bulletin_fields.sql
+-- =============================================================================
+-- END supabase/migrations/20260502_video_library_bulletin_fields.sql
+-- =============================================================================
 
-
--- BEGIN 20260505_schema_gaps_fix.sql
+-- =============================================================================
+-- BEGIN supabase/migrations/20260505_schema_gaps_fix.sql
+-- =============================================================================
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Migration: Schema Gaps Fix
 -- Date: 2026-05-05
@@ -843,10 +851,13 @@ CREATE INDEX IF NOT EXISTS idx_webhook_log_user ON moodle_webhook_log(moodle_use
 -- END OF GAPS FIX MIGRATION
 -- =============================================================================
 
--- END 20260505_schema_gaps_fix.sql
+-- =============================================================================
+-- END supabase/migrations/20260505_schema_gaps_fix.sql
+-- =============================================================================
 
-
--- BEGIN 20260506_column_gaps_fix.sql
+-- =============================================================================
+-- BEGIN supabase/migrations/20260506_column_gaps_fix.sql
+-- =============================================================================
 -- =============================================================================
 -- MIGRATION: 20260506_column_gaps_fix.sql
 -- Fixes all column-level gaps identified by full code audit (May 2026)
@@ -997,10 +1008,13 @@ ON CONFLICT (key) DO NOTHING;
 -- END OF MIGRATION
 -- =============================================================================
 
--- END 20260506_column_gaps_fix.sql
+-- =============================================================================
+-- END supabase/migrations/20260506_column_gaps_fix.sql
+-- =============================================================================
 
-
--- BEGIN 20260506_enable_rls_all_tables.sql
+-- =============================================================================
+-- BEGIN supabase/migrations/20260506_enable_rls_all_tables.sql
+-- =============================================================================
 -- ============================================================
 -- TAG Ecosystem — Row-Level Security (RLS) Migration
 -- 20260506_enable_rls_all_tables.sql
@@ -1285,10 +1299,13 @@ CREATE POLICY "deny_anon_trial_vouchers"
 -- Expected result: 0 rows.
 -- ============================================================
 
--- END 20260506_enable_rls_all_tables.sql
+-- =============================================================================
+-- END supabase/migrations/20260506_enable_rls_all_tables.sql
+-- =============================================================================
 
-
--- BEGIN 20260718_add_course_name_and_audience.sql
+-- =============================================================================
+-- BEGIN supabase/migrations/20260718_add_course_name_and_audience.sql
+-- =============================================================================
 -- Add columns the dashboard/admin code expects on the courses table
 ALTER TABLE courses
   ADD COLUMN IF NOT EXISTS name TEXT,
@@ -1319,10 +1336,13 @@ UPDATE courses
   END
   WHERE audience IS NULL OR audience = '';
 
--- END 20260718_add_course_name_and_audience.sql
+-- =============================================================================
+-- END supabase/migrations/20260718_add_course_name_and_audience.sql
+-- =============================================================================
 
-
--- BEGIN 20260720_setup_tokens.sql
+-- =============================================================================
+-- BEGIN supabase/migrations/20260720_setup_tokens.sql
+-- =============================================================================
 -- =============================================================================
 -- Setup tokens for trial account onboarding
 -- Allows admin to create trial companies with credits, company sets own password
@@ -1336,10 +1356,13 @@ ALTER TABLE companies
 
 CREATE INDEX IF NOT EXISTS idx_companies_setup_token ON companies(setup_token) WHERE setup_token_used = FALSE;
 
--- END 20260720_setup_tokens.sql
+-- =============================================================================
+-- END supabase/migrations/20260720_setup_tokens.sql
+-- =============================================================================
 
-
--- BEGIN 20260721_quote_approval_columns.sql
+-- =============================================================================
+-- BEGIN supabase/migrations/20260721_quote_approval_columns.sql
+-- =============================================================================
 -- Add approved_at and approved_by to quotes table
 -- Both Paystack auto-approve and EFT manual approval set these fields
 ALTER TABLE quotes
@@ -1349,10 +1372,13 @@ ALTER TABLE quotes
 COMMENT ON COLUMN quotes.approved_at IS 'Timestamp when quote was approved (auto for Paystack, manual for EFT)';
 COMMENT ON COLUMN quotes.approved_by IS 'Who approved: paystack_auto or admin email/UUID';
 
--- END 20260721_quote_approval_columns.sql
+-- =============================================================================
+-- END supabase/migrations/20260721_quote_approval_columns.sql
+-- =============================================================================
 
-
--- BEGIN 20260806_accounting_notifications.sql
+-- =============================================================================
+-- BEGIN supabase/migrations/20260806_accounting_notifications.sql
+-- =============================================================================
 -- =============================================================================
 -- MIGRATION: 20260806_accounting_notifications.sql
 -- Adds: ledger_entries, admin_notification_prefs, discount columns, promo_codes
@@ -1515,10 +1541,13 @@ CREATE TABLE IF NOT EXISTS stale_alert_log (
 -- END OF MIGRATION
 -- =============================================================================
 
--- END 20260806_accounting_notifications.sql
+-- =============================================================================
+-- END supabase/migrations/20260806_accounting_notifications.sql
+-- =============================================================================
 
-
--- BEGIN 20260816_r1_billing_quotes.sql
+-- =============================================================================
+-- BEGIN supabase/migrations/20260816_r1_billing_quotes.sql
+-- =============================================================================
 -- =============================================================================
 -- RELEASE 1: Billing Profiles, Formal Quote Snapshots & Configurable Terms
 -- Safe to run repeatedly. All additions are additive and preserve existing data.
@@ -1610,10 +1639,13 @@ CREATE TRIGGER trg_company_billing_profiles_updated_at
 -- END RELEASE 1 MIGRATION
 -- =============================================================================
 
--- END 20260816_r1_billing_quotes.sql
+-- =============================================================================
+-- END supabase/migrations/20260816_r1_billing_quotes.sql
+-- =============================================================================
 
-
--- BEGIN 20260817_r2_eft_reconciliation.sql
+-- =============================================================================
+-- BEGIN supabase/migrations/20260817_r2_eft_reconciliation.sql
+-- =============================================================================
 -- =============================================================================
 -- RELEASE 2: EFT Reconciliation & Payment-Approval Controls
 -- Safe to re-run. Adds only additive payment-control fields and audit records.
@@ -1680,10 +1712,13 @@ ON CONFLICT (id) DO NOTHING;
 -- END RELEASE 2 MIGRATION
 -- =============================================================================
 
--- END 20260817_r2_eft_reconciliation.sql
+-- =============================================================================
+-- END supabase/migrations/20260817_r2_eft_reconciliation.sql
+-- =============================================================================
 
-
--- BEGIN 20260818_r3_discount_governance.sql
+-- =============================================================================
+-- BEGIN supabase/migrations/20260818_r3_discount_governance.sql
+-- =============================================================================
 -- =============================================================================
 -- RELEASE 3: Discount Governance, Authority Controls & Audit Trail
 -- All operations are additive and safe to re-run.
@@ -1794,10 +1829,13 @@ CREATE TRIGGER trg_discount_requests_updated_at
 -- END RELEASE 3 MIGRATION
 -- =============================================================================
 
--- END 20260818_r3_discount_governance.sql
+-- =============================================================================
+-- END supabase/migrations/20260818_r3_discount_governance.sql
+-- =============================================================================
 
-
--- BEGIN 20260819_r6_learning_events.sql
+-- =============================================================================
+-- BEGIN supabase/migrations/20260819_r6_learning_events.sql
+-- =============================================================================
 -- Release 6: BetterDriver/Moodle event ledger and training-start revenue recognition
 CREATE TABLE IF NOT EXISTS learning_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1844,10 +1882,13 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- END 20260819_r6_learning_events.sql
+-- =============================================================================
+-- END supabase/migrations/20260819_r6_learning_events.sql
+-- =============================================================================
 
-
--- BEGIN 20260821_r7a_compliance_reporting.sql
+-- =============================================================================
+-- BEGIN supabase/migrations/20260821_r7a_compliance_reporting.sql
+-- =============================================================================
 -- R7A: Compliance profile, evidence reporting, RTMS review and quote lifecycle
 CREATE TABLE IF NOT EXISTS company_compliance_profiles (
   company_id UUID PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
@@ -1898,10 +1939,13 @@ ALTER TABLE quotes ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 ALTER TABLE quotes ADD COLUMN IF NOT EXISTS expired_at TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS idx_quotes_active_expiry ON quotes(company_id, expires_at) WHERE archived_at IS NULL;
 
--- END 20260821_r7a_compliance_reporting.sql
+-- =============================================================================
+-- END supabase/migrations/20260821_r7a_compliance_reporting.sql
+-- =============================================================================
 
-
--- BEGIN 20260903_r8_invoices_vat_commercial_documents.sql
+-- =============================================================================
+-- BEGIN supabase/migrations/20260903_r8_invoices_vat_commercial_documents.sql
+-- =============================================================================
 -- =============================================================================
 -- RELEASE 8: Commercial Invoices, Configurable VAT & Document Snapshots
 -- Safe to run repeatedly. Additive only; preserves historic quotes and payments.
@@ -2078,4 +2122,88 @@ $$;
 -- END RELEASE 8
 -- =============================================================================
 
--- END 20260903_r8_invoices_vat_commercial_documents.sql
+-- =============================================================================
+-- END supabase/migrations/20260903_r8_invoices_vat_commercial_documents.sql
+-- =============================================================================
+
+-- =============================================================================
+-- BEGIN supabase/migrations/20260905_r9_payment_credit_idempotency.sql
+-- =============================================================================
+-- RELEASE 9: Payment Credit Allocation Idempotency
+-- Prevent duplicate credit balances when Paystack browser verification and webhook
+-- delivery both observe the same successful payment. Safe to run repeatedly.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS payment_credit_allocations (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  payment_id    UUID NOT NULL REFERENCES payments(id) ON DELETE CASCADE,
+  quote_id      UUID NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+  company_id    UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  credit_count  INTEGER NOT NULL CHECK (credit_count > 0),
+  allocated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- A paid quote can contribute its purchased seats once. The payment constraint
+-- also protects against duplicate payment-provider callbacks for the same row.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_credit_allocations_payment
+  ON payment_credit_allocations(payment_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_credit_allocations_quote
+  ON payment_credit_allocations(quote_id);
+CREATE INDEX IF NOT EXISTS idx_payment_credit_allocations_company
+  ON payment_credit_allocations(company_id, allocated_at DESC);
+
+CREATE OR REPLACE FUNCTION allocate_quote_credits_once(
+  p_payment_id UUID,
+  p_quote_id UUID,
+  p_company_id UUID,
+  p_credit_count INTEGER
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  did_allocate BOOLEAN := FALSE;
+BEGIN
+  IF p_credit_count IS NULL OR p_credit_count <= 0 THEN
+    RAISE EXCEPTION 'Credit count must be positive';
+  END IF;
+
+  -- Validate the payment/quote/company relationship while locking the payment.
+  PERFORM 1
+  FROM payments
+  WHERE id = p_payment_id
+    AND quote_id = p_quote_id
+    AND company_id = p_company_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Payment does not belong to the supplied quote and company';
+  END IF;
+
+  INSERT INTO payment_credit_allocations (payment_id, quote_id, company_id, credit_count)
+  VALUES (p_payment_id, p_quote_id, p_company_id, p_credit_count)
+  ON CONFLICT DO NOTHING
+  RETURNING TRUE INTO did_allocate;
+
+  IF did_allocate THEN
+    UPDATE companies
+    SET credit_balance = COALESCE(credit_balance, 0) + p_credit_count
+    WHERE id = p_company_id;
+  END IF;
+
+  RETURN COALESCE(did_allocate, FALSE);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION allocate_quote_credits_once(UUID, UUID, UUID, INTEGER) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION allocate_quote_credits_once(UUID, UUID, UUID, INTEGER) TO service_role;
+
+-- =============================================================================
+-- END RELEASE 9 MIGRATION
+-- =============================================================================
+
+-- =============================================================================
+-- END supabase/migrations/20260905_r9_payment_credit_idempotency.sql
+-- =============================================================================

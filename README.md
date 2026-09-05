@@ -231,3 +231,10 @@ Vercel deploys `main` to production. Feature and release branches should be revi
 | :--- | :--- |
 | Transport Action Group | [Abdool11/transportactiongroup](https://github.com/Abdool11/transportactiongroup) |
 | BetterDriver | [Abdool11/betterdriver](https://github.com/Abdool11/betterdriver) |
+
+
+### Release 9 — QA Stabilisation: Payment Integrity and Public Pricing
+
+Apply `supabase/migrations/20260905_r9_payment_credit_idempotency.sql` after Release 8. It creates the durable `payment_credit_allocations` ledger and the protected `allocate_quote_credits_once` function. Paystack browser verification, Paystack webhooks and confirmed EFT reconciliation use this one path to allocate purchased seats exactly once per payment/quote. No new environment variables are required.
+
+The public `/pricing` page now reads available course prices from the database-backed `courses` catalogue, the same controlled source used by the public pricing API and administrative pricing management. Before promoting this release, validate one two-seat synthetic Paystack payment through both redirect and webhook paths and verify that the company receives exactly two credits. Review any historic company balance that exceeds the seats purchased; Release 9 prevents new duplicate allocations and does not automatically reverse historic balances.
