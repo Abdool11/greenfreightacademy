@@ -43,7 +43,26 @@ export async function POST(req: NextRequest) {
 
   const now = new Date().toISOString();
 
-  // 3. Update quote to approved (matching Paystack auto-approve flow)
+  // 3. Establish a pending payment record before a quote becomes deployable.
+  // The confirmed allocation is protected by the Release 9 unique ledger.
+  const { data: payment, error: paymentError } = await supabaseAdmin
+    .from("payments")
+    .insert({
+      company_id: quote.company_id,
+      quote_id: quoteId,
+      payment_method: "eft",
+      amount: Number(quote.total),
+      status: "pending_verification",
+      created_at: now,
+    })
+    .select("id")
+    .single();
+
+  if (paymentError || !payment?.id) {
+    console.error("Payment insert error:", paymentError);
+    return NextResponse.json({ error: "Payment record could not be created. The quote remains unavailable for deployment." }, { status: 500 });
+  }
+
   const { error: updateError } = await supabaseAdmin
     .from("quotes")
     .update({
@@ -53,33 +72,22 @@ export async function POST(req: NextRequest) {
       approved_at: now,
       approved_by: session.email || String(session.adminId),
     })
-    .eq("id", quoteId);
+    .eq("id", quoteId)
+    .in("status", ["pending", "eft_submitted"]);
 
   if (updateError) {
     console.error("Quote update error:", updateError);
-    return NextResponse.json({ error: "Failed to update quote" }, { status: 500 });
+    return NextResponse.json({ error: "Payment record was created but the quote could not be approved. Escalate before deployment." }, { status: 500 });
   }
 
-  // 4. Insert the payment record before allocating credits. The allocation is
-  // then protected by the unique payment/quote ledger in Release 9.
-  const { data: payment, error: paymentError } = await supabaseAdmin
+  const { error: confirmError } = await supabaseAdmin
     .from("payments")
-    .insert({
-      company_id: quote.company_id,
-      quote_id: quoteId,
-      payment_method: "eft",
-      amount: Number(quote.total),
-      status: "confirmed",
-      confirmed_at: now,
-      confirmed_by: session.adminId,
-      created_at: now,
-    })
-    .select("id")
-    .single();
+    .update({ status: "confirmed", confirmed_at: now, confirmed_by: session.adminId })
+    .eq("id", payment.id)
+    .eq("status", "pending_verification");
 
-  if (paymentError || !payment?.id) {
-    console.error("Payment insert error:", paymentError);
-    return NextResponse.json({ error: "Quote was approved but the payment record could not be created. Escalate before deployment." }, { status: 500 });
+  if (confirmError) {
+    return NextResponse.json({ error: "Quote was approved but payment confirmation failed. Escalate before deployment." }, { status: 500 });
   }
 
   try {
@@ -90,7 +98,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (creditError) {
     console.error("Manual EFT credit allocation failed:", creditError);
-    return NextResponse.json({ error: "Quote was approved but credit allocation failed. Escalate before deployment." }, { status: 500 });
+    return NextResponse.json({ error: "Payment confirmation could not allocate credits. Escalate before deployment." }, { status: 500 });
   }
 
   // 5. Fetch company contact email
