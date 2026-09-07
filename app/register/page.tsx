@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Loader2, Building2, Mail, Lock, Phone, AlertCircle } from "lucide-react";
+import { Loader2, Building2, Mail, Lock, Phone, AlertCircle, CheckCircle2, ArrowRight } from "lucide-react";
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ companyName: "", contactName: "", email: "", phone: "", password: "", confirm: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [registered, setRegistered] = useState(false);
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -25,10 +26,10 @@ export default function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Registration failed."); return; }
-      // Session cookie is set by the API — go straight to dashboard
-      // Set welcome flag so the first-login walkthrough fires on arrival
-      try { localStorage.setItem("gfa_walkthrough_done", ""); localStorage.removeItem("gfa_walkthrough_done"); } catch { /* ignore */ }
-      window.location.href = "/dashboard?welcome=1";
+      // Keep the session cookie created by the API, but let the user explicitly
+      // acknowledge success before entering the dashboard.
+      try { localStorage.removeItem("gfa_walkthrough_done"); } catch { /* ignore */ }
+      setRegistered(true);
     } catch { setError("Something went wrong. Please try again."); }
     finally { setLoading(false); }
   };
@@ -52,6 +53,14 @@ export default function RegisterPage() {
           <h1 style={{ marginBottom: "0.75rem" }}>Register your company</h1>
           <p style={{ color: "var(--text-secondary)", marginBottom: "2.5rem" }}>Create a company account to manage driver training, track progress, and deploy learning at scale.</p>
           <form onSubmit={handleSubmit} style={{ background: "#0d1520", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "1rem", padding: "2rem", textAlign: "left" }}>
+            {registered ? (
+              <div style={{ textAlign: "center", padding: "1rem 0 0.5rem" }}>
+                <CheckCircle2 size={48} style={{ color: "#22c55e", margin: "0 auto 1rem", display: "block" }} />
+                <h2 style={{ fontSize: "1.5rem", marginBottom: "0.75rem" }}>Your company account is ready</h2>
+                <p style={{ color: "#cbd5e1", margin: "0 auto 1.5rem", maxWidth: "440px" }}>Continue to your dashboard to add drivers, prepare a quotation and begin your onboarding journey.</p>
+                <a href="/dashboard?welcome=1" className="btn-primary" style={{ justifyContent: "center", width: "100%" }}>Continue to dashboard <ArrowRight size={16} /></a>
+              </div>
+            ) : <>
             {error && (
               <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "0.625rem", padding: "0.75rem 1rem", marginBottom: "1.25rem", color: "#f87171", fontSize: "0.875rem" }}>
                 <AlertCircle size={16} />{error}
@@ -72,6 +81,7 @@ export default function RegisterPage() {
             <p style={{ textAlign: "center", color: "#6b7280", fontSize: "0.875rem", marginTop: "1.25rem" }}>
               Already have an account?{" "}<Link href="/login" style={{ color: "#22c55e", fontWeight: 600 }}>Log in</Link>
             </p>
+            </>}
           </form>
         </div>
       </section>

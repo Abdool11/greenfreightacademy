@@ -2,7 +2,7 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
 
@@ -12,7 +12,6 @@ function PaymentResultContent() {
   const ref = searchParams?.get("ref");
   const paystackRef = searchParams?.get("reference"); // Paystack appends this
 
-  const router = useRouter();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
 
@@ -37,8 +36,7 @@ function PaymentResultContent() {
         const d = await res.json();
         if (d.ok) {
           setStatus("success");
-          setMessage("Your payment has been confirmed. Redirecting to your dashboard...");
-          setTimeout(() => router.push("/dashboard"), 4000);
+          setMessage("Your payment has been confirmed. You may continue to your dashboard when you are ready.");
           return;
         }
         if (attempts < maxAttempts) {
@@ -58,7 +56,7 @@ function PaymentResultContent() {
     };
 
     verify();
-  }, [quoteId, paystackRef, router]);
+  }, [quoteId, paystackRef]);
 
   return (
     <div

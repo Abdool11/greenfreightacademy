@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
+import { reserveQuoteDriverDeploymentOnce } from "@/lib/deploymentReservations";
 import { randomBytes } from "crypto";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -191,25 +192,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, alreadyDeployed: true });
   }
 
-  // ── 1b. Check credit balance ───────────────────────────────────────────────
+  // Deployment credits are reserved per driver below through the Release 10
+  // database function. This is the only balance mutation in this workflow.
   const items: Array<{ driverId: string; driverName: string; courseIds: string[] }> =
     quote.items_json ?? [];
-  const enrolmentCount = items.reduce((sum, item) => sum + (item.courseIds?.length ?? 0), 0);
-
-  const { data: companyRow } = await supabaseAdmin
-    .from("companies")
-    .select("credit_balance")
-    .eq("id", session.companyId)
-    .single();
-
-  const currentBalance = Number(companyRow?.credit_balance ?? 0);
-  if (currentBalance < enrolmentCount) {
-    return NextResponse.json({
-      error: "Insufficient credits",
-      required: enrolmentCount,
-      available: currentBalance,
-    }, { status: 402 });
-  }
 
   // ── 2. Load config ─────────────────────────────────────────────────────────
   const config = await getConfigs([
@@ -299,7 +285,29 @@ export async function POST(req: NextRequest) {
       .eq("id", item.driverId)
       .single();
 
-    if (!driver) continue;
+    if (!driver) {
+      results.push({ driverId: item.driverId, whatsapp: false, enrolment: false, magicLink: "" });
+      continue;
+    }
+
+    const seatCount = item.courseIds?.length || 1;
+    let reservationCreated = false;
+    try {
+      reservationCreated = await reserveQuoteDriverDeploymentOnce({
+        quoteId,
+        driverId: driver.id,
+        companyId: session.companyId,
+        deploymentId,
+        creditCount: seatCount,
+      });
+    } catch (reservationError) {
+      console.error("[GFA deploy] reservation failed:", reservationError);
+      return NextResponse.json({ error: "Unable to reserve credits for deployment. No further drivers were processed." }, { status: 500 });
+    }
+    if (!reservationCreated) {
+      results.push({ driverId: driver.id, whatsapp: false, enrolment: true, magicLink: "" });
+      continue;
+    }
 
     // Find or create a company_employees record for this driver
     let employeeId: string | null = null;
@@ -379,9 +387,20 @@ export async function POST(req: NextRequest) {
 
     if (inviteErr) {
       console.error("[GFA deploy] Skipping WhatsApp — invitation could not be persisted:", inviteErr);
+      await supabaseAdmin
+        .from("quote_driver_deployments")
+        .update({ status: "delivery_failed", failure_detail: "Invitation creation failed" })
+        .eq("quote_id", quoteId)
+        .eq("driver_id", driver.id);
       results.push({ driverId: driver.id, whatsapp: false, enrolment: false, magicLink: "" });
       continue;
     }
+
+    await supabaseAdmin
+      .from("quote_driver_deployments")
+      .update({ status: "prepared", deployed_at: new Date().toISOString(), failure_detail: null })
+      .eq("quote_id", quoteId)
+      .eq("driver_id", driver.id);
 
     const magicLink = `${bdBaseUrl}/join/${token}`;
 
@@ -401,6 +420,16 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    await supabaseAdmin
+      .from("quote_driver_deployments")
+      .update({
+        status: whatsappSent ? "sent" : "delivery_failed",
+        whatsapp_sent_at: whatsappSent ? new Date().toISOString() : null,
+        failure_detail: whatsappSent ? null : "WhatsApp delivery was not confirmed",
+      })
+      .eq("quote_id", quoteId)
+      .eq("driver_id", driver.id);
+
     results.push({ driverId: driver.id, whatsapp: whatsappSent, enrolment: enrolmentOk, magicLink });
   }
 
@@ -409,19 +438,6 @@ export async function POST(req: NextRequest) {
     .from("quotes")
     .update({ status: "deployed", deployed_at: new Date().toISOString() })
     .eq("id", quoteId);
-
-  // ── 6b. Deduct credits from company balance ────────────────────────────────
-  const { data: companyForDeduction } = await supabaseAdmin
-    .from("companies")
-    .select("credit_balance")
-    .eq("id", session.companyId)
-    .single();
-
-  const balanceAfter = Number(companyForDeduction?.credit_balance ?? 0) - enrolmentCount;
-  await supabaseAdmin
-    .from("companies")
-    .update({ credit_balance: Math.max(0, balanceAfter) })
-    .eq("id", session.companyId);
 
   // ── 7. Notify GFA admin by email ───────────────────────────────────────────
   const adminEmail = config.email_booking_to || "durbanroadtransport@gmail.com";

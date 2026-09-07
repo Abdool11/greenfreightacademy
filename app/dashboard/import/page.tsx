@@ -7,8 +7,8 @@ import { Upload, Download, CheckCircle2, AlertCircle, Loader2, ArrowLeft, Users 
 
 interface ImportResult {
   imported: number;
-  skipped: number;
-  errors: string[];
+  total: number;
+  errors: { row: number; message: string }[];
 }
 
 export default function ImportPage() {
@@ -68,7 +68,7 @@ export default function ImportPage() {
             <div style={{ background: "#0d1520", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "1rem", padding: "1.5rem", marginBottom: "1.5rem" }}>
               <h3 style={{ margin: "0 0 0.75rem", fontSize: "0.9375rem", color: "#f9fafb" }}>Required columns</h3>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
-                {["Employee Name *", "Mobile Number *", "Alternative Number", "Email", "Branch", "Region"].map(col => (
+                {["Employee Name *", "Mobile Number *", "ID Number *", "Alternative Number", "Email", "Branch", "Region"].map(col => (
                   <div key={col} style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: col.includes("*") ? "#f9fafb" : "#9ca3af", fontSize: "0.8125rem" }}>
                     <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: col.includes("*") ? "#22c55e" : "#374151", flexShrink: 0 }} />
                     {col}
@@ -84,11 +84,11 @@ export default function ImportPage() {
               <div style={{ background: "#0d1520", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "1rem", padding: "2rem", textAlign: "center" }}>
                 <CheckCircle2 size={40} style={{ color: "#22c55e", margin: "0 auto 1rem", display: "block" }} />
                 <h3 style={{ margin: "0 0 0.5rem" }}>Import complete</h3>
-                <p style={{ color: "#9ca3af", marginBottom: "1.25rem" }}>{result.imported} drivers imported successfully{result.skipped > 0 ? `, ${result.skipped} skipped (duplicates)` : ""}.</p>
+                <p style={{ color: "#9ca3af", marginBottom: "1.25rem" }}>{result.imported} of {result.total} driver rows imported successfully.</p>
                 {result.errors.length > 0 && (
                   <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)", borderRadius: "0.625rem", padding: "0.875rem", marginBottom: "1.25rem", textAlign: "left" }}>
                     <p style={{ color: "#f87171", fontSize: "0.8125rem", margin: "0 0 0.5rem", fontWeight: 600 }}>Rows with errors:</p>
-                    {result.errors.map((e, i) => <p key={i} style={{ color: "#9ca3af", fontSize: "0.8125rem", margin: "0.125rem 0" }}>{e}</p>)}
+                    {result.errors.map((e) => <p key={`${e.row}-${e.message}`} style={{ color: "#9ca3af", fontSize: "0.8125rem", margin: "0.125rem 0" }}>Row {e.row}: {e.message}</p>)}
                   </div>
                 )}
                 <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center" }}>

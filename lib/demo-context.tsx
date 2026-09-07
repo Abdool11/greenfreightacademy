@@ -192,7 +192,10 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
 
   const exitDemo = useCallback(() => {
     if (typeof window !== "undefined") {
-      window.location.href = "/pricing";
+      const requestedReturn = new URLSearchParams(window.location.search).get("returnTo");
+      // Only permit known internal destinations; public tours continue to pricing.
+      const returnTo = requestedReturn === "/dashboard" ? "/dashboard" : "/pricing";
+      window.location.href = returnTo;
     }
   }, []);
 

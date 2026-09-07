@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
+import { reserveQuoteDriverDeploymentOnce } from "@/lib/deploymentReservations";
 import { randomBytes } from "crypto";
 
 function normaliseSAMobile(raw: string): string {
@@ -51,22 +52,9 @@ export async function POST(
     return NextResponse.json({ ok: true, alreadyDeployed: true });
   }
 
-  // Check credit balance (1 credit per course in this item)
+  // One credit is reserved per assigned course. The Release 10 database
+  // function applies this atomically and protects repeated/concurrent clicks.
   const enrolmentCount = items[itemIndex].courseIds?.length ?? 1;
-  const { data: companyRow } = await supabaseAdmin
-    .from("companies")
-    .select("credit_balance")
-    .eq("id", session.companyId)
-    .single();
-
-  const currentBalance = Number(companyRow?.credit_balance ?? 0);
-  if (currentBalance < enrolmentCount) {
-    return NextResponse.json({
-      error: "Insufficient credits",
-      required: enrolmentCount,
-      available: currentBalance,
-    }, { status: 402 });
-  }
 
   // Load config
   const config = await getConfigs([
@@ -109,14 +97,48 @@ export async function POST(
     deploymentId = newDeployment.id;
   }
 
-  // Get driver details
+  // Validate the driver before reserving a credit or creating any external side effect.
   const { data: driver } = await supabaseAdmin
     .from("drivers")
     .select("id, first_name, last_name, mobile, email")
     .eq("id", driverId)
+    .eq("company_id", session.companyId)
     .single();
 
   if (!driver) return NextResponse.json({ error: "Driver not found" }, { status: 404 });
+
+  let reservationCreated = false;
+  try {
+    reservationCreated = await reserveQuoteDriverDeploymentOnce({
+      quoteId,
+      driverId,
+      companyId: session.companyId,
+      deploymentId,
+      creditCount: enrolmentCount,
+    });
+  } catch (reservationError) {
+    const message = reservationError instanceof Error ? reservationError.message : "Deployment reservation failed";
+    if (/insufficient credits/i.test(message)) {
+      return NextResponse.json({ error: "Insufficient credits" }, { status: 402 });
+    }
+    console.error("[deploy-driver] reservation error:", reservationError);
+    return NextResponse.json({ error: "Could not reserve this driver deployment. Please contact GFA support." }, { status: 500 });
+  }
+
+  if (!reservationCreated) {
+    const { data: existingReservation } = await supabaseAdmin
+      .from("quote_driver_deployments")
+      .select("status, whatsapp_sent_at")
+      .eq("quote_id", quoteId)
+      .eq("driver_id", driverId)
+      .maybeSingle();
+    return NextResponse.json({
+      ok: true,
+      alreadyDeployed: true,
+      deploymentStatus: existingReservation?.status ?? "reserved",
+      whatsappSent: Boolean(existingReservation?.whatsapp_sent_at),
+    });
+  }
 
   // Create company_employees record if needed
   let employeeId: string | null = null;
@@ -173,26 +195,67 @@ export async function POST(
     });
   }
 
-  // Generate invitation token
+  // Create the invitation and persist deployment state before attempting an
+  // external WhatsApp send. A retry can therefore report its stored outcome
+  // instead of creating a second enrolment, invitation or credit deduction.
   const token = generateOpaqueToken();
-  const { error: inviteErr } = await supabaseAdmin.from("driver_invitations").insert({
-    driver_id: driver.id,
-    company_id: session.companyId,
-    deployment_id: deploymentId,
-    token,
-    program_assignment: "p1",
-    programme_slug: programmeSlug,
-    driver_name: `${driver.first_name ?? ""} ${driver.last_name ?? ""}`.trim(),
-    driver_mobile: driver.mobile,
-    driver_email: driver.email,
-    status: "pending",
-    expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date().toISOString(),
-  });
+  const deployedAt = new Date().toISOString();
+  const { data: invitation, error: inviteErr } = await supabaseAdmin
+    .from("driver_invitations")
+    .insert({
+      driver_id: driver.id,
+      company_id: session.companyId,
+      deployment_id: deploymentId,
+      token,
+      program_assignment: "p1",
+      programme_slug: programmeSlug,
+      driver_name: `${driver.first_name ?? ""} ${driver.last_name ?? ""}`.trim(),
+      driver_mobile: driver.mobile,
+      driver_email: driver.email,
+      status: "pending",
+      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: deployedAt,
+    })
+    .select("id")
+    .single();
 
-  if (inviteErr) {
+  if (inviteErr || !invitation) {
     console.error("[deploy-driver] invitation error:", inviteErr);
+    await supabaseAdmin
+      .from("quote_driver_deployments")
+      .update({ status: "delivery_failed", failure_detail: "Invitation creation failed" })
+      .eq("quote_id", quoteId)
+      .eq("driver_id", driverId);
+    return NextResponse.json({ error: "Driver deployment could not be prepared. No WhatsApp message was sent." }, { status: 500 });
   }
+
+  const updatedItems = [...items];
+  updatedItems[itemIndex] = { ...updatedItems[itemIndex], deployedAt };
+  const allDeployed = updatedItems.every((item) => item.deployedAt);
+  const { error: quoteUpdateError } = await supabaseAdmin
+    .from("quotes")
+    .update({
+      items_json: updatedItems,
+      ...(allDeployed ? { status: "deployed", deployed_at: deployedAt } : {}),
+    })
+    .eq("id", quoteId)
+    .eq("company_id", session.companyId);
+
+  if (quoteUpdateError) {
+    console.error("[deploy-driver] quote state update failed:", quoteUpdateError);
+    await supabaseAdmin
+      .from("quote_driver_deployments")
+      .update({ status: "delivery_failed", invitation_id: invitation.id, failure_detail: "Quote deployment state update failed" })
+      .eq("quote_id", quoteId)
+      .eq("driver_id", driverId);
+    return NextResponse.json({ error: "Driver deployment could not be recorded. No WhatsApp message was sent." }, { status: 500 });
+  }
+
+  await supabaseAdmin
+    .from("quote_driver_deployments")
+    .update({ status: "prepared", invitation_id: invitation.id, deployed_at: deployedAt, failure_detail: null })
+    .eq("quote_id", quoteId)
+    .eq("driver_id", driverId);
 
   // Send WhatsApp magic link
   let whatsappSent = false;
@@ -241,35 +304,15 @@ export async function POST(
     }
   }
 
-  // Mark this driver as deployed in items_json
-  const now = new Date().toISOString();
-  const updatedItems = [...items];
-  updatedItems[itemIndex] = { ...updatedItems[itemIndex], deployedAt: now };
-
-  // Check if all drivers are now deployed
-  const allDeployed = updatedItems.every((i) => i.deployedAt);
-
   await supabaseAdmin
-    .from("quotes")
+    .from("quote_driver_deployments")
     .update({
-      items_json: updatedItems,
-      ...(allDeployed ? { status: "deployed", deployed_at: now } : {}),
+      status: whatsappSent ? "sent" : "delivery_failed",
+      whatsapp_sent_at: whatsappSent ? new Date().toISOString() : null,
+      failure_detail: whatsappSent ? null : "WhatsApp delivery was not confirmed",
     })
-    .eq("id", quoteId)
-    .eq("company_id", session.companyId);
-
-  // Deduct credits
-  const { data: companyForDeduction } = await supabaseAdmin
-    .from("companies")
-    .select("credit_balance")
-    .eq("id", session.companyId)
-    .single();
-
-  const balanceAfter = Number(companyForDeduction?.credit_balance ?? 0) - enrolmentCount;
-  await supabaseAdmin
-    .from("companies")
-    .update({ credit_balance: Math.max(0, balanceAfter) })
-    .eq("id", session.companyId);
+    .eq("quote_id", quoteId)
+    .eq("driver_id", driverId);
 
   // ── Alert GFA admin if WhatsApp failed ──────────────────────────────────────
   if (!whatsappSent && process.env.BREVO_SMTP_PASSWORD) {

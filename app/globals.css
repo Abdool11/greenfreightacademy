@@ -470,3 +470,32 @@ a {
 ::-webkit-scrollbar-track { background: var(--bg-primary); }
 ::-webkit-scrollbar-thumb { background: var(--border-card); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+
+
+/* ─── QA Stabilisation: dark-form and responsive safeguards ────────────────── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: #f8fafc !important;
+  -webkit-box-shadow: 0 0 0 1000px #0a1120 inset !important;
+  box-shadow: 0 0 0 1000px #0a1120 inset !important;
+  caret-color: #f8fafc;
+  transition: background-color 9999s ease-out 0s;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --container-padding: 1rem;
+  }
+
+  h1 {
+    line-height: 1.08;
+    overflow-wrap: anywhere;
+  }
+
+  h2, h3 {
+    overflow-wrap: anywhere;
+  }
+}

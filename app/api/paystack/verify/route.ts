@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession, getCompanyFromRequest } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
+import { allocateQuoteCreditsOnce } from "@/lib/creditAllocations";
 
 // GET /api/paystack/verify?reference=...&bulletin_id=...
 // Used by bulletin payment-complete page to verify a bulletin payment
@@ -111,51 +112,50 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Payment reference mismatch" }, { status: 403 });
       }
 
-      // Update quote to paid + approved (Paystack payments auto-approve)
+      const confirmedAt = new Date().toISOString();
+
+      // Update quote and payment first. Credit allocation below is idempotent and
+      // shared with the Paystack webhook path.
       await supabaseAdmin
         .from("quotes")
         .update({
           status: "approved",
-          paid_at: new Date().toISOString(),
-          approved_at: new Date().toISOString(),
+          paid_at: confirmedAt,
+          approved_at: confirmedAt,
           payment_method: "paystack",
           approved_by: "paystack_auto",
         })
         .eq("id", quoteId)
         .eq("company_id", session.companyId);
 
-      // ── Add credits to company balance ─────────────────────────────────────
-      const { data: paidQuote } = await supabaseAdmin
-        .from("quotes")
-        .select("line_items")
-        .eq("id", quoteId)
-        .single();
+      const { data: paymentRecord } = await supabaseAdmin
+        .from("payments")
+        .update({ status: "paid", paid_at: confirmedAt })
+        .eq("paystack_reference", referenceToVerify)
+        .select("id")
+        .maybeSingle();
 
-      const lineItems = Array.isArray(paidQuote?.line_items) ? paidQuote.line_items : [];
-      const creditCount = lineItems.length;
-
-      if (creditCount > 0) {
-        const { data: companyForCredit } = await supabaseAdmin
-          .from("companies")
-          .select("credit_balance")
-          .eq("id", session.companyId)
-          .single();
-
-        const newBalance = Number(companyForCredit?.credit_balance ?? 0) + creditCount;
-        await supabaseAdmin
-          .from("companies")
-          .update({ credit_balance: newBalance })
-          .eq("id", session.companyId);
+      if (!paymentRecord?.id) {
+        console.error(`Paystack verify: payment record not found for ${referenceToVerify}`);
+        return NextResponse.json({ error: "Payment record not found" }, { status: 500 });
       }
 
-      // Update payment record
-      await supabaseAdmin
-        .from("payments")
-        .update({ status: "paid", paid_at: new Date().toISOString() })
-        .eq("paystack_reference", referenceToVerify);
+      let creditAllocation: Awaited<ReturnType<typeof allocateQuoteCreditsOnce>>;
+      try {
+        creditAllocation = await allocateQuoteCreditsOnce({
+          paymentId: paymentRecord.id,
+          quoteId,
+          companyId: session.companyId,
+        });
+      } catch (err) {
+        console.error("Paystack verify: credit allocation failed", err);
+        return NextResponse.json({ error: "Credit allocation failed" }, { status: 500 });
+      }
+
+      const creditCount = creditAllocation.creditCount;
 
       // ── Send confirmation emails (client + admin) ───────────────────────
-      if (process.env.BREVO_SMTP_PASSWORD) {
+      if (process.env.BREVO_SMTP_PASSWORD && creditAllocation.allocated) {
         try {
           const { data: quoteRow } = await supabaseAdmin
             .from("quotes")

@@ -4,6 +4,7 @@ import { supabaseAdmin, getConfigs } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
 import { adminNotify, writeLedgerEntry } from "@/lib/adminNotify";
 import { allocateConfirmedPaymentToInvoice } from "@/lib/invoicePayments";
+import { allocateQuoteCreditsOnce } from "@/lib/creditAllocations";
 
 export const dynamic = "force-dynamic";
 
@@ -91,17 +92,18 @@ export async function POST(req: NextRequest) {
       .eq("status", "eft_submitted");
     if (quoteUpdateError) return NextResponse.json({ error: "Payment was reconciled but the quote could not be marked ready to deploy." }, { status: 500 });
 
-    const { data: companyBalance } = await supabaseAdmin
-      .from("companies")
-      .select("credit_balance")
-      .eq("id", quote.company_id)
-      .single();
-    const lineItems = Array.isArray(quote.line_items) ? quote.line_items : [];
-    const creditCount = lineItems.length;
-    const newCreditBalance = Number(companyBalance?.credit_balance ?? 0) + creditCount;
-    if (creditCount > 0) {
-      await supabaseAdmin.from("companies").update({ credit_balance: newCreditBalance }).eq("id", quote.company_id);
+    let creditAllocation: Awaited<ReturnType<typeof allocateQuoteCreditsOnce>>;
+    try {
+      creditAllocation = await allocateQuoteCreditsOnce({
+        paymentId: payment.id,
+        quoteId: quote.id,
+        companyId: quote.company_id,
+      });
+    } catch (creditError) {
+      console.error("EFT credit allocation failed:", creditError);
+      return NextResponse.json({ error: "Payment was confirmed but credit allocation failed. Escalate before deployment." }, { status: 500 });
     }
+    const creditCount = creditAllocation.creditCount;
 
     await supabaseAdmin.from("payment_reconciliation_events").insert({
       payment_id: payment.id,
@@ -141,7 +143,12 @@ export async function POST(req: NextRequest) {
       console.error("Invoice allocation after EFT confirmation failed:", invoiceAllocationError);
     }
 
-    if (creditCount > 0) {
+    if (creditCount > 0 && creditAllocation.allocated) {
+      const { data: companyBalance } = await supabaseAdmin
+        .from("companies")
+        .select("credit_balance")
+        .eq("id", quote.company_id)
+        .single();
       await writeLedgerEntry({
         company_id: quote.company_id,
         entry_type: "credits_allocated",
@@ -153,7 +160,7 @@ export async function POST(req: NextRequest) {
         driver_count: creditCount,
         status: "confirmed",
         created_by: adminIdentity,
-        balance_after: newCreditBalance,
+        balance_after: Number(companyBalance?.credit_balance ?? 0),
       });
     }
 

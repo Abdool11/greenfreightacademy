@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { supabaseAdmin, getConfigs } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
+import { allocateQuoteCreditsOnce } from "@/lib/creditAllocations";
 
 // POST /api/admin/quotes/approve — admin manually marks a quote as paid (EFT)
 export async function POST(req: NextRequest) {
@@ -42,7 +43,26 @@ export async function POST(req: NextRequest) {
 
   const now = new Date().toISOString();
 
-  // 3. Update quote to approved (matching Paystack auto-approve flow)
+  // 3. Establish a pending payment record before a quote becomes deployable.
+  // The confirmed allocation is protected by the Release 9 unique ledger.
+  const { data: payment, error: paymentError } = await supabaseAdmin
+    .from("payments")
+    .insert({
+      company_id: quote.company_id,
+      quote_id: quoteId,
+      payment_method: "eft",
+      amount: Number(quote.total),
+      status: "pending_verification",
+      created_at: now,
+    })
+    .select("id")
+    .single();
+
+  if (paymentError || !payment?.id) {
+    console.error("Payment insert error:", paymentError);
+    return NextResponse.json({ error: "Payment record could not be created. The quote remains unavailable for deployment." }, { status: 500 });
+  }
+
   const { error: updateError } = await supabaseAdmin
     .from("quotes")
     .update({
@@ -52,52 +72,33 @@ export async function POST(req: NextRequest) {
       approved_at: now,
       approved_by: session.email || String(session.adminId),
     })
-    .eq("id", quoteId);
+    .eq("id", quoteId)
+    .in("status", ["pending", "eft_submitted"]);
 
   if (updateError) {
     console.error("Quote update error:", updateError);
-    return NextResponse.json({ error: "Failed to update quote" }, { status: 500 });
+    return NextResponse.json({ error: "Payment record was created but the quote could not be approved. Escalate before deployment." }, { status: 500 });
   }
 
-  // 3b. Add credits to company balance
-  const { data: paidQuote } = await supabaseAdmin
-    .from("quotes")
-    .select("line_items")
-    .eq("id", quoteId)
-    .single();
+  const { error: confirmError } = await supabaseAdmin
+    .from("payments")
+    .update({ status: "confirmed", confirmed_at: now, confirmed_by: session.adminId })
+    .eq("id", payment.id)
+    .eq("status", "pending_verification");
 
-  const lineItems = Array.isArray(paidQuote?.line_items) ? paidQuote.line_items : [];
-  const creditCount = lineItems.length;
-
-  if (creditCount > 0) {
-    const { data: companyForCredit } = await supabaseAdmin
-      .from("companies")
-      .select("credit_balance")
-      .eq("id", quote.company_id)
-      .single();
-
-    const newBalance = Number(companyForCredit?.credit_balance ?? 0) + creditCount;
-    await supabaseAdmin
-      .from("companies")
-      .update({ credit_balance: newBalance })
-      .eq("id", quote.company_id);
+  if (confirmError) {
+    return NextResponse.json({ error: "Quote was approved but payment confirmation failed. Escalate before deployment." }, { status: 500 });
   }
 
-  // 4. Insert payment record
-  const { error: paymentError } = await supabaseAdmin.from("payments").insert({
-    company_id: quote.company_id,
-    quote_id: quoteId,
-    payment_method: "eft",
-    amount: Number(quote.total),
-    status: "confirmed",
-    confirmed_at: now,
-    confirmed_by: session.adminId,
-    created_at: now,
-  });
-
-  if (paymentError) {
-    console.error("Payment insert error:", paymentError);
-    // Non-blocking — quote is already marked paid
+  try {
+    await allocateQuoteCreditsOnce({
+      paymentId: payment.id,
+      quoteId,
+      companyId: quote.company_id,
+    });
+  } catch (creditError) {
+    console.error("Manual EFT credit allocation failed:", creditError);
+    return NextResponse.json({ error: "Payment confirmation could not allocate credits. Escalate before deployment." }, { status: 500 });
   }
 
   // 5. Fetch company contact email

@@ -84,7 +84,7 @@ export default function DemoTourBanner({ driverCount }: Props) {
       {/* CTA + dismiss */}
       <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", flexShrink: 0 }}>
         <a
-          href="/demo"
+          href="/demo?returnTo=/dashboard"
           style={{
             display: "inline-flex",
             alignItems: "center",

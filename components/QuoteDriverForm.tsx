@@ -21,6 +21,7 @@ interface DriverRow {
   last_name: string;
   mobile: string;
   email: string;
+  id_number: string;
   selected: boolean;
 }
 
@@ -36,7 +37,8 @@ const EMPTY_ROW: DriverRow = {
   last_name: "",
   mobile: "",
   email: "",
-  selected: true,
+  id_number: "",
+  selected: false,
 };
 
 export default function QuoteDriverForm({ quoteId, itemsJson, lineItems, onSaved }: QuoteDriverFormProps) {
@@ -45,12 +47,12 @@ export default function QuoteDriverForm({ quoteId, itemsJson, lineItems, onSaved
   const savedItems = useMemo(() => itemsJson.filter((i) => !i.driverId.startsWith("placeholder-")), [itemsJson]);
 
   const [rows, setRows] = useState<DriverRow[]>(
-    Array.from({ length: placeholderItems.length || itemsJson.length }, () => ({ ...EMPTY_ROW }))
+    Array.from({ length: placeholderItems.length || itemsJson.length }, (_, index) => ({ ...EMPTY_ROW, selected: index === 0 }))
   );
 
   // Reset rows when placeholder count changes (e.g. after a save + refetch)
   useEffect(() => {
-    setRows(Array.from({ length: placeholderItems.length }, () => ({ ...EMPTY_ROW })));
+    setRows(Array.from({ length: placeholderItems.length }, (_, index) => ({ ...EMPTY_ROW, selected: index === 0 })));
   }, [placeholderItems.length]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -62,7 +64,11 @@ export default function QuoteDriverForm({ quoteId, itemsJson, lineItems, onSaved
   const updateRow = useCallback((index: number, field: keyof DriverRow, value: string | boolean) => {
     setRows((prev) => {
       const next = [...prev];
-      next[index] = { ...next[index], [field]: value };
+      next[index] = {
+        ...next[index],
+        [field]: value,
+        selected: field !== "selected" && typeof value === "string" && value.trim() ? true : next[index].selected,
+      };
       return next;
     });
   }, []);
@@ -98,7 +104,7 @@ export default function QuoteDriverForm({ quoteId, itemsJson, lineItems, onSaved
         return;
       }
 
-      const parsed: Array<{ first_name: string; last_name: string; mobile: string; email: string }> =
+      const parsed: Array<{ first_name: string; last_name: string; mobile: string; email: string; id_number: string }> =
         data.drivers ?? [];
 
       if (parsed.length === 0) {
@@ -115,6 +121,7 @@ export default function QuoteDriverForm({ quoteId, itemsJson, lineItems, onSaved
             last_name: parsed[i].last_name,
             mobile: parsed[i].mobile,
             email: parsed[i].email,
+            id_number: parsed[i].id_number,
             selected: true,
           };
         }
@@ -125,6 +132,7 @@ export default function QuoteDriverForm({ quoteId, itemsJson, lineItems, onSaved
               last_name: parsed[i].last_name,
               mobile: parsed[i].mobile,
               email: parsed[i].email,
+              id_number: parsed[i].id_number,
               selected: true,
             });
           }
@@ -151,10 +159,10 @@ export default function QuoteDriverForm({ quoteId, itemsJson, lineItems, onSaved
     }
 
     const invalid = selected.some(
-      (r) => !r.first_name.trim() || !r.last_name.trim() || !r.mobile.trim()
+      (r) => !r.first_name.trim() || !r.last_name.trim() || !r.mobile.trim() || !r.id_number.trim()
     );
     if (invalid) {
-      setError("Selected drivers must have first name, last name, and mobile number filled in.");
+      setError("Selected drivers must have first name, last name, mobile number and ID or passport number filled in.");
       return;
     }
 
@@ -177,7 +185,8 @@ export default function QuoteDriverForm({ quoteId, itemsJson, lineItems, onSaved
         return;
       }
       setSuccess(`${data.driversCreated} driver(s) saved.`);
-      setTimeout(() => { setSuccess(null); onSaved(); }, 1200);
+      onSaved();
+      setTimeout(() => setSuccess(null), 1200);
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -199,8 +208,9 @@ export default function QuoteDriverForm({ quoteId, itemsJson, lineItems, onSaved
         setError(data.error ?? `Failed to deploy ${driverName}`);
         return;
       }
-      setSuccess(`${driverName} deployed successfully!`);
-      setTimeout(() => { setSuccess(null); onSaved(); }, 1500);
+      setSuccess(data.alreadyDeployed ? `${driverName} was already deployed.` : `${driverName} deployed successfully!`);
+      onSaved();
+      setTimeout(() => setSuccess(null), 1500);
     } catch {
       setError(`Network error deploying ${driverName}.`);
     } finally {
@@ -284,7 +294,7 @@ export default function QuoteDriverForm({ quoteId, itemsJson, lineItems, onSaved
             </button>
             <button
               onClick={() => {
-                const headers = ["First Name", "Last Name", "Mobile Number", "Email"];
+                const headers = ["First Name", "Last Name", "Mobile Number", "Email", "ID Number"];
                 const csv = "\uFEFF" + headers.map((h) => `"${h}"`).join(",") + "\n";
                 const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
                 const url = URL.createObjectURL(blob);
@@ -422,7 +432,7 @@ export default function QuoteDriverForm({ quoteId, itemsJson, lineItems, onSaved
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "32px 1fr 1fr 1.2fr 1.2fr",
+              gridTemplateColumns: "32px 1fr 1fr 1.2fr 1.2fr 1.2fr",
               gap: "0.5rem",
               padding: "0 0.25rem 0.375rem",
               borderBottom: "1px solid rgba(255,255,255,0.04)",
@@ -442,6 +452,7 @@ export default function QuoteDriverForm({ quoteId, itemsJson, lineItems, onSaved
             <span style={labelStyle}>Last Name *</span>
             <span style={labelStyle}>Mobile *</span>
             <span style={labelStyle}>Email (optional)</span>
+            <span style={labelStyle}>ID / Passport *</span>
           </div>
 
           {/* Rows */}
@@ -451,7 +462,7 @@ export default function QuoteDriverForm({ quoteId, itemsJson, lineItems, onSaved
                 key={i}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "32px 1fr 1fr 1.2fr 1.2fr",
+                  gridTemplateColumns: "32px 1fr 1fr 1.2fr 1.2fr 1.2fr",
                   gap: "0.5rem",
                   alignItems: "center",
                   padding: "0.25rem",
@@ -494,6 +505,13 @@ export default function QuoteDriverForm({ quoteId, itemsJson, lineItems, onSaved
                   placeholder="optional"
                   value={row.email}
                   onChange={(e) => updateRow(i, "email", e.target.value)}
+                  style={{ ...inputStyle, opacity: row.selected ? 1 : 0.5 }}
+                />
+                <input
+                  type="text"
+                  placeholder="SA ID or passport"
+                  value={row.id_number}
+                  onChange={(e) => updateRow(i, "id_number", e.target.value)}
                   style={{ ...inputStyle, opacity: row.selected ? 1 : 0.5 }}
                 />
               </div>
