@@ -12,6 +12,7 @@ ALTER TABLE certifications
   ADD COLUMN IF NOT EXISTS document_sha256 TEXT,
   ADD COLUMN IF NOT EXISTS document_generated_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS revoked_by UUID,
   ADD COLUMN IF NOT EXISTS revoked_reason TEXT,
   ADD COLUMN IF NOT EXISTS superseded_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS replaced_by_certificate_id UUID REFERENCES certifications(id) ON DELETE SET NULL;
@@ -47,6 +48,7 @@ CREATE TABLE IF NOT EXISTS certificate_delivery_grants (
   audience TEXT NOT NULL CHECK (audience IN ('betterdriver')),
   authorization_code_hash TEXT NOT NULL UNIQUE,
   source_event_id UUID REFERENCES learning_events(id) ON DELETE SET NULL,
+  request_id TEXT NOT NULL,
   expires_at TIMESTAMPTZ NOT NULL,
   used_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -54,6 +56,8 @@ CREATE TABLE IF NOT EXISTS certificate_delivery_grants (
 CREATE INDEX IF NOT EXISTS idx_certificate_delivery_grants_redeem
   ON certificate_delivery_grants(authorization_code_hash, expires_at)
   WHERE used_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_certificate_delivery_grants_request
+  ON certificate_delivery_grants(audience, request_id);
 
 -- Minimal audit records intentionally exclude raw identity data, raw certificate access codes,
 -- full document URLs and full IP addresses. Application code stores HMAC fingerprints only.
@@ -67,6 +71,14 @@ CREATE TABLE IF NOT EXISTS certificate_verification_events (
 );
 CREATE INDEX IF NOT EXISTS idx_certificate_verification_events_certificate_time
   ON certificate_verification_events(certificate_id, occurred_at DESC);
+
+-- Hashed, fixed-window counters back the public verification limit without retaining an IP address.
+CREATE TABLE IF NOT EXISTS certificate_verification_rate_limits (
+  request_fingerprint TEXT PRIMARY KEY,
+  window_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  request_count INTEGER NOT NULL DEFAULT 0 CHECK (request_count >= 0),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 CREATE TABLE IF NOT EXISTS certificate_document_access_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -87,6 +99,7 @@ ON CONFLICT (id) DO UPDATE SET public = false;
 ALTER TABLE driver_external_identities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE certificate_delivery_grants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE certificate_verification_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE certificate_verification_rate_limits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE certificate_document_access_events ENABLE ROW LEVEL SECURITY;
 
 DO $$
@@ -109,6 +122,12 @@ BEGIN
       USING (auth.role() = 'service_role')
       WITH CHECK (auth.role() = 'service_role');
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'certificate_verification_rate_limits' AND policyname = 'certificate_verification_rate_limits_service_only') THEN
+    CREATE POLICY "certificate_verification_rate_limits_service_only"
+      ON certificate_verification_rate_limits FOR ALL
+      USING (auth.role() = 'service_role')
+      WITH CHECK (auth.role() = 'service_role');
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'certificate_document_access_events' AND policyname = 'certificate_document_access_events_service_only') THEN
     CREATE POLICY "certificate_document_access_events_service_only"
       ON certificate_document_access_events FOR ALL
@@ -116,6 +135,50 @@ BEGIN
       WITH CHECK (auth.role() = 'service_role');
   END IF;
 END
+$$;
+
+-- Atomically consume a small public-verification allowance. The application supplies a keyed hash,
+-- not a raw IP address or a raw certificate number. PostgreSQL row locking makes this work across
+-- serverless instances.
+CREATE OR REPLACE FUNCTION gfa_consume_certificate_verification_limit(
+  p_request_fingerprint TEXT,
+  p_max_requests INTEGER DEFAULT 10,
+  p_window_seconds INTEGER DEFAULT 60
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  rate_row certificate_verification_rate_limits%ROWTYPE;
+BEGIN
+  INSERT INTO certificate_verification_rate_limits (request_fingerprint, window_started_at, request_count, updated_at)
+  VALUES (p_request_fingerprint, NOW(), 0, NOW())
+  ON CONFLICT (request_fingerprint) DO NOTHING;
+
+  SELECT * INTO rate_row
+  FROM certificate_verification_rate_limits
+  WHERE request_fingerprint = p_request_fingerprint
+  FOR UPDATE;
+
+  IF rate_row.window_started_at <= NOW() - make_interval(secs => p_window_seconds) THEN
+    UPDATE certificate_verification_rate_limits
+    SET window_started_at = NOW(), request_count = 1, updated_at = NOW()
+    WHERE request_fingerprint = p_request_fingerprint;
+    RETURN TRUE;
+  END IF;
+
+  IF rate_row.request_count >= p_max_requests THEN
+    UPDATE certificate_verification_rate_limits
+    SET updated_at = NOW()
+    WHERE request_fingerprint = p_request_fingerprint;
+    RETURN FALSE;
+  END IF;
+
+  UPDATE certificate_verification_rate_limits
+  SET request_count = request_count + 1, updated_at = NOW()
+  WHERE request_fingerprint = p_request_fingerprint;
+  RETURN TRUE;
+END;
 $$;
 
 -- Allocate inside PostgreSQL so concurrent issuances cannot claim the same certificate number.
@@ -128,7 +191,7 @@ DECLARE
 BEGIN
   LOOP
     candidate := 'GFA-' || to_char(p_issued_at AT TIME ZONE 'Africa/Johannesburg', 'YYYY') || '-' || lpad(nextval('gfa_certificate_number_seq')::TEXT, 8, '0');
-    EXIT WHEN NOT EXISTS (SELECT 1 FROM certifications WHERE certificate_number = candidate);
+    EXIT WHEN NOT EXISTS (SELECT 1 FROM certifications AS existing_certificate WHERE existing_certificate.certificate_number = candidate);
   END LOOP;
   RETURN candidate;
 END;
@@ -136,7 +199,10 @@ $$;
 
 -- Creates the GFA canonical certificate record for a persisted, authenticated certificate-issued event.
 -- A newly inserted record remains pending_document until the private PDF upload completes in GFA.
-CREATE OR REPLACE FUNCTION gfa_issue_certificate_from_learning_event(p_learning_event_id UUID)
+CREATE OR REPLACE FUNCTION gfa_issue_certificate_from_learning_event(
+  p_learning_event_id UUID,
+  p_certificate_version TEXT DEFAULT 'v1'
+)
 RETURNS TABLE (certificate_id UUID, certificate_number TEXT, created BOOLEAN)
 LANGUAGE plpgsql
 AS $$
@@ -171,20 +237,19 @@ BEGIN
   SELECT programme INTO course_programme FROM courses WHERE id = enrolment_row.course_id;
 
   SELECT * INTO existing_certificate
-  FROM certifications
-  WHERE enrolment_id = enrolment_row.id
-    AND status IN ('active', 'issued', 'pending_document')
+  FROM certifications AS existing_certificate_row
+  WHERE existing_certificate_row.enrolment_id = enrolment_row.id
+    AND existing_certificate_row.status IN ('active', 'issued', 'pending_document')
   ORDER BY issued_at DESC, created_at DESC
   LIMIT 1
   FOR UPDATE;
 
   IF FOUND THEN
-    UPDATE certifications
-    SET issued_event_id = COALESCE(issued_event_id, event_row.id),
-        status = CASE WHEN status = 'active' THEN 'pending_document' ELSE status END,
-        certificate_version = COALESCE(NULLIF(certificate_version, ''), 'v1')
-    WHERE id = existing_certificate.id
-    RETURNING id, certificate_number INTO certificate_id, certificate_number;
+    UPDATE certifications AS certificate_row
+    SET issued_event_id = COALESCE(certificate_row.issued_event_id, event_row.id),
+        certificate_version = COALESCE(NULLIF(certificate_row.certificate_version, ''), p_certificate_version)
+    WHERE certificate_row.id = existing_certificate.id
+    RETURNING certificate_row.id, certificate_row.certificate_number INTO certificate_id, certificate_number;
     created := false;
     RETURN NEXT;
     RETURN;
@@ -192,7 +257,7 @@ BEGIN
 
   issued_number := gfa_allocate_certificate_number(event_row.occurred_at);
 
-  INSERT INTO certifications (
+  INSERT INTO certifications AS certificate_row (
     driver_id,
     company_id,
     enrolment_id,
@@ -212,15 +277,19 @@ BEGIN
     COALESCE(course_programme, 'driver-foundation'),
     event_row.occurred_at,
     'pending_document',
-    'v1',
+    p_certificate_version,
     event_row.id
   )
-  RETURNING id, certificate_number INTO certificate_id, certificate_number;
+  RETURNING certificate_row.id, certificate_row.certificate_number INTO certificate_id, certificate_number;
 
   created := true;
   RETURN NEXT;
 END;
 $$;
+
+-- A delivery grant request ID is unique per BetterDriver request. The GFA application derives
+-- the one-time code from that ID with its local secret, so a safe network retry receives the
+-- same code without GFA persisting the plaintext code.
 
 -- Atomically redeem one BetterDriver authorisation code only while the certificate remains valid
 -- and the private document is available. The returned storage path is never persisted by BetterDriver.

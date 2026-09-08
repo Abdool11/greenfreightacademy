@@ -2,21 +2,16 @@ import type { Metadata } from "next";
 import RegistryPageClient from "./RegistryPageClient";
 
 export const metadata: Metadata = {
-  title: "Driver Registry | Verify Certified Drivers",
-  description:
-    "Search the Green Freight Academy registry to verify certified professional drivers. Employers and fleet operators can confirm driver training completion, certification status, and programme history.",
+  title: "Certificate Verification | Green Freight Academy",
+  description: "Verify the current status of a Green Freight Academy certificate using its exact certificate number.",
   keywords: [
-    "driver registry South Africa",
-    "verify certified driver",
-    "professional driver certification check",
-    "truck driver certification South Africa",
-    "green freight academy driver registry",
-    "certified driver verification",
+    "GFA certificate verification",
+    "Green Freight Academy certificate",
+    "professional driver certificate verification",
   ],
   openGraph: {
-    title: "Driver Registry | Green Freight Academy",
-    description:
-      "Verify certified professional drivers in the Green Freight Academy registry. Search by ID number or name to confirm training and certification status.",
+    title: "Certificate Verification | Green Freight Academy",
+    description: "Verify the current status of a Green Freight Academy certificate using its exact certificate number.",
     url: "https://www.greenfreightacademy.co.za/registry",
   },
   alternates: {
