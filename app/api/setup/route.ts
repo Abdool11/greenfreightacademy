@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { signSession, setSessionCookie, type CompanySession } from "@/lib/auth";
+import { signSession, setClientSessionCookie, type CompanySession } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
 // POST /api/setup — validate setup token and set password
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 
   const jwt = await signSession(session);
   const headers = new Headers();
-  headers.append("Set-Cookie", setSessionCookie(jwt));
+  headers.append("Set-Cookie", setClientSessionCookie(jwt));
 
   return NextResponse.json({ ok: true, companyName: company.name }, { headers });
 }

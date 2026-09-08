@@ -6,15 +6,15 @@ import PendingPaymentsWidget from "./PendingPaymentsWidget";
 
 async function getPlatformStats() {
   const [
-    { count: totalCompanies },
+    { count: activeFullCompanies },
     { count: trialCompanies },
     { count: totalDrivers },
     { count: activeEnrolments },
     { count: pendingCohorts },
     { count: totalCerts },
   ] = await Promise.all([
-    supabaseAdmin.from("companies").select("*", { count: "exact", head: true }).eq("status", "active"),
-    supabaseAdmin.from("companies").select("*", { count: "exact", head: true }).eq("account_type", "trial"),
+    supabaseAdmin.from("companies").select("*", { count: "exact", head: true }).eq("status", "active").neq("account_type", "trial"),
+    supabaseAdmin.from("companies").select("*", { count: "exact", head: true }).eq("status", "active").eq("account_type", "trial"),
     supabaseAdmin.from("drivers").select("*", { count: "exact", head: true }).eq("status", "active"),
     supabaseAdmin.from("enrolments").select("*", { count: "exact", head: true }).eq("status", "active"),
     supabaseAdmin.from("deployments").select("*", { count: "exact", head: true }).eq("approval_status", "pending_payment"),
@@ -22,7 +22,7 @@ async function getPlatformStats() {
   ]);
 
   return {
-    totalCompanies: totalCompanies ?? 0,
+    activeFullCompanies: activeFullCompanies ?? 0,
     trialCompanies: trialCompanies ?? 0,
     totalDrivers: totalDrivers ?? 0,
     activeEnrolments: activeEnrolments ?? 0,
@@ -148,7 +148,7 @@ export default async function AdminDashboardPage() {
           {/* Stats grid */}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
             {[
-              { label: "Active Companies", value: stats.totalCompanies - stats.trialCompanies, color: "text-[#2ecc71]", sub: `${stats.trialCompanies} on trial` },
+              { label: "Active Companies", value: stats.activeFullCompanies, color: "text-[#2ecc71]", sub: `${stats.trialCompanies} active trials shown separately` },
               { label: "Registered Drivers", value: stats.totalDrivers, color: "text-blue-400", sub: "across all companies" },
               { label: "Active Enrolments", value: stats.activeEnrolments, color: "text-purple-400", sub: "in training" },
               { label: "Certificates Issued", value: stats.totalCerts, color: "text-amber-400", sub: "all time" },
