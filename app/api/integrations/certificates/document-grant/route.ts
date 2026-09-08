@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   certificateDocumentsEnabled,
   createBetterDriverDocumentGrant,
+  signBetterDriverCertificateResponse,
   verifyBetterDriverCertificateEvent,
 } from "@/lib/certificateRegistry";
 
@@ -18,7 +19,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "The signed action is not permitted at this endpoint." }, { status: 409 });
     }
     const grant = await createBetterDriverDocumentGrant(event);
-    return NextResponse.json({ ok: true, ...grant }, {
+    const deliveryAssertion = await signBetterDriverCertificateResponse({
+      action: "document_grant",
+      request_id: event.eventId,
+      authorization_code: grant.authorizationCode,
+      expires_at: grant.expiresAt,
+    });
+    return NextResponse.json({ ok: true, deliveryAssertion }, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {

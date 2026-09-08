@@ -186,7 +186,8 @@ npm run dev
 | `BD_BASE_URL` | Yes | BetterDriver site URL |
 | `NEXT_PUBLIC_SITE_URL` | Yes | Full URL of this site in production |
 | `BD_EVENT_SECRET` | R6 only | Shared HMAC secret for trusted BetterDriver/Moodle learning events |
-| `BD_CERTIFICATE_EVENT_PUBLIC_KEY_PEM` | Release 11 only | BetterDriver RS256 public key for the separate canonical certificate-event contract |
+| `BD_CERTIFICATE_EVENT_PUBLIC_KEY_PEM` | Release 11 only | BetterDriver RS256 public key for the incoming canonical certificate-event contract |
+| `GFA_CERTIFICATE_RESPONSE_PRIVATE_KEY_PEM` | Release 11 only | GFA RS256 private key for short-lived signed acknowledgements and document-grant responses |
 | `GFA_CERTIFICATE_DOCUMENT_GRANT_SECRET` | Release 11 only | Independent GFA secret used to derive one-time certificate document grants |
 | `GFA_CERTIFICATE_AUDIT_SECRET` | Release 11 only | Independent GFA HMAC secret for privacy-minimised verification fingerprints |
 | `CRON_SECRET` | R7 lifecycle only | Secret required by the compliance lifecycle endpoint |
@@ -274,7 +275,8 @@ The approved certificate layout is implemented in `lib/certificatePdf.ts` and do
 
 | Variable | Purpose | Preview initial value |
 | --- | --- | --- |
-| `BD_CERTIFICATE_EVENT_PUBLIC_KEY_PEM` | BetterDriver RS256 public key used to verify certificate-event JWTs | Set only after BetterDriver signs the separate contract. |
+| `BD_CERTIFICATE_EVENT_PUBLIC_KEY_PEM` | BetterDriver RS256 public key used to verify incoming certificate-event JWTs | Set only after BetterDriver signs the separate contract. |
+| `GFA_CERTIFICATE_RESPONSE_PRIVATE_KEY_PEM` | GFA RS256 private key used to sign outgoing acknowledgements and document-grant assertions | Generate and retain only in GFA; load its public counterpart in BetterDriver. |
 | `GFA_CERTIFICATE_DOCUMENT_GRANT_SECRET` | Independent GFA secret that derives one-time document grants | New `openssl rand -hex 32` value. |
 | `GFA_CERTIFICATE_AUDIT_SECRET` | Independent GFA HMAC key for audit fingerprints | New `openssl rand -hex 32` value. |
 | `ENABLE_GFA_CERTIFICATE_REGISTRY` | Signed issuance and administrator revocation | `false` until migration/mapping/event tests pass. |
@@ -286,6 +288,6 @@ Apply the Release 11 migration in a non-production Supabase/Preview environment 
 
 Run `npm ci`, `npm run type-check`, `npm run build` and `npx playwright test tests/playwright/09-certificate-registry.spec.ts` before pull request review. Default browser checks create no data and assert privacy-safe UI plus feature-gate/invalid-request behaviour. The optional `GFA_TEST_CERTIFICATE_NUMBER` Preview check must refer only to a pre-existing, synthetic certificate. Do not use real drivers, customer data, production certificates, live WhatsApp messages or production databases.
 
-The release order is: publish GFA branch; build Vercel Preview; apply the migration only to Preview; configure secrets with all three certificate flags false; test disabled behaviour; validate one authorised synthetic mapping/event/PDF; validate active, expired, revoked and not-found verification; validate one-time/expired/replayed document grants; then obtain named product, privacy and operations sign-off for a limited pilot. BetterDriver implements later in its own repository branch against the public signed contract only. Roll back by disabling the three GFA certificate flags and reverting the Release 11 pull request; do not delete certificate, audit or storage records during rollback.
+The release order is: publish GFA branch; build Vercel Preview; apply the migration only to Preview; configure secrets with all three certificate flags false; test disabled behaviour; validate one authorised synthetic mapping/event/PDF; validate active, expired, revoked and not-found verification; validate one-time/expired/replayed document grants; then obtain named product, privacy and operations sign-off for a limited pilot. BetterDriver implements later in its own repository branch against the public signed contract only. Roll back by disabling the three GFA certificate flags and reverting the Release 11 pull request; do not delete certificate, audit or storage records during rollback. BetterDriver signs inbound requests with `iss=betterdriver`, `aud=gfa-certificate-registry` and `kid=betterdriver-certificate-v1`; GFA returns separately RS256-signed short-lived acknowledgements and delivery assertions with `iss=gfa-certificate-registry`, `aud=betterdriver-certificate-presentation` and `kid=gfa-certificate-response-v1`. BetterDriver must verify that outbound GFA assertion with the separately configured GFA public key before acting on it.
 
 > Release 11 is limited to GFA academy certificate issuance, independent GFA certification records, exact certificate-number verification and private document delivery. It does not implement or modify SafeFreight behaviour, incidents, transgressions, briefings, risk profiles/matrices, targeted CPD rationale, RTMS reporting/evidence packs or incident-linked training evidence.

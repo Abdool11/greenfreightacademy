@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   certificateFeatureEnabled,
   issueCanonicalCertificate,
+  signBetterDriverCertificateResponse,
   verifyBetterDriverCertificateEvent,
 } from "@/lib/certificateRegistry";
 
@@ -18,13 +19,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "The signed action is not permitted at this endpoint." }, { status: 409 });
     }
     const { certificate, created } = await issueCanonicalCertificate(event);
-    return NextResponse.json({
-      ok: true,
+    const acknowledgement = await signBetterDriverCertificateResponse({
+      action: "certificate_issued",
+      request_id: event.eventId,
       created,
-      certificate: {
-        status: certificate.status,
-        issuedAt: certificate.issued_at,
-      },
+      certificate_status: certificate.status,
+      issued_at: certificate.issued_at,
+    });
+    return NextResponse.json({ ok: true, acknowledgement }, {
+      headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Certificate issue failed.";

@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomUUID } from "crypto";
-import { importSPKI, jwtVerify, JWTPayload } from "jose";
+import { importPKCS8, importSPKI, jwtVerify, JWTPayload, SignJWT } from "jose";
 import { supabaseAdmin } from "@/lib/supabase";
 import { buildCertificatePdf } from "@/lib/certificatePdf";
 
@@ -7,6 +7,9 @@ const CERTIFICATE_BUCKET = "gfa-certificate-documents";
 const CERTIFICATE_ISSUER = "betterdriver";
 const CERTIFICATE_AUDIENCE = "gfa-certificate-registry";
 const CERTIFICATE_KEY_ID = "betterdriver-certificate-v1";
+const GFA_RESPONSE_ISSUER = "gfa-certificate-registry";
+const BETTERDRIVER_RESPONSE_AUDIENCE = "betterdriver-certificate-presentation";
+const GFA_RESPONSE_KEY_ID = "gfa-certificate-response-v1";
 const DOCUMENT_GRANT_TTL_SECONDS = 60;
 
 type CertificateAction = "issue_certificate" | "request_document_grant";
@@ -96,6 +99,21 @@ function safeEventPayload(payload: JWTPayload): VerifiedCertificateEvent {
     occurredAt,
     certificateVersion,
   };
+}
+
+export async function signBetterDriverCertificateResponse(claims: Record<string, unknown>) {
+  const privateKey = await importPKCS8(
+    normalisePem(requiredEnv("GFA_CERTIFICATE_RESPONSE_PRIVATE_KEY_PEM")),
+    "RS256"
+  );
+  return new SignJWT(claims)
+    .setProtectedHeader({ alg: "RS256", kid: GFA_RESPONSE_KEY_ID, typ: "JWT" })
+    .setIssuer(GFA_RESPONSE_ISSUER)
+    .setAudience(BETTERDRIVER_RESPONSE_AUDIENCE)
+    .setIssuedAt()
+    .setJti(randomUUID())
+    .setExpirationTime(`${DOCUMENT_GRANT_TTL_SECONDS}s`)
+    .sign(privateKey);
 }
 
 export async function verifyBetterDriverCertificateEvent(request: Request): Promise<VerifiedCertificateEvent> {
@@ -357,4 +375,5 @@ export const certificateVerificationEnabled = () => process.env.ENABLE_GFA_CERTI
 export const certificateDocumentsEnabled = () => process.env.ENABLE_GFA_CERTIFICATE_DOCUMENTS === "true";
 export const certificateBucketName = () => CERTIFICATE_BUCKET;
 export const certificateEventContract = () => ({ issuer: CERTIFICATE_ISSUER, audience: CERTIFICATE_AUDIENCE, keyId: CERTIFICATE_KEY_ID });
+export const certificateResponseContract = () => ({ issuer: GFA_RESPONSE_ISSUER, audience: BETTERDRIVER_RESPONSE_AUDIENCE, keyId: GFA_RESPONSE_KEY_ID });
 export const newCertificateEventId = () => randomUUID();
