@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyCompanyCredentials, signSession, setSessionCookie } from "@/lib/auth";
+import { verifyCompanyCredentials, signSession, setClientSessionCookie } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   const { email, password } = await req.json();
@@ -15,6 +15,6 @@ export async function POST(req: NextRequest) {
 
   const token = await signSession(session);
   const res = NextResponse.json({ ok: true, company: { name: session.companyName, email: session.email } });
-  res.headers.set("Set-Cookie", setSessionCookie(token));
+  res.headers.set("Set-Cookie", setClientSessionCookie(token));
   return res;
 }
