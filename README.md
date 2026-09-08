@@ -61,7 +61,11 @@ Key platform capabilities include:
 app/
   api/                        # Backend API routes
     admin/                    # Admin-only routes (JWT protected)
+      certificates/           # Private GFA certificate document view and controlled revocation
     auth/                     # Login, logout, register
+    certificates/document/    # One-time private GFA certificate document redemption
+    integrations/certificates/# Signed BetterDriver certificate issue and document-grant contract
+    public/certificates/verify/# Public exact-number verification only; no learner identity lookup
     bulletins/                # CPD bulletin creation and dissemination
     company/                  # Driver import, quoting, deployment
       training-campaigns/     # Campaign CRUD, close (credit refund), escalation nudge
@@ -98,7 +102,8 @@ app/
   programmes/                 # Public programme listing
   pricing/                    # Public pricing page
   publications/               # CPD publications library
-  registry/                   # Public driver registry
+  registry/                   # Public exact certificate-number verification
+  verify/                     # QR-link entry to the same privacy-preserving verification screen
   login/ register/ trial/     # Auth and onboarding
   about/ contact/ privacy/ terms/ cpd-bulletins/
 components/                   # Shared React components
@@ -109,6 +114,7 @@ lib/                          # Utilities, constants, Supabase client
 public/                       # Static assets
   branding/                   # Committed Green Freight Academy report-letterhead asset
 supabase/migrations/          # SQL migration files (apply via Supabase SQL editor)
+docs/certificate-template/    # Approved fictional GFA certificate visual baseline and exclusions
 ```
 
 ---
