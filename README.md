@@ -250,3 +250,29 @@ Driver entry, standard import and paid-quote driver capture now require an ID nu
 ### QA Stabilisation — Registration and Responsive Client Experience
 
 The company-registration flow now shows a clear success confirmation and requires the client to choose **Continue to dashboard**; it no longer redirects automatically after account creation. Shared dark-form autofill styling preserves readable text in Chromium-managed email/password fills, and narrow-viewport heading safeguards reduce the risk of title overlap. The dashboard guided-tour entry now returns a client to `/dashboard` when it was launched there; public tour entry continues to return to pricing. Validate registration and tour exit at desktop and mobile widths in Preview before promotion.
+
+### Release 11 — Admin Stability: Session Isolation and Dashboard Integrity
+
+This release fixes the four administrative issues reported in `AdminBugReport.docx` without introducing a database migration. Administrator and company sessions now use separate HTTP-only cookies: `gfa_admin_session` and `gfa_client_session`. New login, self-registration, account-setup and voucher-activation flows write only their own role cookie. Administrator and client sign-out clear only the matching role cookie.
+
+For a safe deployment transition, readers accept the legacy `gfa_session` cookie only when its signed payload matches the requested role. New sessions never write that legacy cookie. A role-specific logout clears the legacy cookie only if it contains that same role. Existing legacy sessions therefore remain usable until their signed token expires, while a client sign-out cannot deliberately clear a legacy administrator session and an administrator sign-out cannot deliberately clear a legacy client session.
+
+The dashboard now counts **Active Companies** as records where `companies.status = active` and `companies.account_type != trial`. **Trial Accounts** counts records where both `companies.status = active` and `companies.account_type = trial`. The cards no longer subtract differently scoped queries, so a negative active-company count cannot be produced by an inactive trial account. Programmes and Trial Vouchers now display the `Dashboard` breadcrumb label while retaining their existing `/admin/dashboard` destination.
+
+No SQL migration is required. No existing deployment environment variable changed. The optional `GFA_TEST_*` values in `.env.local.example` are exclusively for temporary test accounts and an approved synthetic company in a local or Vercel Preview environment; do not configure them with production data or credentials.
+
+Before merge, deploy the feature branch as a Vercel Preview and run the opt-in regression suite against that non-production URL:
+
+```bash
+GFA_TEST_BASE_URL=https://your-preview.vercel.app \
+GFA_TEST_ADMIN_EMAIL=... \
+GFA_TEST_ADMIN_PASSWORD=... \
+GFA_TEST_CLIENT_EMAIL=... \
+GFA_TEST_CLIENT_PASSWORD=... \
+GFA_TEST_ADMIN_COMPANY_ID=... \
+npx playwright test tests/playwright/09-admin-stability.spec.ts
+```
+
+The suite refuses to run against the production `greenfreightacademy.vercel.app` hostname. It validates admin Dashboard → Companies access, an approved synthetic company detail route, independent client/admin login and logout, client denial from admin Companies, and the Programmes/Vouchers Dashboard breadcrumbs. It never creates, updates or deletes application records. Keep `ENABLE_EVIDENCE_REPORTS=false`; no evidence-report, RTMS, SafeFreight or BetterDriver learning-delivery path is included in Release 11.
+
+Rollback is a standard revert of the Release 11 pull request. If an emergency rollback occurs while legacy cookies remain in browsers, users can sign in again to receive the prior deployment’s expected session state. Review role/session behaviour in Preview before promotion.

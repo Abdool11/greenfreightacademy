@@ -5,7 +5,16 @@ import { supabaseAdmin } from "./supabase";
 const SECRET = new TextEncoder().encode(
   process.env.GFA_JWT_SECRET || process.env.JWT_SECRET || "gfa-dev-secret-change-in-production"
 );
-const COOKIE_NAME = "gfa_session";
+
+/**
+ * Admin and company sessions must be independent. The legacy shared cookie is
+ * read only during the transition and only when its payload matches the role
+ * that is being requested. New logins never write the legacy cookie.
+ */
+export const CLIENT_SESSION_COOKIE_NAME = "gfa_client_session";
+export const ADMIN_SESSION_COOKIE_NAME = "gfa_admin_session";
+const LEGACY_SESSION_COOKIE_NAME = "gfa_session";
+const COOKIE_MAX_AGE_SECONDS = 30 * 24 * 3600;
 
 // ─── Session types ────────────────────────────────────────────────────────────
 
@@ -32,19 +41,21 @@ export interface AdminSession {
   role: "admin" | "super_admin";
 }
 
+type AnySession = CompanySession | AdminSession;
+
 // ─── Type guards ──────────────────────────────────────────────────────────────
 
-export function isAdminSession(s: CompanySession | AdminSession): s is AdminSession {
+export function isAdminSession(s: AnySession): s is AdminSession {
   return "adminId" in s;
 }
 
-export function isCompanySession(s: CompanySession | AdminSession): s is CompanySession {
+export function isCompanySession(s: AnySession): s is CompanySession {
   return "companyId" in s;
 }
 
 // ─── Sign a session token ────────────────────────────────────────────────────
 
-export async function signSession(payload: CompanySession | AdminSession): Promise<string> {
+export async function signSession(payload: AnySession): Promise<string> {
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -52,46 +63,60 @@ export async function signSession(payload: CompanySession | AdminSession): Promi
     .sign(SECRET);
 }
 
-// ─── Get current session from cookie ────────────────────────────────────────
+// ─── Read and verify session tokens ───────────────────────────────────────────
 
+async function readVerifiedSession(token: string | undefined): Promise<AnySession | null> {
+  if (!token) return null;
+
+  try {
+    const { payload } = await jwtVerify(token, SECRET);
+    return payload as unknown as AnySession;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Returns a company session from the new client cookie, or a valid legacy
+ * cookie only when that legacy token is a company session.
+ */
 export async function getSession(): Promise<CompanySession | null> {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get(COOKIE_NAME)?.value;
-    if (!token) return null;
-    const { payload } = await jwtVerify(token, SECRET);
-    const s = payload as unknown as CompanySession | AdminSession;
-    if (isCompanySession(s)) return s;
-    return null;
-  } catch {
-    return null;
-  }
+  const cookieStore = await cookies();
+  const clientSession = await readVerifiedSession(
+    cookieStore.get(CLIENT_SESSION_COOKIE_NAME)?.value
+  );
+  if (clientSession && isCompanySession(clientSession)) return clientSession;
+
+  const legacySession = await readVerifiedSession(
+    cookieStore.get(LEGACY_SESSION_COOKIE_NAME)?.value
+  );
+  return legacySession && isCompanySession(legacySession) ? legacySession : null;
 }
 
+/**
+ * Returns an admin session from the new admin cookie, or a valid legacy cookie
+ * only when that legacy token is an admin session.
+ */
 export async function getAdminSession(): Promise<AdminSession | null> {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get(COOKIE_NAME)?.value;
-    if (!token) return null;
-    const { payload } = await jwtVerify(token, SECRET);
-    const s = payload as unknown as CompanySession | AdminSession;
-    if (isAdminSession(s)) return s;
-    return null;
-  } catch {
-    return null;
-  }
+  const cookieStore = await cookies();
+  const adminSession = await readVerifiedSession(
+    cookieStore.get(ADMIN_SESSION_COOKIE_NAME)?.value
+  );
+  if (adminSession && isAdminSession(adminSession)) return adminSession;
+
+  const legacySession = await readVerifiedSession(
+    cookieStore.get(LEGACY_SESSION_COOKIE_NAME)?.value
+  );
+  return legacySession && isAdminSession(legacySession) ? legacySession : null;
 }
 
-export async function getAnySession(): Promise<CompanySession | AdminSession | null> {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get(COOKIE_NAME)?.value;
-    if (!token) return null;
-    const { payload } = await jwtVerify(token, SECRET);
-    return payload as unknown as CompanySession | AdminSession;
-  } catch {
-    return null;
-  }
+/**
+ * Prefer the company session for the historic generic helper, then fall back
+ * to the independent admin session. Existing company consumers remain scoped
+ * by their own type guards and route requirements.
+ */
+export async function getAnySession(): Promise<AnySession | null> {
+  return (await getSession()) ?? (await getAdminSession());
 }
 
 // ─── Require session — redirect to login if missing ─────────────────────────
@@ -123,14 +148,62 @@ export async function requireSuperAdminSession(): Promise<AdminSession> {
   return session as AdminSession;
 }
 
-// ─── Set / clear session cookie ──────────────────────────────────────────────
+// ─── Set / clear role-specific session cookies ────────────────────────────────
 
-export function setSessionCookie(token: string): string {
-  return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 3600}`;
+function setCookie(name: string, token: string): string {
+  return `${name}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${COOKIE_MAX_AGE_SECONDS}`;
 }
 
-export function clearSessionCookie(): string {
-  return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+function clearCookie(name: string): string {
+  return `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+}
+
+/** Write a company-only session cookie. */
+export function setClientSessionCookie(token: string): string {
+  return setCookie(CLIENT_SESSION_COOKIE_NAME, token);
+}
+
+/** Write an administrator-only session cookie. */
+export function setAdminSessionCookie(token: string): string {
+  return setCookie(ADMIN_SESSION_COOKIE_NAME, token);
+}
+
+/**
+ * Clear only the client cookie. A legacy cookie is cleared only when it
+ * decodes to a client session, which prevents client sign-out from ending an
+ * existing administrator session during the transition.
+ */
+export async function clearClientSessionCookies(): Promise<string[]> {
+  const cookieStore = await cookies();
+  const legacySession = await readVerifiedSession(
+    cookieStore.get(LEGACY_SESSION_COOKIE_NAME)?.value
+  );
+  const cookiesToClear = [clearCookie(CLIENT_SESSION_COOKIE_NAME)];
+
+  if (legacySession && isCompanySession(legacySession)) {
+    cookiesToClear.push(clearCookie(LEGACY_SESSION_COOKIE_NAME));
+  }
+
+  return cookiesToClear;
+}
+
+/**
+ * Clear only the administrator cookie. A legacy cookie is cleared only when it
+ * decodes to an admin session, which prevents administrator sign-out from
+ * ending an existing client session during the transition.
+ */
+export async function clearAdminSessionCookies(): Promise<string[]> {
+  const cookieStore = await cookies();
+  const legacySession = await readVerifiedSession(
+    cookieStore.get(LEGACY_SESSION_COOKIE_NAME)?.value
+  );
+  const cookiesToClear = [clearCookie(ADMIN_SESSION_COOKIE_NAME)];
+
+  if (legacySession && isAdminSession(legacySession)) {
+    cookiesToClear.push(clearCookie(LEGACY_SESSION_COOKIE_NAME));
+  }
+
+  return cookiesToClear;
 }
 
 // ─── Verify company credentials ─────────────────────────────────────────────

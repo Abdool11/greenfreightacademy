@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAdminCredentials, signSession, setSessionCookie } from "@/lib/auth";
+import { verifyAdminCredentials, signSession, setAdminSessionCookie } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     }
 
     const token = await signSession(session);
-    const cookie = setSessionCookie(token);
+    const cookie = setAdminSessionCookie(token);
 
     const res = NextResponse.json({
       ok: true,

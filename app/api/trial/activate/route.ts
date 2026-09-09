@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { signSession } from "@/lib/auth";
+import { signSession, setClientSessionCookie } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
 import bcrypt from "bcryptjs";
-import { cookies } from "next/headers";
 
 async function sendWelcomeEmail(to: string, contactName: string, companyName: string, trialSeats: number, trialExpiresAt: string) {
   if (!process.env.BREVO_SMTP_PASSWORD) return;
@@ -152,14 +151,7 @@ export async function POST(req: NextRequest) {
     accountType: "trial",
   });
 
-  const cookieStore = await cookies();
-  cookieStore.set("gfa_session", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
-    path: "/",
-  });
-
-  return NextResponse.json({ ok: true, companyId: company.id });
+  const res = NextResponse.json({ ok: true, companyId: company.id });
+  res.headers.set("Set-Cookie", setClientSessionCookie(token));
+  return res;
 }
