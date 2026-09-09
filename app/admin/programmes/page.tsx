@@ -175,7 +175,7 @@ export default function AdminProgrammesPage() {
         <div className="container-gfa" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <Link href="/admin/dashboard" style={{ display: "flex", alignItems: "center", gap: "0.375rem", color: "#6b7280", fontSize: "0.8125rem", textDecoration: "none" }}>
-              <ChevronLeft size={16} /> Admin
+              <ChevronLeft size={16} /> Dashboard
             </Link>
             <span style={{ color: "#374151" }}>/</span>
             <span style={{ color: "#f9fafb", fontWeight: 600 }}>Programmes</span>

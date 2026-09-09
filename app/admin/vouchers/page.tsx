@@ -151,7 +151,7 @@ export default function VouchersPage() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
-              <Link href="/admin/dashboard" style={{ color: "#6b7280", textDecoration: "none", fontSize: "0.875rem" }}>Admin</Link>
+              <Link href="/admin/dashboard" style={{ color: "#6b7280", textDecoration: "none", fontSize: "0.875rem" }}>Dashboard</Link>
               <span style={{ color: "#4b5563" }}>/</span>
               <span style={{ color: "#f9fafb", fontSize: "0.875rem" }}>Trial Vouchers</span>
             </div>

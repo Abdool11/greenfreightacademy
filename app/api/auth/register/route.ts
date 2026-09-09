@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { signSession, setSessionCookie } from "@/lib/auth";
+import { signSession, setClientSessionCookie } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
 import { adminNotify } from "@/lib/adminNotify";
 import bcrypt from "bcryptjs";
@@ -112,6 +112,6 @@ export async function POST(req: NextRequest) {
   const session = { companyId: company.id, companyName: company.name, email: company.contact_email, role: "client" as const };
   const token = await signSession(session);
   const res = NextResponse.json({ ok: true, company: { name: company.name, email: company.contact_email } });
-  res.headers.set("Set-Cookie", setSessionCookie(token));
+  res.headers.set("Set-Cookie", setClientSessionCookie(token));
   return res;
 }
