@@ -61,7 +61,11 @@ Key platform capabilities include:
 app/
   api/                        # Backend API routes
     admin/                    # Admin-only routes (JWT protected)
+      certificates/           # Private GFA certificate document view and controlled revocation
     auth/                     # Login, logout, register
+    certificates/document/    # One-time private GFA certificate document redemption
+    integrations/certificates/# Signed BetterDriver certificate issue and document-grant contract
+    public/certificates/verify/# Public exact-number verification only; no learner identity lookup
     bulletins/                # CPD bulletin creation and dissemination
     company/                  # Driver import, quoting, deployment
       training-campaigns/     # Campaign CRUD, close (credit refund), escalation nudge
@@ -98,7 +102,8 @@ app/
   programmes/                 # Public programme listing
   pricing/                    # Public pricing page
   publications/               # CPD publications library
-  registry/                   # Public driver registry
+  registry/                   # Public exact certificate-number verification
+  verify/                     # QR-link entry to the same privacy-preserving verification screen
   login/ register/ trial/     # Auth and onboarding
   about/ contact/ privacy/ terms/ cpd-bulletins/
 components/                   # Shared React components
@@ -109,6 +114,7 @@ lib/                          # Utilities, constants, Supabase client
 public/                       # Static assets
   branding/                   # Committed Green Freight Academy report-letterhead asset
 supabase/migrations/          # SQL migration files (apply via Supabase SQL editor)
+docs/certificate-template/    # Approved fictional GFA certificate visual baseline and exclusions
 ```
 
 ---
@@ -180,11 +186,18 @@ npm run dev
 | `BD_BASE_URL` | Yes | BetterDriver site URL |
 | `NEXT_PUBLIC_SITE_URL` | Yes | Full URL of this site in production |
 | `BD_EVENT_SECRET` | R6 only | Shared HMAC secret for trusted BetterDriver/Moodle learning events |
+| `BD_CERTIFICATE_EVENT_PUBLIC_KEY_PEM` | Release 11 only | BetterDriver RS256 public key for the incoming canonical certificate-event contract |
+| `GFA_CERTIFICATE_RESPONSE_PRIVATE_KEY_PEM` | Release 11 only | GFA RS256 private key for short-lived signed acknowledgements and document-grant responses |
+| `GFA_CERTIFICATE_DOCUMENT_GRANT_SECRET` | Release 11 only | Independent GFA secret used to derive one-time certificate document grants |
+| `GFA_CERTIFICATE_AUDIT_SECRET` | Release 11 only | Independent GFA HMAC secret for privacy-minimised verification fingerprints |
 | `CRON_SECRET` | R7 lifecycle only | Secret required by the compliance lifecycle endpoint |
 | `ENABLE_R6_EVENT_INGEST` | Release controlled | Leave `false` until signed-event preview test passes |
 | `ENABLE_R7_LIFECYCLE_CRON` | Release controlled | Leave `false` until lifecycle preview test passes |
 | `ENABLE_EVIDENCE_REPORTS` | Release controlled | Leave `false` until evidence report/validation preview test passes |
 | `ENABLE_EFT_RECONCILIATION_V2` | Release controlled | Leave `false` until finance preview test passes |
+| `ENABLE_GFA_CERTIFICATE_REGISTRY` | Release 11 controlled | Leave `false` until migration, opaque mapping and signed certificate-event Preview tests pass |
+| `ENABLE_GFA_CERTIFICATE_VERIFICATION` | Release 11 controlled | Leave `false` until synthetic active, expired, revoked and not-found verification tests pass |
+| `ENABLE_GFA_CERTIFICATE_DOCUMENTS` | Release 11 controlled | Leave `false` until one-time, expired, replayed and revoked document-grant Preview tests pass |
 
 No new deployment environment variable is required for commercial invoices or VAT settings. VAT and invoice-term configuration is stored in the protected `site_config` settings flow, not in `.env.local`.
 
@@ -276,3 +289,31 @@ npx playwright test tests/playwright/09-admin-stability.spec.ts
 The suite refuses to run against the production `greenfreightacademy.vercel.app` hostname. It validates admin Dashboard → Companies access, an approved synthetic company detail route, independent client/admin login and logout, client denial from admin Companies, and the Programmes/Vouchers Dashboard breadcrumbs. It never creates, updates or deletes application records. Keep `ENABLE_EVIDENCE_REPORTS=false`; no evidence-report, RTMS, SafeFreight or BetterDriver learning-delivery path is included in Release 11.
 
 Rollback is a standard revert of the Release 11 pull request. If an emergency rollback occurs while legacy cookies remain in browsers, users can sign in again to receive the prior deployment’s expected session state. Review role/session behaviour in Preview before promotion.
+
+### Release 11 — Canonical GFA Certificate Registry (Preview First)
+
+Release 11 establishes GFA as the canonical issuer and verifier of academy certificates. It is separate from the admin-stability release and must be deployed only after that branch has passed its own Preview checks. The release adds the idempotent GFA-only migration `supabase/migrations/20260908_r11_gfa_certificate_registry.sql`; do not copy this migration, storage bucket, secrets or certificate sample into BetterDriver or SafeFreight.
+
+A signed BetterDriver event can ask GFA to issue a certificate for an already mapped GFA enrolment. GFA records an idempotent event, atomically allocates the canonical `GFA-YYYY-########` number, renders the GFA-owned private PDF, stores only a private object path plus SHA-256 checksum, and activates the certificate only after the document is available. The public `/registry` route supports exact certificate-number verification only. It does not accept or return a learner name, ID/passport number, mobile number, employer, document URL, document token or raw external identifier. The response contains only status, certificate number, programme, issue date and recorded validity date. A database-backed rate limit allows ten checks per request fingerprint per minute and audit records contain keyed fingerprints rather than raw identity/search values.
+
+The approved certificate layout is implemented in `lib/certificatePdf.ts` and documented in `docs/certificate-template/`. It retains the GFA header, white field, slim navy frame, straight green rule, navy/green typography, metadata panel and GFA verification QR area. It intentionally excludes curved/swooping motifs, a certification-authority signature block, commercial-document wording, pricing/payment content, evidence-report content and SafeFreight content. `GFA_Driver_Certificate_Sample_v2_NOT_VALID.png` is a fictional visual reference only, not a production credential.
+
+| Variable | Purpose | Preview initial value |
+| --- | --- | --- |
+| `BD_CERTIFICATE_EVENT_PUBLIC_KEY_PEM` | BetterDriver RS256 public key used to verify incoming certificate-event JWTs | Set only after BetterDriver signs the separate contract. |
+| `GFA_CERTIFICATE_RESPONSE_PRIVATE_KEY_PEM` | GFA RS256 private key used to sign outgoing acknowledgements and document-grant assertions | Generate and retain only in GFA; load its public counterpart in BetterDriver. |
+| `GFA_CERTIFICATE_DOCUMENT_GRANT_SECRET` | Independent GFA secret that derives one-time document grants | New `openssl rand -hex 32` value. |
+| `GFA_CERTIFICATE_AUDIT_SECRET` | Independent GFA HMAC key for audit fingerprints | New `openssl rand -hex 32` value. |
+| `ENABLE_GFA_CERTIFICATE_REGISTRY` | Signed issuance and administrator revocation | `false` until migration/mapping/event tests pass. |
+| `ENABLE_GFA_CERTIFICATE_VERIFICATION` | Public exact-number verification | `false` until active/expired/revoked/not-found tests pass. |
+| `ENABLE_GFA_CERTIFICATE_DOCUMENTS` | Private grants, redemption and admin document view | `false` until expiry/replay/revocation tests pass. |
+| `ENABLE_EVIDENCE_REPORTS` | Existing separate evidence-report system | Must remain `false`; Release 11 does not enable or extend it. |
+
+Apply the Release 11 migration in a non-production Supabase/Preview environment first. It creates the private `gfa-certificate-documents` bucket, canonical certificate lifecycle metadata, opaque BetterDriver identity mapping, one-time document grants and minimal verification/document audit tables. It does not bulk-convert or delete legacy `certifications` rows. Because this release contains one new migration, no new combined migration file is required.
+
+Run `npm ci`, `npm run type-check`, `npm run build` and `npx playwright test tests/playwright/09-certificate-registry.spec.ts` before pull request review. Default browser checks create no data and assert privacy-safe UI plus feature-gate/invalid-request behaviour. The optional `GFA_TEST_CERTIFICATE_NUMBER` Preview check must refer only to a pre-existing, synthetic certificate. Do not use real drivers, customer data, production certificates, live WhatsApp messages or production databases.
+
+The release order is: publish GFA branch; build Vercel Preview; apply the migration only to Preview; configure secrets with all three certificate flags false; test disabled behaviour; validate one authorised synthetic mapping/event/PDF; validate active, expired, revoked and not-found verification; validate one-time/expired/replayed document grants; then obtain named product, privacy and operations sign-off for a limited pilot. BetterDriver implements later in its own repository branch against the public signed contract only. Roll back by disabling the three GFA certificate flags and reverting the Release 11 pull request; do not delete certificate, audit or storage records during rollback. BetterDriver signs inbound requests with `iss=betterdriver`, `aud=gfa-certificate-registry` and `kid=betterdriver-certificate-v1`; GFA returns separately RS256-signed short-lived acknowledgements and delivery assertions with `iss=gfa-certificate-registry`, `aud=betterdriver-certificate-presentation` and `kid=gfa-certificate-response-v1`. BetterDriver must verify that outbound GFA assertion with the separately configured GFA public key before acting on it.
+
+> Release 11 is limited to GFA academy certificate issuance, independent GFA certification records, exact certificate-number verification and private document delivery. It does not implement or modify SafeFreight behaviour, incidents, transgressions, briefings, risk profiles/matrices, targeted CPD rationale, RTMS reporting/evidence packs or incident-linked training evidence.
+

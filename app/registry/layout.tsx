@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Registry of Professional Drivers",
-  description:
-    "Search and verify certifications for GreenFreightAcademy-trained drivers. Publicly accessible to employers, fleet operators, and compliance auditors.",
+  title: "Certificate Verification | Green Freight Academy",
+  description: "Verify the current status of a Green Freight Academy certificate using its exact certificate number.",
 };
 
 export default function RegistryLayout({ children }: { children: React.ReactNode }) {
