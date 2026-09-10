@@ -21,7 +21,7 @@ const STATS: StatRow[] = [
     description: "Number of companies displayed on bragging strips across all three sites.",
     modeKey: "stats_companies_mode",
     staticKey: "stats_companies_static",
-    defaultStatic: 7,
+    defaultStatic: 0,
   },
   {
     key: "drivers",
@@ -29,7 +29,7 @@ const STATS: StatRow[] = [
     description: "Total training seats booked — displayed on GFA, TAG, and BD bragging strips.",
     modeKey: "stats_drivers_mode",
     staticKey: "stats_drivers_static",
-    defaultStatic: 252,
+    defaultStatic: 0,
   },
   {
     key: "certificates",
@@ -37,7 +37,7 @@ const STATS: StatRow[] = [
     description: "Total certifications issued — displayed on GFA, TAG, and BD bragging strips.",
     modeKey: "stats_certificates_mode",
     staticKey: "stats_certificates_static",
-    defaultStatic: 207,
+    defaultStatic: 0,
   },
   {
     key: "workshops",
@@ -45,7 +45,7 @@ const STATS: StatRow[] = [
     description: "Number of workshops delivered — displayed on the TAG bragging strip.",
     modeKey: "stats_workshops_mode",
     staticKey: "stats_workshops_static",
-    defaultStatic: 34,
+    defaultStatic: 0,
   },
 ];
 
