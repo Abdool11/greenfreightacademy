@@ -32,6 +32,10 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Invalid email or password");
+        return;
+      }
       window.location.href = "/dashboard";
     } catch { setError("Something went wrong. Please try again."); }
     finally { setLoading(false); }

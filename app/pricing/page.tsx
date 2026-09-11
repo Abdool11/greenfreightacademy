@@ -34,7 +34,8 @@ export default async function PricingPage() {
   const { data, error } = await supabaseAdmin
     .from("courses")
     .select("id, name, slug, price_corporate, price_individual, description")
-    .eq("available", true)
+    .eq("is_active", true)
+    .eq("is_visible", true)
     .order("name");
 
   const courses = (data ?? []) as CoursePricing[];

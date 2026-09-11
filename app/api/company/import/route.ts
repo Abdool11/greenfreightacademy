@@ -4,6 +4,18 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { validateDriverIdentity } from "@/lib/driverIdentity";
 import * as XLSX from "xlsx";
 
+const VALID_SA_PREFIXES = new Set([
+  "60","61","62","63","64","65","66","67","68","69",
+  "71","72","73","74","76","78","79","81","82","83","84",
+]);
+
+function normaliseSAMobile(raw: string): string {
+  let m = raw.replace(/\s+/g, "").replace(/[^0-9]/g, "");
+  if (m.startsWith("27")) return m;
+  if (m.startsWith("0")) return "27" + m.slice(1);
+  return "27" + m;
+}
+
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -42,6 +54,12 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
+    const normalisedMobile = normaliseSAMobile(mobile);
+    if (normalisedMobile.length !== 11 || !VALID_SA_PREFIXES.has(normalisedMobile.slice(2, 4))) {
+      errors.push({ row: rowNum, message: `Row ${rowNum}: Invalid SA mobile number for ${name}` });
+      continue;
+    }
+
     const identity = validateDriverIdentity(rawIdentity);
     if (!identity.ok) {
       errors.push({ row: rowNum, message: `Row ${rowNum}: ${identity.error}` });
@@ -60,9 +78,9 @@ export async function POST(req: NextRequest) {
         company_id: session.companyId,
         first_name: firstName,
         last_name: lastName,
-        mobile,
-        alt_mobile: altMobile || null,
-        email: email || null,
+        mobile: normalisedMobile,
+        alt_mobile: altMobile ? normaliseSAMobile(altMobile) : null,
+        email: email || `driver_${session.companyId}_${normalisedMobile}@placeholder.local`,
         branch: branch || null,
         region: region || null,
         id_number: identity.normalised,
