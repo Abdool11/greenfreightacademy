@@ -345,7 +345,6 @@ Before merge, run `npm ci`, `npm run type-check`, `npm run build`, the safely ga
 
 Rollback is to set `ENABLE_GFA_CERTIFICATE_CONTRACT_V2=false` and revert the Release 12 PR after the Preview deployment is known healthy. Do not delete or overwrite canonical GFA certificate, lifecycle, audit or private-storage records during rollback.
 
-
 ### Release 13 — Certificate Contract QA Repair
 
 Release 13 repairs the three certificate-contract defects identified by Preview/QA without changing BetterDriver, SafeFreight or public certificate policy. It also applies the approved official PDF title, `Professional Truck Driver Certificate`, while preserving the existing clean GFA Quotation-language template, no curved motifs and no certification-authority signature block. It adds the idempotent GFA-only migration `supabase/migrations/20260913_r13_certificate_contract_qa_repair.sql`, which provides one atomic GFA decision procedure for Issue, Not Eligible, Revoke and Supersede. The procedure locks the canonical certificate, reconciles its originating evidence event where present and writes an `admin_audit_log` record containing the GFA administrator, lifecycle transition, bounded decision reason and correlation ID. It does not make a decision by itself and does not modify certificates during migration.
@@ -361,4 +360,12 @@ The application repair uses one shared UUID guard in all certificate decision an
 
 Apply Release 13 only after Releases 11 and 12, and only in a newly identified Preview first. Set `NEXT_PUBLIC_SITE_URL` in Preview to that Preview origin so opaque handoff URLs are runnable there; set the production value only to the canonical live host. Run `npm ci`, `npm run type-check`, `npm run build` and `npx playwright test tests/playwright/10-certificate-contract-v2.spec.ts` with Preview-only keys, temporary administrator credentials and synthetic fixtures. QA must confirm that every decision route accepts a valid UUID, invalid contract requests return `401`, and Issue/Not Eligible/Revoke/Supersede each produce the expected certificate lifecycle, originating decision-event state and `admin_audit_log` record.
 
-Keep `ENABLE_GFA_CERTIFICATE_CONTRACT_V2=false` outside the approved Preview. Do not enable BetterDriver My Certificate, issue real certificates, send certificate-ready messages or use production records until the repaired Preview acceptance evidence is approved. Release 13 deliberately excludes the contact-form, EFT-audit, Bulletins and CPD carryover findings; each belongs in a separate reviewed scope.
+Keep `ENABLE_GFA_CERTIFICATE_CONTRACT_V2=false` outside the approved Preview. Do not enable BetterDriver My Certificate, issue real certificates, send certificate-ready messages or use production records until the repaired Preview acceptance evidence is approved.
+
+### Release 14 — Public Contact Enquiry Persistence
+
+Release 14 repairs the public GFA contact form so it no longer displays a success message after a placeholder delay. The form now sends its validated payload to `POST /api/submit-enquiry`; GFA stores the enquiry in the existing `prospect_leads` pipeline with source `gfa_contact_form` and stage `new`. A confirmation appears only after the database write succeeds. Invalid or unavailable submissions display a visible error and leave the form available for correction or retry.
+
+This release adds **no migration, secret, email/WhatsApp notification, third-party integration or production data mutation**. It does not alter BetterDriver, SafeFreight, certificate issuance, payment, EFT or CPD/bulletin workflows. The endpoint validates bounded organisation/contact data and persists only the enquiry data supplied through the GFA form.
+
+For Preview verification, set `GFA_TEST_BASE_URL` only to a non-production URL and run `npx playwright test tests/playwright/11-contact-enquiry.spec.ts`. The default check loads `/contact` and submits an intentionally incomplete payload, proving validation rejects it without a database write. A human QA tester may then submit one clearly marked synthetic enquiry in Preview and confirm one corresponding `prospect_leads` row with source `gfa_contact_form`; do not use a real customer or production URL. Roll back by reverting the Release 14 pull request; the already stored enquiry rows remain available to administrators.

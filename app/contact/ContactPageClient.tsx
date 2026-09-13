@@ -3,15 +3,12 @@ export const dynamic = "force-dynamic";
 /**
  * GreenFreightAcademy — Contact / Enquiry Page
  *
- * DATA REQUIREMENTS:
- * - Form submission: Server Action → POST /api/submit-enquiry
- *   Payload: { type: EnquiryType, organisationName, organisationRole, name, email, mobile, fleetSize?, message }
- *   TODO: Asif to implement:
- *     1. Server Action that POSTs to /api/submit-enquiry
- *     2. /api/submit-enquiry route: saves to Supabase table enquiry_submissions + triggers email notification
- *     3. Email notification to admin on new submission
- * - URL param ?type= pre-selects the enquiry type
- * - URL param ?programme= pre-fills the programme field in the message
+ * DATA FLOW:
+ * - Public form submission: POST /api/submit-enquiry
+ * - Valid enquiries are stored in the established GFA prospect-lead pipeline.
+ * - A success confirmation is displayed only after the server accepts the write.
+ * - URL param ?type= pre-selects the enquiry type.
+ * - URL param ?programme= pre-fills the programme field in the message.
  */
 
 
@@ -38,6 +35,7 @@ function ContactForm() {
   const [enquiryType, setEnquiryType] = useState<EnquiryType>(typeParam);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState("");
 
   // Pre-fill message with programme if provided
   const defaultMessage = programmeParam
@@ -62,23 +60,34 @@ function ContactForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmissionError("");
     setSubmitting(true);
 
-    // TODO: Asif to implement — replace this stub with a Server Action or fetch to /api/submit-enquiry
-    // Expected payload:
-    // {
-    //   type: enquiryType,
-    //   organisationName: formData.organisationName,
-    //   organisationRole: formData.organisationRole,
-    //   name: formData.name,
-    //   email: formData.email,
-    //   mobile: formData.mobile,
-    //   fleetSize: formData.fleetSize || null,
-    //   message: formData.message,
-    // }
-    await new Promise((r) => setTimeout(r, 800)); // Remove when real action is wired
-    setSubmitting(false);
-    setSubmitted(true);
+    try {
+      const response = await fetch("/api/submit-enquiry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: enquiryType,
+          organisationName: formData.organisationName,
+          organisationRole: formData.organisationRole,
+          name: formData.name,
+          email: formData.email,
+          mobile: formData.mobile,
+          fleetSize: formData.fleetSize,
+          message: formData.message,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.ok) {
+        throw new Error(typeof payload?.error === "string" ? payload.error : "We could not save your enquiry. Please try again shortly.");
+      }
+      setSubmitted(true);
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : "We could not save your enquiry. Please try again shortly.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -106,6 +115,11 @@ function ContactForm() {
 
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.75rem" }}>
+      {submissionError && (
+        <p role="alert" style={{ margin: 0, color: "#fca5a5", fontSize: "0.9rem" }}>
+          {submissionError}
+        </p>
+      )}
       {/* Enquiry type */}
       <div style={{ padding: "1.25rem", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "0.625rem" }}>
         <label className="form-label">Nature of enquiry</label>
