@@ -43,6 +43,20 @@ export interface AdminSession {
 
 type AnySession = CompanySession | AdminSession;
 
+/**
+ * Historic bulletin routes read `id`/`name`, while the core client session
+ * uses `companyId`/`companyName`. Keep one canonical identity and provide the
+ * aliases at the session boundary so existing, newly-issued and legacy client
+ * cookies all remain compatible.
+ */
+function normaliseCompanySession(session: CompanySession): CompanySession {
+  return {
+    ...session,
+    id: session.companyId,
+    name: session.companyName,
+  };
+}
+
 // ─── Type guards ──────────────────────────────────────────────────────────────
 
 export function isAdminSession(s: AnySession): s is AdminSession {
@@ -56,7 +70,8 @@ export function isCompanySession(s: AnySession): s is CompanySession {
 // ─── Sign a session token ────────────────────────────────────────────────────
 
 export async function signSession(payload: AnySession): Promise<string> {
-  return new SignJWT({ ...payload })
+  const normalisedPayload = isCompanySession(payload) ? normaliseCompanySession(payload) : payload;
+  return new SignJWT({ ...normalisedPayload })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
@@ -85,12 +100,12 @@ export async function getSession(): Promise<CompanySession | null> {
   const clientSession = await readVerifiedSession(
     cookieStore.get(CLIENT_SESSION_COOKIE_NAME)?.value
   );
-  if (clientSession && isCompanySession(clientSession)) return clientSession;
+  if (clientSession && isCompanySession(clientSession)) return normaliseCompanySession(clientSession);
 
   const legacySession = await readVerifiedSession(
     cookieStore.get(LEGACY_SESSION_COOKIE_NAME)?.value
   );
-  return legacySession && isCompanySession(legacySession) ? legacySession : null;
+  return legacySession && isCompanySession(legacySession) ? normaliseCompanySession(legacySession) : null;
 }
 
 /**
