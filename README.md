@@ -387,3 +387,10 @@ Client sessions now expose compatible `id` and `name` aliases derived from the c
 
 Apply Release 15 in Preview only after its preceding migrations. Verify with a synthetic client company and drivers, an explicitly configured Preview administrator and all WhatsApp/email delivery credentials disabled or mocked. QA must prove a client can create a GFA bulletin with the correct company association, the CPD queue lists its pending library item, an administrator can approve or reject it, and the corresponding `admin_audit_log` record is created. Roll back by disabling any Preview-only bulletin delivery configuration and reverting the Release 15 pull request; do not delete audit records generated during the test.
 
+
+
+### Final Preview Go-Live Acceptance Gate
+
+The integrated go-live branch includes `docs/testing/GFA_GO_LIVE_PREVIEW_E2E_PROTOCOL.md` and the guarded command `npm run test:e2e:go-live-preview`. The runner refuses the production GFA domain and refuses to start when any mandatory synthetic Preview fixture or secret is missing. It runs the complete Chromium Playwright suite only after TypeScript and production-build validation.
+
+A skipped mandatory test is not a pass. Before the final QA handover, provide a unique Preview URL, temporary synthetic administrator/client credentials, synthetic commercial/certificate fixtures, Preview-only signed assertions, no-send/mock WhatsApp and email configuration, and the evidence bundle specified by the protocol. Never commit test credentials, keys, fixture identifiers or generated reports.

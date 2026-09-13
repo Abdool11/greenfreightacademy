@@ -9,6 +9,7 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "test:e2e": "playwright test",
+    "test:e2e:go-live-preview": "bash scripts/run_go_live_preview_e2e.sh",
     "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
