@@ -52,6 +52,23 @@ export interface StatusLookupAssertion {
   certificateRef?: string;
 }
 
+export interface CertificateDecisionActor {
+  adminId: string;
+  name: string;
+  email?: string;
+}
+
+export class CertificateContractAuthenticationError extends Error {
+  constructor(message = "The certificate contract assertion is invalid.") {
+    super(message);
+    this.name = "CertificateContractAuthenticationError";
+  }
+}
+
+export function isGfaUuid(value: unknown): value is string {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 interface MappingRow {
   driver_id: string;
   company_id: string;
@@ -128,17 +145,23 @@ function assertContractHeader(payload: JWTPayload, header: { kid?: string }) {
 async function verifySignedBetterDriverAssertion(request: Request, audience: string) {
   const authorization = request.headers.get("authorization") ?? "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
-  if (!token) throw new Error("Missing signed BetterDriver assertion.");
+  if (!token) throw new CertificateContractAuthenticationError();
 
-  const publicKey = await importSPKI(normalisePem(requiredEnv("BD_CERTIFICATE_EVENT_PUBLIC_KEY_PEM")), "RS256");
-  const verified = await jwtVerify(token, publicKey, {
-    algorithms: ["RS256"],
-    issuer: CONTRACT_ISSUER,
-    audience,
-    clockTolerance: 5,
-  });
-  assertContractHeader(verified.payload, verified.protectedHeader);
-  return verified.payload;
+  try {
+    const publicKey = await importSPKI(normalisePem(requiredEnv("BD_CERTIFICATE_EVENT_PUBLIC_KEY_PEM")), "RS256");
+    const verified = await jwtVerify(token, publicKey, {
+      algorithms: ["RS256"],
+      issuer: CONTRACT_ISSUER,
+      audience,
+      clockTolerance: 5,
+    });
+    assertContractHeader(verified.payload, verified.protectedHeader);
+    return verified.payload;
+  } catch (error) {
+    if (error instanceof CertificateContractAuthenticationError) throw error;
+    if (error instanceof Error && /not configured/i.test(error.message)) throw error;
+    throw new CertificateContractAuthenticationError();
+  }
 }
 
 export async function verifyCompletionEvidence(request: Request): Promise<CompletionEvidence> {
@@ -175,7 +198,7 @@ export async function verifyCompletionEvidence(request: Request): Promise<Comple
     assessment?.status !== "COMPLETE" ||
     assessment?.evidence_version !== "1.0"
   ) {
-    throw new Error("The completion-evidence claims are incomplete or invalid.");
+    throw new CertificateContractAuthenticationError();
   }
 
   return {
@@ -211,11 +234,11 @@ export async function verifyDriverHandoffAssertion(request: Request): Promise<Ha
     !isIsoDate(occurredAt) ||
     (action !== "view" && action !== "download")
   ) {
-    throw new Error("The certificate handoff claims are incomplete or invalid.");
+    throw new CertificateContractAuthenticationError();
   }
 
   if (typeof payload.iat !== "number" || typeof payload.exp !== "number" || payload.exp - payload.iat > HANDOFF_TTL_SECONDS) {
-    throw new Error("The certificate handoff assertion exceeds the approved lifetime.");
+    throw new CertificateContractAuthenticationError();
   }
 
   return { eventId: payload.jti, occurredAt, driverRef, certificateRef, action };
@@ -233,7 +256,7 @@ export async function verifyCertificateStatusLookup(request: Request): Promise<S
     !isOpaqueReference(driverRef) ||
     (certificateRef !== undefined && (!isString(certificateRef) || !/^gfa_cert_[A-Za-z0-9_-]{16,64}$/.test(certificateRef)))
   ) {
-    throw new Error("The certificate status lookup claims are incomplete or invalid.");
+    throw new CertificateContractAuthenticationError();
   }
   return { eventId: payload.jti, driverRef, certificateRef: certificateRef as string | undefined };
 }
@@ -397,16 +420,55 @@ export async function renderAndStoreIssuedCertificate(certificateId: string) {
   return { ...certificate, document_storage_path: documentPath, status: "active" };
 }
 
-export async function issuePendingCertificate(certificateId: string) {
-  const { data: rows, error } = await supabaseAdmin.rpc("gfa_issue_pending_certificate", { p_certificate_id: certificateId });
-  const issued = Array.isArray(rows) ? rows[0] : rows;
-  if (error || !issued?.certificate_id) throw new Error("The GFA certificate decision could not be issued.");
-  const certificate = await renderAndStoreIssuedCertificate(issued.certificate_id as string);
-  await supabaseAdmin
-    .from("certificate_decision_events")
-    .update({ decision_status: "ISSUED", processed_at: new Date().toISOString(), outcome_detail: null })
-    .eq("id", certificate.decision_event_id ?? "00000000-0000-0000-0000-000000000000");
-  return certificate;
+type CertificateDecisionAction = "ISSUE" | "NOT_ELIGIBLE" | "REVOKE" | "SUPERSEDE";
+
+interface CertificateDecisionResult {
+  certificate_id: string;
+  certificate_ref: string;
+  certificate_number: string | null;
+  certificate_version: string | null;
+  lifecycle_status: CertificateLifecycleStatus;
+  issued_at: string | null;
+  expires_at: string | null;
+  decision_event_id: string | null;
+  correlation_id: string;
+}
+
+async function applyCertificateDecision(
+  action: CertificateDecisionAction,
+  certificateId: string,
+  actor: CertificateDecisionActor,
+  options: { reason?: string; replacementCertificateId?: string } = {}
+): Promise<CertificateDecisionResult> {
+  const { data, error } = await supabaseAdmin.rpc("gfa_apply_certificate_decision", {
+    p_action: action,
+    p_certificate_id: certificateId,
+    p_admin_id: actor.adminId,
+    p_admin_name: actor.name || actor.email || actor.adminId,
+    p_reason: options.reason ?? null,
+    p_replacement_certificate_id: options.replacementCertificateId ?? null,
+  });
+  const decision = Array.isArray(data) ? data[0] : data;
+  if (error || !decision?.certificate_id) throw new Error("The GFA certificate decision could not be completed.");
+  return decision as CertificateDecisionResult;
+}
+
+export async function issuePendingCertificate(certificateId: string, actor: CertificateDecisionActor) {
+  const issued = await applyCertificateDecision("ISSUE", certificateId, actor);
+  const certificate = await renderAndStoreIssuedCertificate(issued.certificate_id);
+  return { certificate, correlationId: issued.correlation_id };
+}
+
+export async function markCertificateNotEligible(certificateId: string, actor: CertificateDecisionActor, reason: string) {
+  return applyCertificateDecision("NOT_ELIGIBLE", certificateId, actor, { reason });
+}
+
+export async function revokeIssuedCertificate(certificateId: string, actor: CertificateDecisionActor, reason: string) {
+  return applyCertificateDecision("REVOKE", certificateId, actor, { reason });
+}
+
+export async function supersedeIssuedCertificate(certificateId: string, actor: CertificateDecisionActor, replacementCertificateId: string) {
+  return applyCertificateDecision("SUPERSEDE", certificateId, actor, { replacementCertificateId });
 }
 
 function currentLifecycle(certificate: CertificateContractRow): CertificateLifecycleStatus {

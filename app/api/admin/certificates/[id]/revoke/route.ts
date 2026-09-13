@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { certificateFeatureEnabled } from "@/lib/certificateRegistry";
-import { certificateContractV2Enabled } from "@/lib/certificateContractV2";
-import { supabaseAdmin } from "@/lib/supabase";
+import {
+  certificateContractV2Enabled,
+  isGfaUuid,
+  revokeIssuedCertificate,
+} from "@/lib/certificateContractV2";
 
 export const dynamic = "force-dynamic";
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
 
 export async function POST(
   request: NextRequest,
@@ -17,7 +16,7 @@ export async function POST(
   if (!certificateFeatureEnabled() && !certificateContractV2Enabled()) return NextResponse.json({ error: "Certificate registry is disabled for this release." }, { status: 503 });
   const admin = await requireAdminSession();
   const { id } = await params;
-  if (!isUuid(id)) return NextResponse.json({ error: "Certificate not found." }, { status: 404 });
+  if (!isGfaUuid(id)) return NextResponse.json({ error: "Certificate not found." }, { status: 404 });
 
   let reason = "";
   try {
@@ -30,15 +29,24 @@ export async function POST(
     return NextResponse.json({ error: "Provide a revocation reason between 10 and 500 characters." }, { status: 400 });
   }
 
-  const { data, error } = await supabaseAdmin
-    .from("certifications")
-    .update({ status: "revoked", lifecycle_status: "REVOKED", lifecycle_updated_at: new Date().toISOString(), revoked_at: new Date().toISOString(), revoked_by: admin.adminId, revoked_reason: reason })
-    .eq("id", id)
-    .in("status", ["active", "issued", "pending_document", "pending_review"])
-    .select("id, certificate_number, certificate_ref, status, lifecycle_status, revoked_at")
-    .maybeSingle();
-  if (error) return NextResponse.json({ error: "Certificate revocation could not be completed." }, { status: 500 });
-  if (!data) return NextResponse.json({ error: "Certificate cannot be revoked from its current status." }, { status: 409 });
-
-  return NextResponse.json({ ok: true, certificate: data }, { headers: { "Cache-Control": "no-store" } });
+  try {
+    const decision = await revokeIssuedCertificate(id, admin, reason);
+    return NextResponse.json({
+      ok: true,
+      certificate: {
+        id: decision.certificate_id,
+        certificateNumber: decision.certificate_number,
+        certificateRef: decision.certificate_ref,
+        lifecycleStatus: decision.lifecycle_status,
+        correlationId: decision.correlation_id,
+      },
+    }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Certificate revocation could not be completed.";
+    const conflict = /lifecycle|completed|reason/i.test(message);
+    return NextResponse.json(
+      { error: conflict ? "Certificate cannot be revoked from its current lifecycle state." : "Certificate revocation could not be completed." },
+      { status: conflict ? 409 : 500 }
+    );
+  }
 }

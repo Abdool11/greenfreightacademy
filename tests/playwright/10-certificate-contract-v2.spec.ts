@@ -1,10 +1,15 @@
 import { expect, test } from "@playwright/test";
+import { adminLogin, sessionCookieHeader } from "./helpers";
 
 const baseUrl = process.env.GFA_TEST_BASE_URL;
 const completionAssertion = process.env.GFA_TEST_CERTIFICATE_COMPLETION_ASSERTION;
 const statusAssertion = process.env.GFA_TEST_CERTIFICATE_STATUS_ASSERTION;
 const handoffAssertion = process.env.GFA_TEST_CERTIFICATE_HANDOFF_ASSERTION;
 const otherDriverHandoffAssertion = process.env.GFA_TEST_OTHER_DRIVER_HANDOFF_ASSERTION;
+const pendingCertificateId = process.env.GFA_TEST_PENDING_CERTIFICATE_ID;
+const notEligibleCertificateId = process.env.GFA_TEST_NOT_ELIGIBLE_CERTIFICATE_ID;
+const supersedeCertificateId = process.env.GFA_TEST_SUPERSEDE_CERTIFICATE_ID;
+const replacementCertificateId = process.env.GFA_TEST_REPLACEMENT_CERTIFICATE_ID;
 const safePreview = Boolean(baseUrl) && !/greenfreightacademy\.co\.za/i.test(baseUrl || "");
 
 function signedHeaders(assertion: string) {
@@ -29,9 +34,42 @@ test.describe("GFA certificate contract Version 2", () => {
       request.post("/api/integrations/certificates/status", { headers: signedHeaders("intentionally-invalid") }),
       request.post("/api/integrations/certificates/handoff", { headers: signedHeaders("intentionally-invalid") }),
     ]);
-    expect([401, 503]).toContain(completion.status());
-    expect([401, 503]).toContain(status.status());
-    expect([401, 503]).toContain(handoff.status());
+    expect(completion.status()).toBe(401);
+    expect(status.status()).toBe(401);
+    expect(handoff.status()).toBe(401);
+  });
+
+  test("reaches each valid administrator decision route and returns an auditable correlation identifier", async ({ request }) => {
+    test.skip(
+      !pendingCertificateId || !process.env.GFA_TEST_ADMIN_EMAIL || !process.env.GFA_TEST_ADMIN_PASSWORD,
+      "Requires Preview-only administrator credentials and a pending synthetic certificate."
+    );
+    const admin = await adminLogin(request);
+    const issue = await request.post(`/api/admin/certificates/${pendingCertificateId}/issue`, {
+      headers: { Cookie: sessionCookieHeader(admin.cookies) },
+    });
+    expect(issue.status()).toBe(200);
+    const issueBody = await issue.json();
+    expect(issueBody.certificate.lifecycleStatus).toBe("ISSUED");
+    expect(issueBody.certificate.correlationId).toMatch(/^[0-9a-f-]{36}$/i);
+
+    if (notEligibleCertificateId) {
+      const notEligible = await request.post(`/api/admin/certificates/${notEligibleCertificateId}/not-eligible`, {
+        headers: { Cookie: sessionCookieHeader(admin.cookies) },
+        data: { reason: "Synthetic Preview-only eligibility decision." },
+      });
+      expect(notEligible.status()).toBe(200);
+      expect((await notEligible.json()).certificate.correlationId).toMatch(/^[0-9a-f-]{36}$/i);
+    }
+
+    if (supersedeCertificateId && replacementCertificateId) {
+      const supersede = await request.post(`/api/admin/certificates/${supersedeCertificateId}/supersede`, {
+        headers: { Cookie: sessionCookieHeader(admin.cookies) },
+        data: { replacementCertificateId },
+      });
+      expect(supersede.status()).toBe(200);
+      expect((await supersede.json()).certificate.correlationId).toMatch(/^[0-9a-f-]{36}$/i);
+    }
   });
 
   test("accepts a configured synthetic completion evidence event idempotently and returns only a signed GFA status assertion", async ({ request }) => {

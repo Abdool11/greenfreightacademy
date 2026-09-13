@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  CertificateContractAuthenticationError,
   certificateContractV2Enabled,
   lookupCertificateStatus,
   signCertificateStatusAssertion,
@@ -21,8 +22,8 @@ export async function POST(request: NextRequest) {
       headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" },
     });
   } catch (error) {
+    const unauthorized = error instanceof CertificateContractAuthenticationError;
     const message = error instanceof Error ? error.message : "Certificate status is unavailable.";
-    const unauthorized = /signed|signing key|expiry|claims|assertion/i.test(message);
     const unavailable = /not configured/i.test(message);
     return NextResponse.json(
       { error: unauthorized ? "Invalid certificate status lookup signature." : unavailable ? "Certificate contract is not configured." : "Certificate status is unavailable." },
