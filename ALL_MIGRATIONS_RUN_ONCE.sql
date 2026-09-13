@@ -1,5 +1,6 @@
 -- Green Freight Academy — ALL MIGRATIONS RUN ONCE
 -- Generated from supabase/migrations in filename order.
+-- Review in Preview before applying to any environment.
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260501_base_schema.sql
@@ -507,7 +508,6 @@ ALTER TABLE training_campaigns ENABLE ROW LEVEL SECURITY;
 
 -- =============================================================================
 -- END supabase/migrations/20260501_base_schema.sql
--- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260502_training_campaigns.sql
@@ -575,7 +575,6 @@ $$;
 
 -- =============================================================================
 -- END supabase/migrations/20260502_training_campaigns.sql
--- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260502_video_library_bulletin_fields.sql
@@ -652,7 +651,6 @@ ALTER TABLE driver_invitations
 
 -- =============================================================================
 -- END supabase/migrations/20260502_video_library_bulletin_fields.sql
--- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260505_schema_gaps_fix.sql
@@ -853,7 +851,6 @@ CREATE INDEX IF NOT EXISTS idx_webhook_log_user ON moodle_webhook_log(moodle_use
 
 -- =============================================================================
 -- END supabase/migrations/20260505_schema_gaps_fix.sql
--- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260506_column_gaps_fix.sql
@@ -1010,7 +1007,6 @@ ON CONFLICT (key) DO NOTHING;
 
 -- =============================================================================
 -- END supabase/migrations/20260506_column_gaps_fix.sql
--- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260506_enable_rls_all_tables.sql
@@ -1301,7 +1297,6 @@ CREATE POLICY "deny_anon_trial_vouchers"
 
 -- =============================================================================
 -- END supabase/migrations/20260506_enable_rls_all_tables.sql
--- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260718_add_course_name_and_audience.sql
@@ -1338,7 +1333,6 @@ UPDATE courses
 
 -- =============================================================================
 -- END supabase/migrations/20260718_add_course_name_and_audience.sql
--- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260720_setup_tokens.sql
@@ -1358,7 +1352,6 @@ CREATE INDEX IF NOT EXISTS idx_companies_setup_token ON companies(setup_token) W
 
 -- =============================================================================
 -- END supabase/migrations/20260720_setup_tokens.sql
--- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260721_quote_approval_columns.sql
@@ -1374,7 +1367,6 @@ COMMENT ON COLUMN quotes.approved_by IS 'Who approved: paystack_auto or admin em
 
 -- =============================================================================
 -- END supabase/migrations/20260721_quote_approval_columns.sql
--- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260806_accounting_notifications.sql
@@ -1543,7 +1535,6 @@ CREATE TABLE IF NOT EXISTS stale_alert_log (
 
 -- =============================================================================
 -- END supabase/migrations/20260806_accounting_notifications.sql
--- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260816_r1_billing_quotes.sql
@@ -1641,7 +1632,6 @@ CREATE TRIGGER trg_company_billing_profiles_updated_at
 
 -- =============================================================================
 -- END supabase/migrations/20260816_r1_billing_quotes.sql
--- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260817_r2_eft_reconciliation.sql
@@ -1714,7 +1704,6 @@ ON CONFLICT (id) DO NOTHING;
 
 -- =============================================================================
 -- END supabase/migrations/20260817_r2_eft_reconciliation.sql
--- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260818_r3_discount_governance.sql
@@ -1831,7 +1820,6 @@ CREATE TRIGGER trg_discount_requests_updated_at
 
 -- =============================================================================
 -- END supabase/migrations/20260818_r3_discount_governance.sql
--- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260819_r6_learning_events.sql
@@ -1884,7 +1872,6 @@ END $$;
 
 -- =============================================================================
 -- END supabase/migrations/20260819_r6_learning_events.sql
--- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260821_r7a_compliance_reporting.sql
@@ -1941,7 +1928,6 @@ CREATE INDEX IF NOT EXISTS idx_quotes_active_expiry ON quotes(company_id, expire
 
 -- =============================================================================
 -- END supabase/migrations/20260821_r7a_compliance_reporting.sql
--- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260903_r8_invoices_vat_commercial_documents.sql
@@ -2124,7 +2110,6 @@ $$;
 
 -- =============================================================================
 -- END supabase/migrations/20260903_r8_invoices_vat_commercial_documents.sql
--- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260905_r10_driver_deployment_idempotency.sql
@@ -2228,7 +2213,6 @@ GRANT EXECUTE ON FUNCTION reserve_quote_driver_deployment_once(UUID, UUID, UUID,
 
 -- =============================================================================
 -- END supabase/migrations/20260905_r10_driver_deployment_idempotency.sql
--- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260905_r9_payment_credit_idempotency.sql
@@ -2310,4 +2294,612 @@ GRANT EXECUTE ON FUNCTION allocate_quote_credits_once(UUID, UUID, UUID, INTEGER)
 
 -- =============================================================================
 -- END supabase/migrations/20260905_r9_payment_credit_idempotency.sql
+
 -- =============================================================================
+-- BEGIN supabase/migrations/20260908_r11_gfa_certificate_registry.sql
+-- =============================================================================
+-- Release 11: GFA canonical certificate registry, verification and private document access
+-- Scope: GFA academy certification only. This migration must not be copied into BetterDriver or SafeFreight.
+-- Safety: idempotent objects; no production certificate data is mutated or deleted.
+
+-- A collision-safe sequence supports atomic allocation only inside the certificate issue function.
+CREATE SEQUENCE IF NOT EXISTS gfa_certificate_number_seq START WITH 100000;
+
+ALTER TABLE certifications
+  ADD COLUMN IF NOT EXISTS certificate_version TEXT NOT NULL DEFAULT 'v1',
+  ADD COLUMN IF NOT EXISTS issued_event_id UUID REFERENCES learning_events(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS document_storage_path TEXT,
+  ADD COLUMN IF NOT EXISTS document_sha256 TEXT,
+  ADD COLUMN IF NOT EXISTS document_generated_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS revoked_by UUID,
+  ADD COLUMN IF NOT EXISTS revoked_reason TEXT,
+  ADD COLUMN IF NOT EXISTS superseded_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS replaced_by_certificate_id UUID REFERENCES certifications(id) ON DELETE SET NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_certifications_issued_event
+  ON certifications(issued_event_id)
+  WHERE issued_event_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_certifications_document_storage_path
+  ON certifications(document_storage_path)
+  WHERE document_storage_path IS NOT NULL;
+
+-- One opaque correlation map is held in GFA. BetterDriver receives no GFA database credential,
+-- browser session or raw personal identity through this table.
+CREATE TABLE IF NOT EXISTS driver_external_identities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  driver_id UUID NOT NULL REFERENCES drivers(id) ON DELETE CASCADE,
+  external_system TEXT NOT NULL CHECK (external_system IN ('betterdriver')),
+  external_subject_ref TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deactivated_at TIMESTAMPTZ,
+  UNIQUE (external_system, external_subject_ref),
+  UNIQUE (driver_id, external_system)
+);
+CREATE INDEX IF NOT EXISTS idx_driver_external_identities_driver
+  ON driver_external_identities(driver_id)
+  WHERE deactivated_at IS NULL;
+
+-- GFA stores only a hash of each one-time BetterDriver document authorisation code.
+CREATE TABLE IF NOT EXISTS certificate_delivery_grants (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  certificate_id UUID NOT NULL REFERENCES certifications(id) ON DELETE CASCADE,
+  audience TEXT NOT NULL CHECK (audience IN ('betterdriver')),
+  authorization_code_hash TEXT NOT NULL UNIQUE,
+  source_event_id UUID REFERENCES learning_events(id) ON DELETE SET NULL,
+  request_id TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_certificate_delivery_grants_redeem
+  ON certificate_delivery_grants(authorization_code_hash, expires_at)
+  WHERE used_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_certificate_delivery_grants_request
+  ON certificate_delivery_grants(audience, request_id);
+
+-- Minimal audit records intentionally exclude raw identity data, raw certificate access codes,
+-- full document URLs and full IP addresses. Application code stores HMAC fingerprints only.
+CREATE TABLE IF NOT EXISTS certificate_verification_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  certificate_id UUID REFERENCES certifications(id) ON DELETE SET NULL,
+  query_fingerprint TEXT NOT NULL,
+  request_fingerprint TEXT,
+  outcome TEXT NOT NULL CHECK (outcome IN ('verified', 'expired', 'revoked', 'not_found', 'invalid_request', 'rate_limited')),
+  occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_certificate_verification_events_certificate_time
+  ON certificate_verification_events(certificate_id, occurred_at DESC);
+
+-- Hashed, fixed-window counters back the public verification limit without retaining an IP address.
+CREATE TABLE IF NOT EXISTS certificate_verification_rate_limits (
+  request_fingerprint TEXT PRIMARY KEY,
+  window_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  request_count INTEGER NOT NULL DEFAULT 0 CHECK (request_count >= 0),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS certificate_document_access_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  certificate_id UUID REFERENCES certifications(id) ON DELETE SET NULL,
+  audience TEXT NOT NULL CHECK (audience IN ('betterdriver', 'gfa_admin')),
+  outcome TEXT NOT NULL CHECK (outcome IN ('granted', 'expired', 'used', 'invalid', 'unavailable')),
+  occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_certificate_document_access_events_certificate_time
+  ON certificate_document_access_events(certificate_id, occurred_at DESC);
+
+-- Private GFA-owned bucket. Direct public reads are not permitted; server routes mint short-lived URLs.
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('gfa-certificate-documents', 'gfa-certificate-documents', false)
+ON CONFLICT (id) DO UPDATE SET public = false;
+
+-- Service-role-only access keeps certificate records and audit tables off the public data plane.
+ALTER TABLE driver_external_identities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE certificate_delivery_grants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE certificate_verification_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE certificate_verification_rate_limits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE certificate_document_access_events ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'driver_external_identities' AND policyname = 'driver_external_identities_service_only') THEN
+    CREATE POLICY "driver_external_identities_service_only"
+      ON driver_external_identities FOR ALL
+      USING (auth.role() = 'service_role')
+      WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'certificate_delivery_grants' AND policyname = 'certificate_delivery_grants_service_only') THEN
+    CREATE POLICY "certificate_delivery_grants_service_only"
+      ON certificate_delivery_grants FOR ALL
+      USING (auth.role() = 'service_role')
+      WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'certificate_verification_events' AND policyname = 'certificate_verification_events_service_only') THEN
+    CREATE POLICY "certificate_verification_events_service_only"
+      ON certificate_verification_events FOR ALL
+      USING (auth.role() = 'service_role')
+      WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'certificate_verification_rate_limits' AND policyname = 'certificate_verification_rate_limits_service_only') THEN
+    CREATE POLICY "certificate_verification_rate_limits_service_only"
+      ON certificate_verification_rate_limits FOR ALL
+      USING (auth.role() = 'service_role')
+      WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'certificate_document_access_events' AND policyname = 'certificate_document_access_events_service_only') THEN
+    CREATE POLICY "certificate_document_access_events_service_only"
+      ON certificate_document_access_events FOR ALL
+      USING (auth.role() = 'service_role')
+      WITH CHECK (auth.role() = 'service_role');
+  END IF;
+END
+$$;
+
+-- Atomically consume a small public-verification allowance. The application supplies a keyed hash,
+-- not a raw IP address or a raw certificate number. PostgreSQL row locking makes this work across
+-- serverless instances.
+CREATE OR REPLACE FUNCTION gfa_consume_certificate_verification_limit(
+  p_request_fingerprint TEXT,
+  p_max_requests INTEGER DEFAULT 10,
+  p_window_seconds INTEGER DEFAULT 60
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  rate_row certificate_verification_rate_limits%ROWTYPE;
+BEGIN
+  INSERT INTO certificate_verification_rate_limits (request_fingerprint, window_started_at, request_count, updated_at)
+  VALUES (p_request_fingerprint, NOW(), 0, NOW())
+  ON CONFLICT (request_fingerprint) DO NOTHING;
+
+  SELECT * INTO rate_row
+  FROM certificate_verification_rate_limits
+  WHERE request_fingerprint = p_request_fingerprint
+  FOR UPDATE;
+
+  IF rate_row.window_started_at <= NOW() - make_interval(secs => p_window_seconds) THEN
+    UPDATE certificate_verification_rate_limits
+    SET window_started_at = NOW(), request_count = 1, updated_at = NOW()
+    WHERE request_fingerprint = p_request_fingerprint;
+    RETURN TRUE;
+  END IF;
+
+  IF rate_row.request_count >= p_max_requests THEN
+    UPDATE certificate_verification_rate_limits
+    SET updated_at = NOW()
+    WHERE request_fingerprint = p_request_fingerprint;
+    RETURN FALSE;
+  END IF;
+
+  UPDATE certificate_verification_rate_limits
+  SET request_count = request_count + 1, updated_at = NOW()
+  WHERE request_fingerprint = p_request_fingerprint;
+  RETURN TRUE;
+END;
+$$;
+
+-- Allocate inside PostgreSQL so concurrent issuances cannot claim the same certificate number.
+CREATE OR REPLACE FUNCTION gfa_allocate_certificate_number(p_issued_at TIMESTAMPTZ DEFAULT NOW())
+RETURNS TEXT
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  candidate TEXT;
+BEGIN
+  LOOP
+    candidate := 'GFA-' || to_char(p_issued_at AT TIME ZONE 'Africa/Johannesburg', 'YYYY') || '-' || lpad(nextval('gfa_certificate_number_seq')::TEXT, 8, '0');
+    EXIT WHEN NOT EXISTS (SELECT 1 FROM certifications AS existing_certificate WHERE existing_certificate.certificate_number = candidate);
+  END LOOP;
+  RETURN candidate;
+END;
+$$;
+
+-- Creates the GFA canonical certificate record for a persisted, authenticated certificate-issued event.
+-- A newly inserted record remains pending_document until the private PDF upload completes in GFA.
+CREATE OR REPLACE FUNCTION gfa_issue_certificate_from_learning_event(
+  p_learning_event_id UUID,
+  p_certificate_version TEXT DEFAULT 'v1'
+)
+RETURNS TABLE (certificate_id UUID, certificate_number TEXT, created BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  event_row learning_events%ROWTYPE;
+  enrolment_row enrolments%ROWTYPE;
+  course_programme TEXT;
+  existing_certificate certifications%ROWTYPE;
+  issued_number TEXT;
+BEGIN
+  SELECT * INTO event_row
+  FROM learning_events
+  WHERE id = p_learning_event_id
+    AND event_type = 'certificate_issued'
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Certificate issue event % was not found', p_learning_event_id USING ERRCODE = 'P0001';
+  END IF;
+
+  SELECT * INTO enrolment_row
+  FROM enrolments
+  WHERE id = event_row.enrolment_id
+    AND driver_id = event_row.driver_id
+    AND company_id = event_row.company_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Certificate issue event % has no matching enrolment', p_learning_event_id USING ERRCODE = 'P0001';
+  END IF;
+
+  SELECT programme INTO course_programme FROM courses WHERE id = enrolment_row.course_id;
+
+  SELECT * INTO existing_certificate
+  FROM certifications AS existing_certificate_row
+  WHERE existing_certificate_row.enrolment_id = enrolment_row.id
+    AND existing_certificate_row.status IN ('active', 'issued', 'pending_document')
+  ORDER BY issued_at DESC, created_at DESC
+  LIMIT 1
+  FOR UPDATE;
+
+  IF FOUND THEN
+    UPDATE certifications AS certificate_row
+    SET issued_event_id = COALESCE(certificate_row.issued_event_id, event_row.id),
+        certificate_version = COALESCE(NULLIF(certificate_row.certificate_version, ''), p_certificate_version)
+    WHERE certificate_row.id = existing_certificate.id
+    RETURNING certificate_row.id, certificate_row.certificate_number INTO certificate_id, certificate_number;
+    created := false;
+    RETURN NEXT;
+    RETURN;
+  END IF;
+
+  issued_number := gfa_allocate_certificate_number(event_row.occurred_at);
+
+  INSERT INTO certifications AS certificate_row (
+    driver_id,
+    company_id,
+    enrolment_id,
+    course_id,
+    certificate_number,
+    programme,
+    issued_at,
+    status,
+    certificate_version,
+    issued_event_id
+  ) VALUES (
+    enrolment_row.driver_id,
+    enrolment_row.company_id,
+    enrolment_row.id,
+    enrolment_row.course_id,
+    issued_number,
+    COALESCE(course_programme, 'driver-foundation'),
+    event_row.occurred_at,
+    'pending_document',
+    p_certificate_version,
+    event_row.id
+  )
+  RETURNING certificate_row.id, certificate_row.certificate_number INTO certificate_id, certificate_number;
+
+  created := true;
+  RETURN NEXT;
+END;
+$$;
+
+-- A delivery grant request ID is unique per BetterDriver request. The GFA application derives
+-- the one-time code from that ID with its local secret, so a safe network retry receives the
+-- same code without GFA persisting the plaintext code.
+
+-- Atomically redeem one BetterDriver authorisation code only while the certificate remains valid
+-- and the private document is available. The returned storage path is never persisted by BetterDriver.
+CREATE OR REPLACE FUNCTION gfa_redeem_certificate_delivery_grant(p_authorization_code_hash TEXT)
+RETURNS TABLE (certificate_id UUID, document_storage_path TEXT)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  UPDATE certificate_delivery_grants grant_row
+  SET used_at = NOW()
+  FROM certifications certificate_row
+  WHERE grant_row.authorization_code_hash = p_authorization_code_hash
+    AND grant_row.used_at IS NULL
+    AND grant_row.expires_at > NOW()
+    AND grant_row.certificate_id = certificate_row.id
+    AND certificate_row.status IN ('active', 'issued')
+    AND certificate_row.document_storage_path IS NOT NULL
+  RETURNING certificate_row.id, certificate_row.document_storage_path;
+END;
+$$;
+
+-- Notes for operations:
+-- 1. Existing legacy certifications with status='active' remain readable. They are not bulk-converted.
+-- 2. The application never uses certifications.pdf_url for new GFA certificates; it stores a private bucket path above.
+-- 3. Certificate/registry feature flags remain false until Preview evidence is signed off.
+
+-- =============================================================================
+-- END supabase/migrations/20260908_r11_gfa_certificate_registry.sql
+
+-- =============================================================================
+-- BEGIN supabase/migrations/20260912_r12_certificate_contract_completion.sql
+-- =============================================================================
+-- =============================================================================
+-- RELEASE 12: Canonical Certificate Contract Completion
+-- Scope: Green Freight Academy only. This migration must not be copied to
+-- BetterDriver, SafeFreight, TAG, or any sister repository.
+-- Safety: idempotent schema additions and functions only. It does not issue,
+-- revoke, supersede or delete production certificates.
+-- =============================================================================
+
+-- Canonical certificate references are opaque integration identifiers. They are
+-- distinct from the public certificate number and from the database primary key.
+ALTER TABLE certifications
+  ADD COLUMN IF NOT EXISTS certificate_ref TEXT,
+  ADD COLUMN IF NOT EXISTS lifecycle_status TEXT,
+  ADD COLUMN IF NOT EXISTS decision_reason TEXT,
+  ADD COLUMN IF NOT EXISTS decision_event_id UUID,
+  ADD COLUMN IF NOT EXISTS lifecycle_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+UPDATE certifications
+SET certificate_ref = 'gfa_cert_' || replace(gen_random_uuid()::TEXT, '-', '')
+WHERE certificate_ref IS NULL;
+
+UPDATE certifications
+SET lifecycle_status = CASE
+  WHEN status = 'revoked' THEN 'REVOKED'
+  WHEN status = 'superseded' THEN 'SUPERSEDED'
+  WHEN status = 'expired' THEN 'EXPIRED'
+  WHEN status IN ('pending_review', 'pending_document') THEN 'PENDING_REVIEW'
+  ELSE 'ISSUED'
+END
+WHERE lifecycle_status IS NULL;
+
+ALTER TABLE certifications
+  ALTER COLUMN certificate_ref SET DEFAULT ('gfa_cert_' || replace(gen_random_uuid()::TEXT, '-', '')),
+  ALTER COLUMN lifecycle_status SET DEFAULT 'PENDING_REVIEW',
+  ALTER COLUMN certificate_ref SET NOT NULL,
+  ALTER COLUMN lifecycle_status SET NOT NULL,
+  ALTER COLUMN certificate_number DROP NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_certifications_certificate_ref_unique
+  ON certifications(certificate_ref);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_certifications_decision_event_unique
+  ON certifications(decision_event_id)
+  WHERE decision_event_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_certifications_lifecycle_status
+  ON certifications(lifecycle_status, issued_at DESC);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'certifications_lifecycle_status_valid'
+  ) THEN
+    ALTER TABLE certifications
+      ADD CONSTRAINT certifications_lifecycle_status_valid
+      CHECK (lifecycle_status IN ('PENDING_REVIEW', 'ISSUED', 'SUPERSEDED', 'EXPIRED', 'REVOKED', 'NOT_ELIGIBLE'));
+  END IF;
+END
+$$;
+
+-- This is the GFA-held mapping for an authorised BetterDriver enrolment. It uses
+-- opaque BetterDriver references only and never stores a BetterDriver credential,
+-- browser session, raw identity number, or profile payload.
+CREATE TABLE IF NOT EXISTS certificate_external_mappings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  external_system TEXT NOT NULL CHECK (external_system IN ('betterdriver')),
+  external_driver_ref TEXT NOT NULL,
+  external_company_ref TEXT NOT NULL,
+  external_enrolment_ref TEXT NOT NULL,
+  driver_id UUID NOT NULL REFERENCES drivers(id) ON DELETE CASCADE,
+  company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  enrolment_id UUID NOT NULL REFERENCES enrolments(id) ON DELETE CASCADE,
+  programme_code TEXT NOT NULL,
+  programme_version TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deactivated_at TIMESTAMPTZ,
+  UNIQUE (external_system, external_enrolment_ref),
+  UNIQUE (enrolment_id, external_system)
+);
+CREATE INDEX IF NOT EXISTS idx_certificate_external_mappings_active_driver
+  ON certificate_external_mappings(driver_id, external_system)
+  WHERE deactivated_at IS NULL;
+
+-- Receipt/audit record for the versioned BetterDriver completion evidence event.
+-- The source event is unique so replay or retry cannot create a second workflow.
+CREATE TABLE IF NOT EXISTS certificate_decision_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  source_system TEXT NOT NULL CHECK (source_system IN ('betterdriver')),
+  source_event_id TEXT NOT NULL,
+  schema_version TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  completion_evidence_ref TEXT NOT NULL,
+  external_driver_ref TEXT NOT NULL,
+  external_company_ref TEXT NOT NULL,
+  external_enrolment_ref TEXT NOT NULL,
+  programme_code TEXT NOT NULL,
+  programme_version TEXT NOT NULL,
+  driver_id UUID REFERENCES drivers(id) ON DELETE SET NULL,
+  company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
+  enrolment_id UUID REFERENCES enrolments(id) ON DELETE SET NULL,
+  occurred_at TIMESTAMPTZ NOT NULL,
+  received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  decision_status TEXT NOT NULL CHECK (decision_status IN ('PENDING_REVIEW', 'ISSUED', 'SUPERSEDED', 'EXPIRED', 'REVOKED', 'NOT_ELIGIBLE')),
+  outcome_detail TEXT,
+  processed_at TIMESTAMPTZ,
+  payload JSONB NOT NULL DEFAULT '{}'::JSONB,
+  UNIQUE (source_system, source_event_id)
+);
+CREATE INDEX IF NOT EXISTS idx_certificate_decision_events_enrolment_time
+  ON certificate_decision_events(enrolment_id, received_at DESC);
+
+-- One signed BetterDriver browser assertion can grant only one view/download
+-- action for one GFA certificate. GFA stores the signed JWT identifier, never a
+-- raw BetterDriver browser session or document URL.
+CREATE TABLE IF NOT EXISTS certificate_handoff_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  handoff_jti TEXT NOT NULL UNIQUE,
+  handoff_code_hash TEXT NOT NULL UNIQUE,
+  certificate_id UUID NOT NULL REFERENCES certifications(id) ON DELETE CASCADE,
+  driver_id UUID NOT NULL REFERENCES drivers(id) ON DELETE CASCADE,
+  audience TEXT NOT NULL CHECK (audience IN ('betterdriver')),
+  permitted_action TEXT NOT NULL CHECK (permitted_action IN ('view', 'download')),
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_certificate_handoff_sessions_redeem
+  ON certificate_handoff_sessions(handoff_code_hash, expires_at)
+  WHERE used_at IS NULL;
+
+ALTER TABLE certificate_external_mappings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE certificate_decision_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE certificate_handoff_sessions ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'certificate_external_mappings' AND policyname = 'certificate_external_mappings_service_only') THEN
+    CREATE POLICY "certificate_external_mappings_service_only"
+      ON certificate_external_mappings FOR ALL
+      USING (auth.role() = 'service_role')
+      WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'certificate_decision_events' AND policyname = 'certificate_decision_events_service_only') THEN
+    CREATE POLICY "certificate_decision_events_service_only"
+      ON certificate_decision_events FOR ALL
+      USING (auth.role() = 'service_role')
+      WITH CHECK (auth.role() = 'service_role');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'certificate_handoff_sessions' AND policyname = 'certificate_handoff_sessions_service_only') THEN
+    CREATE POLICY "certificate_handoff_sessions_service_only"
+      ON certificate_handoff_sessions FOR ALL
+      USING (auth.role() = 'service_role')
+      WITH CHECK (auth.role() = 'service_role');
+  END IF;
+END
+$$;
+
+-- Allocate the public certificate number only when a GFA administrator issues a
+-- pending certificate. This maintains a stable opaque reference while avoiding
+-- gaps from records still awaiting GFA professional review.
+CREATE OR REPLACE FUNCTION gfa_issue_pending_certificate(
+  p_certificate_id UUID
+)
+RETURNS TABLE (certificate_id UUID, certificate_number TEXT, certificate_ref TEXT, certificate_version TEXT)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  certificate_row certifications%ROWTYPE;
+  allocated_number TEXT;
+BEGIN
+  SELECT * INTO certificate_row
+  FROM certifications
+  WHERE id = p_certificate_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Certificate was not found' USING ERRCODE = 'P0001';
+  END IF;
+
+  IF certificate_row.lifecycle_status = 'PENDING_REVIEW' THEN
+    allocated_number := gfa_allocate_certificate_number(NOW());
+    UPDATE certifications
+    SET certificate_number = allocated_number,
+        status = 'pending_document',
+        lifecycle_status = 'ISSUED',
+        issued_at = NOW(),
+        lifecycle_updated_at = NOW()
+    WHERE id = certificate_row.id
+    RETURNING id, certifications.certificate_number, certifications.certificate_ref, certifications.certificate_version
+      INTO certificate_id, certificate_number, certificate_ref, certificate_version;
+    RETURN NEXT;
+    RETURN;
+  END IF;
+
+  IF certificate_row.lifecycle_status = 'ISSUED' AND certificate_row.certificate_number IS NOT NULL THEN
+    certificate_id := certificate_row.id;
+    certificate_number := certificate_row.certificate_number;
+    certificate_ref := certificate_row.certificate_ref;
+    certificate_version := certificate_row.certificate_version;
+    RETURN NEXT;
+    RETURN;
+  END IF;
+
+  RAISE EXCEPTION 'Certificate is not eligible for issuance' USING ERRCODE = 'P0001';
+END;
+$$;
+
+-- Redeem a signed BetterDriver browser handoff exactly once. The current GFA
+-- lifecycle and document state are checked at redemption time, so revocation,
+-- supersession or expiry wins over an earlier signed assertion.
+CREATE OR REPLACE FUNCTION gfa_redeem_certificate_handoff(
+  p_handoff_code_hash TEXT
+)
+RETURNS TABLE (certificate_id UUID, document_storage_path TEXT)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  UPDATE certificate_handoff_sessions AS session_row
+  SET used_at = NOW()
+  FROM certifications AS certificate_row
+  WHERE session_row.handoff_code_hash = p_handoff_code_hash
+    AND session_row.used_at IS NULL
+    AND session_row.expires_at > NOW()
+    AND session_row.certificate_id = certificate_row.id
+    AND certificate_row.lifecycle_status = 'ISSUED'
+    AND certificate_row.status IN ('active', 'issued')
+    AND (certificate_row.expires_at IS NULL OR certificate_row.expires_at > NOW())
+    AND certificate_row.document_storage_path IS NOT NULL
+  RETURNING certificate_row.id, certificate_row.document_storage_path;
+END;
+$$;
+
+-- Supersession preserves the old GFA record and points it to the replacement.
+-- The application verifies operator authority and same-driver ownership first.
+CREATE OR REPLACE FUNCTION gfa_mark_certificate_superseded(
+  p_certificate_id UUID,
+  p_replacement_certificate_id UUID
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  current_row certifications%ROWTYPE;
+  replacement_row certifications%ROWTYPE;
+BEGIN
+  SELECT * INTO current_row FROM certifications WHERE id = p_certificate_id FOR UPDATE;
+  SELECT * INTO replacement_row FROM certifications WHERE id = p_replacement_certificate_id FOR UPDATE;
+
+  IF NOT FOUND OR current_row.id IS NULL OR replacement_row.id IS NULL THEN
+    RAISE EXCEPTION 'Certificate or replacement was not found' USING ERRCODE = 'P0001';
+  END IF;
+  IF current_row.driver_id <> replacement_row.driver_id THEN
+    RAISE EXCEPTION 'Replacement certificate must belong to the same driver' USING ERRCODE = 'P0001';
+  END IF;
+  IF current_row.id = replacement_row.id THEN
+    RAISE EXCEPTION 'A certificate cannot supersede itself' USING ERRCODE = 'P0001';
+  END IF;
+  IF replacement_row.lifecycle_status <> 'ISSUED' THEN
+    RAISE EXCEPTION 'Replacement certificate is not issued' USING ERRCODE = 'P0001';
+  END IF;
+
+  UPDATE certifications
+  SET status = 'superseded',
+      lifecycle_status = 'SUPERSEDED',
+      superseded_at = NOW(),
+      replaced_by_certificate_id = replacement_row.id,
+      lifecycle_updated_at = NOW()
+  WHERE id = current_row.id
+    AND lifecycle_status = 'ISSUED';
+
+  RETURN FOUND;
+END;
+$$;
+
+-- =============================================================================
+-- END RELEASE 12 MIGRATION
+-- =============================================================================
+
+-- =============================================================================
+-- END supabase/migrations/20260912_r12_certificate_contract_completion.sql

@@ -6,6 +6,7 @@ import {
   certificateVerificationFingerprint,
   consumeVerificationAllowance,
 } from "@/lib/certificateRegistry";
+import { certificateContractV2Enabled } from "@/lib/certificateContractV2";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +31,7 @@ function hasValidCertificateNumberFormat(value: string) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!certificateFeatureEnabled() || !certificateVerificationEnabled()) {
+  if (!certificateContractV2Enabled() && (!certificateFeatureEnabled() || !certificateVerificationEnabled())) {
     return noStoreJson({ error: "Certificate verification is disabled for this release." }, { status: 503 });
   }
 

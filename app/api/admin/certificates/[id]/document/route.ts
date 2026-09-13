@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { certificateBucketName, certificateDocumentsEnabled } from "@/lib/certificateRegistry";
+import { certificateContractV2Enabled } from "@/lib/certificateContractV2";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -13,18 +14,19 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!certificateDocumentsEnabled()) return new NextResponse("Certificate documents are disabled.", { status: 503 });
+  if (!certificateDocumentsEnabled() && !certificateContractV2Enabled()) return new NextResponse("Certificate documents are disabled.", { status: 503 });
   await requireAdminSession();
   const { id } = await params;
   if (!isUuid(id)) return new NextResponse("Certificate not found.", { status: 404 });
 
   const { data: certificate, error } = await supabaseAdmin
     .from("certifications")
-    .select("id, status, document_storage_path")
+    .select("id, status, lifecycle_status, expires_at, document_storage_path")
     .eq("id", id)
     .in("status", ["active", "issued"])
+    .eq("lifecycle_status", "ISSUED")
     .maybeSingle();
-  if (error || !certificate?.document_storage_path) {
+  if (error || !certificate?.document_storage_path || (certificate.expires_at && new Date(certificate.expires_at).getTime() < Date.now())) {
     await supabaseAdmin.from("certificate_document_access_events").insert({ certificate_id: id, audience: "gfa_admin", outcome: "unavailable" });
     return new NextResponse("Certificate document is unavailable.", { status: 404 });
   }

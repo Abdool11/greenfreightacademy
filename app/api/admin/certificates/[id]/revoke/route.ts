@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { certificateFeatureEnabled } from "@/lib/certificateRegistry";
+import { certificateContractV2Enabled } from "@/lib/certificateContractV2";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!certificateFeatureEnabled()) return NextResponse.json({ error: "Certificate registry is disabled for this release." }, { status: 503 });
+  if (!certificateFeatureEnabled() && !certificateContractV2Enabled()) return NextResponse.json({ error: "Certificate registry is disabled for this release." }, { status: 503 });
   const admin = await requireAdminSession();
   const { id } = await params;
   if (!isUuid(id)) return NextResponse.json({ error: "Certificate not found." }, { status: 404 });

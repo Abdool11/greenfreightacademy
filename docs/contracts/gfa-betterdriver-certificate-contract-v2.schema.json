@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://greenfreightacademy.co.za/contracts/gfa-betterdriver-certificate-contract-v2.schema.json",
+  "title": "GFA BetterDriver Canonical Certificate Contract V2",
+  "description": "Schemas for signed BetterDriver certificate completion evidence, status lookup and scoped driver handoff assertions. JWT signature, issuer, audience, expiry and key ID are enforced by GFA separately.",
+  "$defs": {
+    "opaqueReference": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{8,180}$"
+    },
+    "certificateReference": {
+      "type": "string",
+      "pattern": "^gfa_cert_[A-Za-z0-9_-]{16,64}$"
+    },
+    "baseAssertion": {
+      "type": "object",
+      "required": ["schema_version", "jti", "iat", "exp"],
+      "properties": {
+        "schema_version": { "const": "1.0" },
+        "jti": { "$ref": "#/$defs/opaqueReference" },
+        "iat": { "type": "integer" },
+        "exp": { "type": "integer" }
+      }
+    },
+    "completionEvidence": {
+      "allOf": [
+        { "$ref": "#/$defs/baseAssertion" },
+        {
+          "type": "object",
+          "required": ["event_type", "occurred_at", "driver_ref", "company_ref", "enrolment_ref", "completion_evidence_ref", "programme_code", "programme_version", "assessment_summary"],
+          "properties": {
+            "event_type": { "const": "bd.learning_completion_evidence.v1" },
+            "occurred_at": { "type": "string", "format": "date-time" },
+            "driver_ref": { "$ref": "#/$defs/opaqueReference" },
+            "company_ref": { "$ref": "#/$defs/opaqueReference" },
+            "enrolment_ref": { "$ref": "#/$defs/opaqueReference" },
+            "completion_evidence_ref": { "$ref": "#/$defs/opaqueReference" },
+            "programme_code": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,48}$" },
+            "programme_version": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,48}$" },
+            "assessment_summary": {
+              "type": "object",
+              "required": ["status", "evidence_version"],
+              "properties": {
+                "status": { "const": "COMPLETE" },
+                "evidence_version": { "const": "1.0" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "statusLookup": {
+      "allOf": [
+        { "$ref": "#/$defs/baseAssertion" },
+        {
+          "type": "object",
+          "required": ["event_type", "driver_ref"],
+          "properties": {
+            "event_type": { "const": "bd.gfa_certificate_status_lookup.v1" },
+            "driver_ref": { "$ref": "#/$defs/opaqueReference" },
+            "certificate_ref": { "$ref": "#/$defs/certificateReference" }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "driverHandoff": {
+      "allOf": [
+        { "$ref": "#/$defs/baseAssertion" },
+        {
+          "type": "object",
+          "required": ["event_type", "occurred_at", "driver_ref", "certificate_ref", "action"],
+          "properties": {
+            "event_type": { "const": "bd.gfa_certificate_handoff.v1" },
+            "occurred_at": { "type": "string", "format": "date-time" },
+            "driver_ref": { "$ref": "#/$defs/opaqueReference" },
+            "certificate_ref": { "$ref": "#/$defs/certificateReference" },
+            "action": { "enum": ["view", "download"] }
+          },
+          "additionalProperties": true
+        }
+      ]
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/completionEvidence" },
+    { "$ref": "#/$defs/statusLookup" },
+    { "$ref": "#/$defs/driverHandoff" }
+  ]
+}

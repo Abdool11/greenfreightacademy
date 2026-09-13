@@ -188,7 +188,8 @@ npm run dev
 | `BD_EVENT_SECRET` | R6 only | Shared HMAC secret for trusted BetterDriver/Moodle learning events |
 | `BD_CERTIFICATE_EVENT_PUBLIC_KEY_PEM` | Release 11 only | BetterDriver RS256 public key for the incoming canonical certificate-event contract |
 | `GFA_CERTIFICATE_RESPONSE_PRIVATE_KEY_PEM` | Release 11 only | GFA RS256 private key for short-lived signed acknowledgements and document-grant responses |
-| `GFA_CERTIFICATE_DOCUMENT_GRANT_SECRET` | Release 11 only | Independent GFA secret used to derive one-time certificate document grants |
+| `GFA_CERTIFICATE_DOCUMENT_GRANT_SECRET` | Release 11 legacy only | Retained for the retired direct document-grant route; do not enable it for Version 2. |
+| `GFA_CERTIFICATE_HANDOFF_SECRET` | Release 12 only | Independent GFA secret used to hash one-time opaque BetterDriver browser-handoff codes. |
 | `GFA_CERTIFICATE_AUDIT_SECRET` | Release 11 only | Independent GFA HMAC secret for privacy-minimised verification fingerprints |
 | `CRON_SECRET` | R7 lifecycle only | Secret required by the compliance lifecycle endpoint |
 | `ENABLE_R6_EVENT_INGEST` | Release controlled | Leave `false` until signed-event preview test passes |
@@ -197,7 +198,8 @@ npm run dev
 | `ENABLE_EFT_RECONCILIATION_V2` | Release controlled | Leave `false` until finance preview test passes |
 | `ENABLE_GFA_CERTIFICATE_REGISTRY` | Release 11 controlled | Leave `false` until migration, opaque mapping and signed certificate-event Preview tests pass |
 | `ENABLE_GFA_CERTIFICATE_VERIFICATION` | Release 11 controlled | Leave `false` until synthetic active, expired, revoked and not-found verification tests pass |
-| `ENABLE_GFA_CERTIFICATE_DOCUMENTS` | Release 11 controlled | Leave `false` until one-time, expired, replayed and revoked document-grant Preview tests pass |
+| `ENABLE_GFA_CERTIFICATE_DOCUMENTS` | Release 11 legacy controlled | Keep `false`; Version 2 replaces the direct document-grant flow. |
+| `ENABLE_GFA_CERTIFICATE_CONTRACT_V2` | Release 12 controlled | Leave `false` until the Version 2 signed completion, GFA decision, status, cross-driver and one-time handoff Preview tests pass. |
 
 No new deployment environment variable is required for commercial invoices or VAT settings. VAT and invoice-term configuration is stored in the protected `site_config` settings flow, not in `.env.local`.
 
@@ -317,3 +319,28 @@ The release order is: publish GFA branch; build Vercel Preview; apply the migrat
 
 > Release 11 is limited to GFA academy certificate issuance, independent GFA certification records, exact certificate-number verification and private document delivery. It does not implement or modify SafeFreight behaviour, incidents, transgressions, briefings, risk profiles/matrices, targeted CPD rationale, RTMS reporting/evidence packs or incident-linked training evidence.
 
+
+
+### Release 12 — Authoritative GFA Certificate Contract Completion
+
+Release 12 implements the authoritative GFA-only completion-evidence and BetterDriver access contract in `supabase/migrations/20260912_r12_certificate_contract_completion.sql`. It is a **separate feature-branch release** and requires the Release 11 certificate-registry migration to have been applied first. Run the combined `ALL_MIGRATIONS_RUN_ONCE.sql` only in an empty Preview database, or apply Release 12 in filename order after Release 11 in an existing Preview database. Do not apply either migration to production before the named GFA authority approves the Preview acceptance record.
+
+The release makes GFA the final certificate decision-maker. BetterDriver submits only a signed `bd.learning_completion_evidence.v1` event, which GFA stores against a pre-created opaque mapping and turns into a `PENDING_REVIEW` record. An authorised GFA administrator may issue it, record `NOT_ELIGIBLE`, revoke it or supersede it. GFA allocates the public `GFA-YYYY-########` certificate number only on issue, stores an independent opaque `certificate_ref`, renders the approved clean Quotation-language PDF in GFA private storage and remains the only public verification host.
+
+Release 12 retires the legacy direct issue and generic direct document-grant endpoints with HTTP `410`. BetterDriver receives a signed minimum status projection and creates driver access through the GFA Version 2 handoff endpoint only. The browser URL contains a one-time opaque code; GFA rechecks lifecycle, ownership, expiry and document availability before redirecting to a short-lived private PDF URL. No BetterDriver login token, raw driver ID, certificate number, permanent document URL, GFA storage credential or GFA database access is accepted.
+
+The approved certificate renderer remains `lib/certificatePdf.ts`. It uses the existing GFA commercial/Quotation language—GFA header, navy/green hierarchy, straight line and border rhythm, controlled metadata panel and official QR verification—while intentionally excluding quotation pricing, VAT, payment terms, client address blocks, curved motifs and certification-authority signature block. The approved fictional visual baseline is retained under `docs/certificate-template/`; no BetterDriver logo is used as an issuing authority.
+
+| Required configuration | Preview value and rule |
+| --- | --- |
+| `BD_CERTIFICATE_EVENT_PUBLIC_KEY_PEM` | Set the approved BetterDriver RS256 **public** key only. GFA never receives the BetterDriver private key. |
+| `GFA_CERTIFICATE_RESPONSE_PRIVATE_KEY_PEM` | Generate and retain the GFA RS256 private key in GFA only; provide its public counterpart through the approved BetterDriver configuration process. |
+| `GFA_CERTIFICATE_HANDOFF_SECRET` | New independent high-entropy GFA secret used only to hash opaque one-time handoff codes. |
+| `ENABLE_GFA_CERTIFICATE_CONTRACT_V2` | Keep `false` initially. Enable only in the identified Vercel Preview after Release 12 migration, mapping and synthetic contract fixtures exist. |
+| Legacy certificate flags | Keep `ENABLE_GFA_CERTIFICATE_REGISTRY`, `ENABLE_GFA_CERTIFICATE_DOCUMENTS` and `ENABLE_GFA_CERTIFICATE_VERIFICATION` disabled until their role is explicitly reviewed for the Version 2 release. |
+
+The complete non-secret contract is [`docs/contracts/GFA_TO_BETTERDRIVER_CERTIFICATE_CONTRACT_V2.md`](docs/contracts/GFA_TO_BETTERDRIVER_CERTIFICATE_CONTRACT_V2.md), with machine-readable claim shapes in [`docs/contracts/gfa-betterdriver-certificate-contract-v2.schema.json`](docs/contracts/gfa-betterdriver-certificate-contract-v2.schema.json). BetterDriver must not implement its presentation branch or remove its mock registry until it receives the final GFA branch/commit, Preview evidence, the contract document, the approved GFA public-key distribution method and named go/no-go approval.
+
+Before merge, run `npm ci`, `npm run type-check`, `npm run build`, the safely gated certificate suites, and a Preview-only acceptance matrix. The Version 2 matrix must prove: disabled defaults; invalid/expired/replayed evidence denial; idempotent synthetic evidence intake; GFA pending/issue/not-eligible decision; template/PDF rendering; active/expired/revoked/superseded exact-number verification; status projection; Driver A versus Driver B denial; one-time, expired and replayed handoff denial; and no live WhatsApp/document attachment. Keep `ENABLE_EVIDENCE_REPORTS=false`; this release does not implement or extend SafeFreight, RTMS, incident or evidence-report work.
+
+Rollback is to set `ENABLE_GFA_CERTIFICATE_CONTRACT_V2=false` and revert the Release 12 PR after the Preview deployment is known healthy. Do not delete or overwrite canonical GFA certificate, lifecycle, audit or private-storage records during rollback.
