@@ -31,10 +31,10 @@ export async function POST(
 
   const { data, error } = await supabaseAdmin
     .from("certifications")
-    .update({ status: "revoked", revoked_at: new Date().toISOString(), revoked_by: admin.adminId, revoked_reason: reason })
+    .update({ status: "revoked", lifecycle_status: "REVOKED", lifecycle_updated_at: new Date().toISOString(), revoked_at: new Date().toISOString(), revoked_by: admin.adminId, revoked_reason: reason })
     .eq("id", id)
-    .in("status", ["active", "issued", "pending_document"])
-    .select("id, certificate_number, status, revoked_at")
+    .in("status", ["active", "issued", "pending_document", "pending_review"])
+    .select("id, certificate_number, certificate_ref, status, lifecycle_status, revoked_at")
     .maybeSingle();
   if (error) return NextResponse.json({ error: "Certificate revocation could not be completed." }, { status: 500 });
   if (!data) return NextResponse.json({ error: "Certificate cannot be revoked from its current status." }, { status: 409 });

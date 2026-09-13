@@ -11,6 +11,7 @@
 ALTER TABLE certifications
   ADD COLUMN IF NOT EXISTS certificate_ref TEXT,
   ADD COLUMN IF NOT EXISTS lifecycle_status TEXT,
+  ADD COLUMN IF NOT EXISTS decision_reason TEXT,
   ADD COLUMN IF NOT EXISTS decision_event_id UUID,
   ADD COLUMN IF NOT EXISTS lifecycle_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
@@ -29,6 +30,8 @@ END
 WHERE lifecycle_status IS NULL;
 
 ALTER TABLE certifications
+  ALTER COLUMN certificate_ref SET DEFAULT ('gfa_cert_' || replace(gen_random_uuid()::TEXT, '-', '')),
+  ALTER COLUMN lifecycle_status SET DEFAULT 'PENDING_REVIEW',
   ALTER COLUMN certificate_ref SET NOT NULL,
   ALTER COLUMN lifecycle_status SET NOT NULL,
   ALTER COLUMN certificate_number DROP NOT NULL;
@@ -111,6 +114,7 @@ CREATE INDEX IF NOT EXISTS idx_certificate_decision_events_enrolment_time
 CREATE TABLE IF NOT EXISTS certificate_handoff_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   handoff_jti TEXT NOT NULL UNIQUE,
+  handoff_code_hash TEXT NOT NULL UNIQUE,
   certificate_id UUID NOT NULL REFERENCES certifications(id) ON DELETE CASCADE,
   driver_id UUID NOT NULL REFERENCES drivers(id) ON DELETE CASCADE,
   audience TEXT NOT NULL CHECK (audience IN ('betterdriver')),
@@ -120,7 +124,7 @@ CREATE TABLE IF NOT EXISTS certificate_handoff_sessions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_certificate_handoff_sessions_redeem
-  ON certificate_handoff_sessions(handoff_jti, expires_at)
+  ON certificate_handoff_sessions(handoff_code_hash, expires_at)
   WHERE used_at IS NULL;
 
 ALTER TABLE certificate_external_mappings ENABLE ROW LEVEL SECURITY;
@@ -204,9 +208,7 @@ $$;
 -- lifecycle and document state are checked at redemption time, so revocation,
 -- supersession or expiry wins over an earlier signed assertion.
 CREATE OR REPLACE FUNCTION gfa_redeem_certificate_handoff(
-  p_handoff_jti TEXT,
-  p_certificate_ref TEXT,
-  p_permitted_action TEXT
+  p_handoff_code_hash TEXT
 )
 RETURNS TABLE (certificate_id UUID, document_storage_path TEXT)
 LANGUAGE plpgsql
@@ -216,12 +218,10 @@ BEGIN
   UPDATE certificate_handoff_sessions AS session_row
   SET used_at = NOW()
   FROM certifications AS certificate_row
-  WHERE session_row.handoff_jti = p_handoff_jti
+  WHERE session_row.handoff_code_hash = p_handoff_code_hash
     AND session_row.used_at IS NULL
     AND session_row.expires_at > NOW()
     AND session_row.certificate_id = certificate_row.id
-    AND certificate_row.certificate_ref = p_certificate_ref
-    AND session_row.permitted_action = p_permitted_action
     AND certificate_row.lifecycle_status = 'ISSUED'
     AND certificate_row.status IN ('active', 'issued')
     AND (certificate_row.expires_at IS NULL OR certificate_row.expires_at > NOW())

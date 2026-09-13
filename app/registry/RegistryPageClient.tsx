@@ -5,7 +5,7 @@ import { AlertCircle, CheckCircle2, FileCheck2, Loader2, Search, ShieldCheck, XC
 
 interface VerificationResult {
   verified: boolean;
-  status: "active" | "expired" | "revoked" | "not_found";
+  status: "active" | "expired" | "revoked" | "superseded" | "not_found";
   certificateNumber?: string;
   programme?: string;
   issuedAt?: string;
@@ -30,6 +30,7 @@ function statusCopy(status: VerificationResult["status"]) {
   if (status === "active") return { heading: "Certificate verified", body: "This Green Freight Academy certificate is active as at the time of this check.", colour: "#4ade80", Icon: CheckCircle2 };
   if (status === "expired") return { heading: "Certificate not current", body: "This certificate record is recognised, but its recorded validity period has ended.", colour: "#fbbf24", Icon: AlertCircle };
   if (status === "revoked") return { heading: "Certificate not valid", body: "This certificate record has been revoked and must not be relied upon as current training evidence.", colour: "#f87171", Icon: XCircle };
+  if (status === "superseded") return { heading: "Certificate superseded", body: "This certificate record has been replaced and must not be relied upon as the current Green Freight Academy certification record.", colour: "#fbbf24", Icon: AlertCircle };
   return { heading: "No certificate record found", body: "No Green Freight Academy certificate was found for that exact certificate number.", colour: "#94a3b8", Icon: AlertCircle };
 }
 

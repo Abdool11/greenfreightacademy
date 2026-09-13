@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await supabaseAdmin
       .from("certifications")
-      .select("id, certificate_number, programme, issued_at, expires_at, status, courses(name)")
+      .select("id, certificate_number, programme, issued_at, expires_at, status, lifecycle_status, courses(name)")
       .eq("certificate_number", certificateNumber)
       .maybeSingle();
     if (error) throw error;
@@ -67,8 +67,14 @@ export async function POST(request: NextRequest) {
     }
 
     const hasExpired = data.expires_at ? new Date(data.expires_at).getTime() < Date.now() : false;
-    const status = data.status === "revoked" ? "revoked" : hasExpired || data.status === "expired" ? "expired" : "active";
-    await auditCertificateVerification(data.id, queryFingerprint, requestFingerprint, status === "active" ? "verified" : status);
+    const status = data.status === "revoked" || data.lifecycle_status === "REVOKED"
+      ? "revoked"
+      : data.status === "superseded" || data.lifecycle_status === "SUPERSEDED"
+        ? "superseded"
+        : hasExpired || data.status === "expired" || data.lifecycle_status === "EXPIRED"
+          ? "expired"
+          : "active";
+    await auditCertificateVerification(data.id, queryFingerprint, requestFingerprint, status === "active" ? "verified" : status === "superseded" ? "not_found" : status);
 
     return noStoreJson({
       verified: status === "active",
