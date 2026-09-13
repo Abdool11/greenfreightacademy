@@ -70,11 +70,11 @@ export async function buildCertificatePdf(input: CertificatePdfInput): Promise<{
 
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...NAVY);
-  doc.setFontSize(21);
-  doc.text("CERTIFICATE OF COMPLETION", pageWidth / 2, 54, { align: "center" });
+  doc.setFontSize(19.5);
+  doc.text("PROFESSIONAL TRUCK DRIVER CERTIFICATE", pageWidth / 2, 54, { align: "center" });
   doc.setTextColor(...GREEN);
   doc.setFontSize(8.4);
-  doc.text("GREEN FREIGHT ACADEMY · DRIVER FOUNDATION", pageWidth / 2, 61, { align: "center" });
+  doc.text("GREEN FREIGHT ACADEMY · PROFESSIONAL DRIVER FOUNDATION", pageWidth / 2, 61, { align: "center" });
   doc.setDrawColor(...GREEN);
   doc.setLineWidth(0.6);
   doc.line(pageWidth / 2 - 45, 65, pageWidth / 2 + 45, 65);
@@ -108,7 +108,7 @@ export async function buildCertificatePdf(input: CertificatePdfInput): Promise<{
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(...MUTED);
-  doc.text("A Green Freight Academy learning certificate", pageWidth / 2, programmeBottom + 9, { align: "center" });
+  doc.text("A Green Freight Academy professional driver certificate", pageWidth / 2, programmeBottom + 9, { align: "center" });
 
   const panelX = 40;
   const panelY = 143;
