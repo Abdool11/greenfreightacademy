@@ -14,7 +14,12 @@ import { adminLogin, clientLogin, setSessionOnPage } from "./helpers";
  * NOTE: This test requires ENABLE_EFT_RECONCILIATION_V2=true on the target
  * environment. The test will skip if the flag is off.
  */
+const gfaPreviewBaseUrl = process.env.GFA_TEST_BASE_URL;
+const gfaSafePreview = Boolean(gfaPreviewBaseUrl) && !/greenfreightacademy\.co\.za/i.test(gfaPreviewBaseUrl || "");
+
 test.describe("EFT reconciliation", () => {
+  test.skip(!gfaSafePreview, "Requires an explicitly supplied non-production Preview URL; production is blocked by this suite.");
+
   test("EFT reconciliation flag status", async ({ request }) => {
     // Check if the EFT endpoint is available
     const res = await request.post("/api/company/eft-payment", {

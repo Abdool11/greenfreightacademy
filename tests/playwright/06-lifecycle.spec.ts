@@ -12,7 +12,12 @@ import { adminLogin, setSessionOnPage } from "./helpers";
  *
  * NOTE: The "enabled" tests require the flag to be flipped to true.
  */
+const gfaPreviewBaseUrl = process.env.GFA_TEST_BASE_URL;
+const gfaSafePreview = Boolean(gfaPreviewBaseUrl) && !/greenfreightacademy\.co\.za/i.test(gfaPreviewBaseUrl || "");
+
 test.describe("R7 lifecycle", () => {
+  test.skip(!gfaSafePreview, "Requires an explicitly supplied non-production Preview URL; production is blocked by this suite.");
+
   test("lifecycle endpoint responds correctly based on flag state", async ({ request }) => {
     // The compliance-lifecycle cron endpoint behavior depends on ENABLE_R7_LIFECYCLE_CRON
     const res = await request.get("/api/admin/cron/compliance-lifecycle", {

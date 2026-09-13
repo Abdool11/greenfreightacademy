@@ -9,7 +9,12 @@ import { clientLogin, setSessionOnPage } from "./helpers";
  * - Client can identify selected driver, select programme, find primary action
  * - Client dashboard loads without errors
  */
+const gfaPreviewBaseUrl = process.env.GFA_TEST_BASE_URL;
+const gfaSafePreview = Boolean(gfaPreviewBaseUrl) && !/greenfreightacademy\.co\.za/i.test(gfaPreviewBaseUrl || "");
+
 test.describe("Client workflow", () => {
+  test.skip(!gfaSafePreview, "Requires an explicitly supplied non-production Preview URL; production is blocked by this suite.");
+
   test("client dashboard loads successfully", async ({ page, baseURL }) => {
     test.skip(
       !process.env.GFA_TEST_CLIENT_EMAIL,
