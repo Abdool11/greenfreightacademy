@@ -177,7 +177,7 @@ BEGIN
       quote_row.company_id,
       'eft_confirmed',
       submitted_value,
-      'EFT reconciled and confirmed — ' || quote_row.reference,
+      'EFT reconciled and confirmed — ' || COALESCE(quote_row.reference, quote_row.id::TEXT),
       trim(p_bank_transaction_reference),
       quote_row.id,
       payment_row.id,
