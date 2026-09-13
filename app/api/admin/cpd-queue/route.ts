@@ -2,13 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 
+export const dynamic = "force-dynamic";
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 // GET /api/admin/cpd-queue
-// Returns all cpd_library_items with status pending_review, with bulletin details
+// Returns GFA CPD library items by review status, with their originating bulletin.
 export async function GET(req: NextRequest) {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
   const status = req.nextUrl.searchParams.get("status") ?? "pending_review";
+  if (!["pending_review", "approved", "rejected"].includes(status)) {
+    return NextResponse.json({ error: "Unsupported CPD queue status." }, { status: 400 });
+  }
 
   const { data, error } = await supabaseAdmin
     .from("cpd_library_items")
@@ -51,58 +58,33 @@ export async function GET(req: NextRequest) {
 
 // POST /api/admin/cpd-queue
 // Body: { item_id: string, action: "approve" | "reject", admin_notes?: string }
-// approve → status = "approved", item becomes available for quarterly CPD bulletin
-// reject  → status = "rejected", company is notified
+// The Release 15 procedure updates the item and writes administrator audit
+// evidence in one transaction.
 export async function POST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
-  const { item_id, action, admin_notes } = await req.json();
-
-  if (!item_id || !["approve", "reject"].includes(action)) {
-    return NextResponse.json({ error: "item_id and action (approve|reject) required" }, { status: 400 });
+  const { item_id: itemId, action, admin_notes: adminNotes } = await req.json();
+  if (typeof itemId !== "string" || !UUID_PATTERN.test(itemId) || !["approve", "reject"].includes(action)) {
+    return NextResponse.json({ error: "A valid item_id and action (approve|reject) are required." }, { status: 400 });
   }
 
-  const newStatus = action === "approve" ? "approved" : "rejected";
+  const { data: decisionRows, error } = await supabaseAdmin.rpc("gfa_apply_cpd_library_decision", {
+    p_item_id: itemId,
+    p_action: action,
+    p_admin_id: session.adminId,
+    p_admin_name: session.email || session.name || session.adminId,
+    p_admin_notes: typeof adminNotes === "string" ? adminNotes.trim() || null : null,
+  });
+  const decision = Array.isArray(decisionRows) ? decisionRows[0] : decisionRows;
 
-  const { data: item, error: fetchErr } = await supabaseAdmin
-    .from("cpd_library_items")
-    .select("id, status, title, company_id")
-    .eq("id", item_id)
-    .single();
-
-  if (fetchErr || !item) {
-    return NextResponse.json({ error: "Item not found" }, { status: 404 });
+  if (error || !decision?.item_id) {
+    const message = error?.message || "Failed to update CPD queue item.";
+    if (/not found/i.test(message)) return NextResponse.json({ error: "Item not found" }, { status: 404 });
+    if (/not pending|pending review/i.test(message)) return NextResponse.json({ error: "Item is not pending review" }, { status: 409 });
+    console.error("[cpd-queue POST]", error);
+    return NextResponse.json({ error: "Failed to update CPD queue item." }, { status: 500 });
   }
 
-  if (item.status !== "pending_review") {
-    return NextResponse.json({ error: "Item is not pending review" }, { status: 409 });
-  }
-
-  const { error: updateErr } = await supabaseAdmin
-    .from("cpd_library_items")
-    .update({
-      status: newStatus,
-      admin_notes: admin_notes || null,
-      reviewed_by: session.adminId,
-      reviewed_at: new Date().toISOString(),
-    })
-    .eq("id", item_id);
-
-  if (updateErr) {
-    console.error("[cpd-queue POST]", updateErr);
-    return NextResponse.json({ error: "Failed to update item" }, { status: 500 });
-  }
-
-  // Audit log
-  supabaseAdmin.from("admin_audit_log").insert({
-    admin_id: session.adminId,
-    action: `cpd_library_${action}`,
-    target_type: "cpd_library_items",
-    target_id: item_id,
-    details: JSON.stringify({ title: item.title, admin_notes }),
-    created_at: new Date().toISOString(),
-  }).then(() => {});
-
-  return NextResponse.json({ ok: true, status: newStatus });
+  return NextResponse.json({ ok: true, status: decision.status, auditId: decision.audit_id });
 }
