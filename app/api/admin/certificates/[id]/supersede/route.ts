@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
-import { certificateContractV2Enabled } from "@/lib/certificateContractV2";
-import { supabaseAdmin } from "@/lib/supabase";
+import {
+  certificateContractV2Enabled,
+  isGfaUuid,
+  supersedeIssuedCertificate,
+} from "@/lib/certificateContractV2";
 
 export const dynamic = "force-dynamic";
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(value);
-}
 
 export async function POST(
   request: NextRequest,
@@ -16,9 +15,9 @@ export async function POST(
   if (!certificateContractV2Enabled()) {
     return NextResponse.json({ error: "GFA certificate contract Version 2 is disabled for this release." }, { status: 503 });
   }
-  await requireAdminSession();
+  const admin = await requireAdminSession();
   const { id } = await params;
-  if (!isUuid(id)) return NextResponse.json({ error: "Certificate not found." }, { status: 404 });
+  if (!isGfaUuid(id)) return NextResponse.json({ error: "Certificate not found." }, { status: 404 });
 
   let replacementCertificateId = "";
   try {
@@ -27,14 +26,25 @@ export async function POST(
   } catch {
     return NextResponse.json({ error: "A replacement certificate is required." }, { status: 400 });
   }
-  if (!isUuid(replacementCertificateId)) return NextResponse.json({ error: "A valid replacement certificate is required." }, { status: 400 });
+  if (!isGfaUuid(replacementCertificateId)) return NextResponse.json({ error: "A valid replacement certificate is required." }, { status: 400 });
 
-  const { data, error } = await supabaseAdmin.rpc("gfa_mark_certificate_superseded", {
-    p_certificate_id: id,
-    p_replacement_certificate_id: replacementCertificateId,
-  });
-  if (error) return NextResponse.json({ error: "Certificate supersession could not be completed." }, { status: 409 });
-  if (data !== true) return NextResponse.json({ error: "Certificate cannot be superseded from its current lifecycle state." }, { status: 409 });
-
-  return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
+  try {
+    const decision = await supersedeIssuedCertificate(id, admin, replacementCertificateId);
+    return NextResponse.json({
+      ok: true,
+      certificate: {
+        id: decision.certificate_id,
+        certificateRef: decision.certificate_ref,
+        lifecycleStatus: decision.lifecycle_status,
+        correlationId: decision.correlation_id,
+      },
+    }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Certificate supersession could not be completed.";
+    const conflict = /lifecycle|replacement|completed/i.test(message);
+    return NextResponse.json(
+      { error: conflict ? "Certificate cannot be superseded from its current lifecycle state." : "Certificate supersession could not be completed." },
+      { status: conflict ? 409 : 500 }
+    );
+  }
 }

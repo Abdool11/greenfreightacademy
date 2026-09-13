@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
-import { certificateContractV2Enabled, issuePendingCertificate, signCertificateStatusAssertion } from "@/lib/certificateContractV2";
+import {
+  certificateContractV2Enabled,
+  isGfaUuid,
+  issuePendingCertificate,
+  signCertificateStatusAssertion,
+} from "@/lib/certificateContractV2";
 
 export const dynamic = "force-dynamic";
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(value);
-}
 
 export async function POST(
   _request: NextRequest,
@@ -15,12 +16,13 @@ export async function POST(
   if (!certificateContractV2Enabled()) {
     return NextResponse.json({ error: "GFA certificate contract Version 2 is disabled for this release." }, { status: 503 });
   }
-  await requireAdminSession();
+  const admin = await requireAdminSession();
   const { id } = await params;
-  if (!isUuid(id)) return NextResponse.json({ error: "Certificate not found." }, { status: 404 });
+  if (!isGfaUuid(id)) return NextResponse.json({ error: "Certificate not found." }, { status: 404 });
 
   try {
-    const certificate = await issuePendingCertificate(id);
+    const issued = await issuePendingCertificate(id, admin);
+    const { certificate, correlationId } = issued;
     const statusAssertion = await signCertificateStatusAssertion(certificate);
     return NextResponse.json({
       ok: true,
@@ -29,11 +31,16 @@ export async function POST(
         certificateRef: certificate.certificate_ref,
         lifecycleStatus: certificate.lifecycle_status,
         issuedAt: certificate.issued_at,
+        correlationId,
       },
       statusAssertion,
     }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Certificate issuance could not be completed.";
-    return NextResponse.json({ error: message.includes("eligible") ? "Certificate cannot be issued from its current lifecycle state." : "Certificate issuance could not be completed." }, { status: 409 });
+    const conflict = /eligible|completed|lifecycle|document/i.test(message);
+    return NextResponse.json(
+      { error: conflict ? "Certificate cannot be issued from its current lifecycle state." : "Certificate issuance could not be completed." },
+      { status: conflict ? 409 : 500 }
+    );
   }
 }
