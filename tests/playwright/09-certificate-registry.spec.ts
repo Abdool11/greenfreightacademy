@@ -15,11 +15,11 @@ test.describe("GFA certificate registry safeguards", () => {
     await expect(page.getByText("Driver ID number or full name")).toHaveCount(0);
   });
 
-  test("keeps the certificate issue service gated or rejects an invalid signed event", async ({ request }) => {
+  test("keeps the certificate issue service gated, retired, or rejects an invalid signed event", async ({ request }) => {
     const response = await request.post("/api/integrations/certificates/issue", {
       headers: { Authorization: "Bearer intentionally-invalid" },
     });
-    expect([401, 503]).toContain(response.status());
+    expect([401, 410, 503]).toContain(response.status());
   });
 
   test("keeps document redemption gated or rejects an invalid code", async ({ request }) => {

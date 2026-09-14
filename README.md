@@ -394,3 +394,11 @@ Apply Release 15 in Preview only after its preceding migrations. Verify with a s
 The integrated go-live branch includes `docs/testing/GFA_GO_LIVE_PREVIEW_E2E_PROTOCOL.md` and the guarded command `npm run test:e2e:go-live-preview`. The runner refuses the production GFA domain and refuses to start when any mandatory synthetic Preview fixture or secret is missing. It runs the complete Chromium Playwright suite only after TypeScript and production-build validation.
 
 A skipped mandatory test is not a pass. Before the final QA handover, provide a unique Preview URL, temporary synthetic administrator/client credentials, synthetic commercial/certificate fixtures, Preview-only signed assertions, no-send/mock WhatsApp and email configuration, and the evidence bundle specified by the protocol. Never commit test credentials, keys, fixture identifiers or generated reports.
+
+### Production Read-Only Smoke Test
+
+`npm run test:e2e:production-smoke` is a deliberately narrow browser test for the canonical production host only. It requires `GFA_PRODUCTION_TEST_BASE_URL=https://www.greenfreightacademy.co.za` and visits public GET routes plus the empty public registry form. It does not submit a form, authenticate, send a POST request, create a payment, issue/deploy/revoke a certificate, access a protected record or invoke WhatsApp/email delivery. It is therefore an availability and public privacy-smoke check, not an end-to-end production acceptance run.
+
+The main `npm run test:e2e:go-live-preview` command remains the required state-changing end-to-end gate and must only use a non-production Preview with disposable synthetic fixtures, sandbox payments and outbound delivery disabled or mocked. Never remove the production-domain refusal from that runner merely to produce a production test result.
+
+The certificate registry safeguard accepts HTTP `410` as a correct outcome for the deliberately retired legacy direct-issue endpoint. It continues to accept `401` for invalid signed requests and `503` when the capability is disabled or unavailable.

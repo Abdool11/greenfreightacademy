@@ -10,6 +10,7 @@
     "type-check": "tsc --noEmit",
     "test:e2e": "playwright test",
     "test:e2e:go-live-preview": "bash scripts/run_go_live_preview_e2e.sh",
+    "test:e2e:production-smoke": "playwright test tests/playwright/15-production-readonly-smoke.spec.ts",
     "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
