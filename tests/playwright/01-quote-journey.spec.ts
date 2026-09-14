@@ -11,7 +11,12 @@ import { clientLogin, setSessionOnPage } from "./helpers";
  * - See 14-day quote validity
  * - Download a quote PDF
  */
+const gfaPreviewBaseUrl = process.env.GFA_TEST_BASE_URL;
+const gfaSafePreview = Boolean(gfaPreviewBaseUrl) && !/greenfreightacademy\.co\.za/i.test(gfaPreviewBaseUrl || "");
+
 test.describe("Quote journey", () => {
+  test.skip(!gfaSafePreview, "Requires an explicitly supplied non-production Preview URL; production is blocked by this suite.");
+
   test("client can access billing page and see quote features", async ({ page, baseURL }) => {
     test.skip(
       !process.env.GFA_TEST_CLIENT_EMAIL,

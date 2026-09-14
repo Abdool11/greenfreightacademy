@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  CertificateContractAuthenticationError,
   certificateContractV2Enabled,
   receiveCompletionEvidence,
   signCertificateStatusAssertion,
@@ -11,8 +12,8 @@ import {
 export const dynamic = "force-dynamic";
 
 function safeFailure(error: unknown) {
+  const unauthorized = error instanceof CertificateContractAuthenticationError;
   const message = error instanceof Error ? error.message : "Certificate completion evidence could not be processed.";
-  const unauthorized = /signed|signing key|expiry|claims|assertion/i.test(message);
   const unavailable = /not configured/i.test(message);
   return {
     status: unauthorized ? 401 : unavailable ? 503 : 409,

@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
-import { certificateContractV2Enabled } from "@/lib/certificateContractV2";
+import { certificateContractV2Enabled, isGfaUuid } from "@/lib/certificateContractV2";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
-
-function isUuid(value: unknown): value is string {
-  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(value);
-}
 
 function isOpaque(value: unknown): value is string {
   return typeof value === "string" && /^[A-Za-z0-9_-]{8,180}$/.test(value);
@@ -31,7 +27,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { driverId, companyId, enrolmentId, driverRef, companyRef, enrolmentRef, programmeCode, programmeVersion } = body;
-  if (!isUuid(driverId) || !isUuid(companyId) || !isUuid(enrolmentId) || !isOpaque(driverRef) || !isOpaque(companyRef) || !isOpaque(enrolmentRef) || !isVersion(programmeCode) || !isVersion(programmeVersion)) {
+  if (!isGfaUuid(driverId) || !isGfaUuid(companyId) || !isGfaUuid(enrolmentId) || !isOpaque(driverRef) || !isOpaque(companyRef) || !isOpaque(enrolmentRef) || !isVersion(programmeCode) || !isVersion(programmeVersion)) {
     return NextResponse.json({ error: "Mapping identifiers are incomplete or invalid." }, { status: 400 });
   }
 

@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
-import { certificateContractV2Enabled } from "@/lib/certificateContractV2";
-import { supabaseAdmin } from "@/lib/supabase";
+import {
+  certificateContractV2Enabled,
+  isGfaUuid,
+  markCertificateNotEligible,
+} from "@/lib/certificateContractV2";
 
 export const dynamic = "force-dynamic";
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(value);
-}
 
 export async function POST(
   request: NextRequest,
@@ -16,9 +15,9 @@ export async function POST(
   if (!certificateContractV2Enabled()) {
     return NextResponse.json({ error: "GFA certificate contract Version 2 is disabled for this release." }, { status: 503 });
   }
-  await requireAdminSession();
+  const admin = await requireAdminSession();
   const { id } = await params;
-  if (!isUuid(id)) return NextResponse.json({ error: "Certificate not found." }, { status: 404 });
+  if (!isGfaUuid(id)) return NextResponse.json({ error: "Certificate not found." }, { status: 404 });
 
   let reason = "";
   try {
@@ -31,28 +30,23 @@ export async function POST(
     return NextResponse.json({ error: "Provide a GFA decision reason between 10 and 500 characters." }, { status: 400 });
   }
 
-  const now = new Date().toISOString();
-  const { data, error } = await supabaseAdmin
-    .from("certifications")
-    .update({
-      status: "not_eligible",
-      lifecycle_status: "NOT_ELIGIBLE",
-      decision_reason: reason,
-      lifecycle_updated_at: now,
-    })
-    .eq("id", id)
-    .eq("lifecycle_status", "PENDING_REVIEW")
-    .select("id, certificate_ref, lifecycle_status, decision_event_id")
-    .maybeSingle();
-  if (error) return NextResponse.json({ error: "Certificate decision could not be completed." }, { status: 500 });
-  if (!data) return NextResponse.json({ error: "Certificate cannot be marked not eligible from its current lifecycle state." }, { status: 409 });
-
-  if (data.decision_event_id) {
-    await supabaseAdmin
-      .from("certificate_decision_events")
-      .update({ decision_status: "NOT_ELIGIBLE", outcome_detail: reason, processed_at: now })
-      .eq("id", data.decision_event_id);
+  try {
+    const decision = await markCertificateNotEligible(id, admin, reason);
+    return NextResponse.json({
+      ok: true,
+      certificate: {
+        id: decision.certificate_id,
+        certificateRef: decision.certificate_ref,
+        lifecycleStatus: decision.lifecycle_status,
+        correlationId: decision.correlation_id,
+      },
+    }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Certificate decision could not be completed.";
+    const conflict = /lifecycle|completed|reason/i.test(message);
+    return NextResponse.json(
+      { error: conflict ? "Certificate cannot be marked not eligible from its current lifecycle state." : "Certificate decision could not be completed." },
+      { status: conflict ? 409 : 500 }
+    );
   }
-
-  return NextResponse.json({ ok: true, certificate: data }, { headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
 }

@@ -13,7 +13,12 @@ import { createHmac } from "crypto";
  * NOTE: The "enabled" tests require the flag to be flipped to true on the
  * target environment. The "disabled" test runs regardless.
  */
+const gfaPreviewBaseUrl = process.env.GFA_TEST_BASE_URL;
+const gfaSafePreview = Boolean(gfaPreviewBaseUrl) && !/greenfreightacademy\.co\.za/i.test(gfaPreviewBaseUrl || "");
+
 test.describe("R6 learning events", () => {
+  test.skip(!gfaSafePreview, "Requires an explicitly supplied non-production Preview URL; production is blocked by this suite.");
+
   test("endpoint returns 503 when ingestion is disabled", async ({ request }) => {
     const res = await request.post("/api/integrations/learning-events", {
       data: {

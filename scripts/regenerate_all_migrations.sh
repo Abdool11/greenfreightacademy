@@ -22,5 +22,9 @@ trap 'rm -f "${tmp_file}"' EXIT
   done < <(find "${repo_root}/supabase/migrations" -maxdepth 1 -type f -name '*.sql' -print | sort)
 } > "${tmp_file}"
 
+# Preserve separators between migrations but remove the final blank line so the
+# generated package passes the repository whitespace gate deterministically.
+sed -i '${/^$/d;}' "${tmp_file}"
+
 mv "${tmp_file}" "${output}"
 trap - EXIT

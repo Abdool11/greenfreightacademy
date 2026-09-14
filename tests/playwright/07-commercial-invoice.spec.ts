@@ -4,7 +4,12 @@ import { adminLogin } from "./helpers";
 const invoiceQuoteId = process.env.GFA_TEST_INVOICE_QUOTE_ID;
 const canRun = Boolean(process.env.GFA_TEST_ADMIN_EMAIL && process.env.GFA_TEST_ADMIN_PASSWORD && invoiceQuoteId);
 
+const gfaPreviewBaseUrl = process.env.GFA_TEST_BASE_URL;
+const gfaSafePreview = Boolean(gfaPreviewBaseUrl) && !/greenfreightacademy\.co\.za/i.test(gfaPreviewBaseUrl || "");
+
 test.describe("Commercial invoice regression", () => {
+  test.skip(!gfaSafePreview, "Requires an explicitly supplied non-production Preview URL; production is blocked by this suite.");
+
   test.skip(!canRun, "Requires Preview-only GFA_TEST_ADMIN credentials and a dedicated GFA_TEST_INVOICE_QUOTE_ID.");
 
   test("issues or reuses the dedicated synthetic-quote invoice and renders its PDF", async ({ request }) => {

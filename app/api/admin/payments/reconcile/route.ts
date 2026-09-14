@@ -67,31 +67,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Bank transaction reference is required to confirm an EFT." }, { status: 400 });
   }
 
+  const { data: reconciliationRows, error: reconciliationError } = await supabaseAdmin.rpc(
+    "gfa_apply_eft_reconciliation_decision",
+    {
+      p_payment_id: payment.id,
+      p_decision: decision,
+      p_admin_id: session.adminId,
+      p_admin_label: adminIdentity,
+      p_reconciliation_notes: reconciliationNotes || null,
+      p_bank_transaction_reference: bankTransactionReference || null,
+      p_bank_transaction_date: bankTransactionDate || null,
+    }
+  );
+  const reconciliation = Array.isArray(reconciliationRows) ? reconciliationRows[0] : reconciliationRows;
+  if (reconciliationError || !reconciliation?.payment_id) {
+    const message = reconciliationError?.message || "Could not record the reconciliation decision.";
+    const conflict = /status|variance|reference|note/i.test(message);
+    return NextResponse.json(
+      { error: conflict ? message : "Could not record the reconciliation decision." },
+      { status: conflict ? 409 : 500 }
+    );
+  }
+
   if (decision === "confirm") {
-    const { error: paymentUpdateError } = await supabaseAdmin
-      .from("payments")
-      .update({
-        status: "confirmed",
-        confirmed_at: now,
-        confirmed_by: session.adminId,
-        reconciliation_status: "confirmed",
-        reconciliation_notes: reconciliationNotes || null,
-        bank_transaction_reference: bankTransactionReference,
-        bank_transaction_date: bankTransactionDate || null,
-        reconciled_at: now,
-        reconciled_by: adminIdentity,
-      })
-      .eq("id", payment.id)
-      .in("status", ["pending_verification", "clarification_requested"]);
-    if (paymentUpdateError) return NextResponse.json({ error: "Could not confirm the payment." }, { status: 500 });
-
-    const { error: quoteUpdateError } = await supabaseAdmin
-      .from("quotes")
-      .update({ status: "approved", paid_at: now, payment_method: "eft", approved_at: now, approved_by: adminIdentity })
-      .eq("id", quote.id)
-      .eq("status", "eft_submitted");
-    if (quoteUpdateError) return NextResponse.json({ error: "Payment was reconciled but the quote could not be marked ready to deploy." }, { status: 500 });
-
     let creditAllocation: Awaited<ReturnType<typeof allocateQuoteCreditsOnce>>;
     try {
       creditAllocation = await allocateQuoteCreditsOnce({
@@ -105,31 +103,6 @@ export async function POST(req: NextRequest) {
     }
     const creditCount = creditAllocation.creditCount;
 
-    await supabaseAdmin.from("payment_reconciliation_events").insert({
-      payment_id: payment.id,
-      quote_id: quote.id,
-      company_id: quote.company_id,
-      event_type: "confirmed",
-      expected_amount: expectedAmount,
-      submitted_amount: submittedAmount,
-      variance_amount: varianceAmount,
-      eft_reference: payment.eft_reference || payment.reference,
-      notes: reconciliationNotes || null,
-      performed_by: adminIdentity,
-      created_at: now,
-    });
-
-    await writeLedgerEntry({
-      company_id: quote.company_id,
-      entry_type: "eft_confirmed",
-      amount: submittedAmount,
-      description: `EFT reconciled and confirmed — ${quote.reference}`,
-      reference: bankTransactionReference,
-      quote_id: quote.id,
-      payment_id: payment.id,
-      status: "confirmed",
-      created_by: adminIdentity,
-    });
     try {
       await allocateConfirmedPaymentToInvoice({
         quoteId: quote.id,
@@ -184,34 +157,17 @@ export async function POST(req: NextRequest) {
       details: { Company: company?.name || "—", "Quote Ref": quote.reference, Confirmed: money(submittedAmount), "Bank Ref": bankTransactionReference },
     });
 
-    return NextResponse.json({ ok: true, status: "confirmed", creditCount });
+    return NextResponse.json({
+      ok: true,
+      status: "confirmed",
+      creditCount,
+      reconciliationEventId: reconciliation.reconciliation_event_id,
+      ledgerEntryId: reconciliation.ledger_entry_id,
+      auditId: reconciliation.audit_id,
+    });
   }
 
   const isRejected = decision === "reject";
-  const paymentUpdate = isRejected
-    ? { status: "rejected", reconciliation_status: "rejected", reconciliation_notes: reconciliationNotes, rejected_at: now, rejected_by: adminIdentity, rejection_reason: reconciliationNotes }
-    : { status: "clarification_requested", reconciliation_status: "clarification_requested", reconciliation_notes: reconciliationNotes };
-  const { error: updateError } = await supabaseAdmin.from("payments").update(paymentUpdate).eq("id", payment.id);
-  if (updateError) return NextResponse.json({ error: "Could not record the reconciliation decision." }, { status: 500 });
-
-  // A rejected notice returns the quote to payable state; clarification retains
-  // EFT-submitted status so finance staff can identify the active exception.
-  if (isRejected) {
-    await supabaseAdmin.from("quotes").update({ status: "pending" }).eq("id", quote.id).eq("status", "eft_submitted");
-  }
-  await supabaseAdmin.from("payment_reconciliation_events").insert({
-    payment_id: payment.id,
-    quote_id: quote.id,
-    company_id: quote.company_id,
-    event_type: isRejected ? "rejected" : "clarification_requested",
-    expected_amount: expectedAmount,
-    submitted_amount: submittedAmount,
-    variance_amount: varianceAmount,
-    eft_reference: payment.eft_reference || payment.reference,
-    notes: reconciliationNotes,
-    performed_by: adminIdentity,
-    created_at: now,
-  });
 
   const clientEmail = company?.contact_email || company?.email;
   if (clientEmail && process.env.BREVO_SMTP_PASSWORD) {
@@ -228,5 +184,11 @@ export async function POST(req: NextRequest) {
     } catch (error) { console.error("EFT reconciliation client email error:", error); }
   }
 
-  return NextResponse.json({ ok: true, status: isRejected ? "rejected" : "clarification_requested" });
+  return NextResponse.json({
+    ok: true,
+    status: isRejected ? "rejected" : "clarification_requested",
+    reconciliationEventId: reconciliation.reconciliation_event_id,
+    ledgerEntryId: reconciliation.ledger_entry_id,
+    auditId: reconciliation.audit_id,
+  });
 }

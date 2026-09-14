@@ -12,7 +12,12 @@ import { adminLogin, setSessionOnPage } from "./helpers";
  *
  * These tests verify the governance logic via the API and database.
  */
+const gfaPreviewBaseUrl = process.env.GFA_TEST_BASE_URL;
+const gfaSafePreview = Boolean(gfaPreviewBaseUrl) && !/greenfreightacademy\.co\.za/i.test(gfaPreviewBaseUrl || "");
+
 test.describe("Discount authority", () => {
+  test.skip(!gfaSafePreview, "Requires an explicitly supplied non-production Preview URL; production is blocked by this suite.");
+
   test("discount authority rules are seeded correctly", async () => {
     // Verify the discount_authority_rules table has the correct values
     // by checking the discounts page

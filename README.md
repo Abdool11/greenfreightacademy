@@ -344,3 +344,53 @@ The complete non-secret contract is [`docs/contracts/GFA_TO_BETTERDRIVER_CERTIFI
 Before merge, run `npm ci`, `npm run type-check`, `npm run build`, the safely gated certificate suites, and a Preview-only acceptance matrix. The Version 2 matrix must prove: disabled defaults; invalid/expired/replayed evidence denial; idempotent synthetic evidence intake; GFA pending/issue/not-eligible decision; template/PDF rendering; active/expired/revoked/superseded exact-number verification; status projection; Driver A versus Driver B denial; one-time, expired and replayed handoff denial; and no live WhatsApp/document attachment. Keep `ENABLE_EVIDENCE_REPORTS=false`; this release does not implement or extend SafeFreight, RTMS, incident or evidence-report work.
 
 Rollback is to set `ENABLE_GFA_CERTIFICATE_CONTRACT_V2=false` and revert the Release 12 PR after the Preview deployment is known healthy. Do not delete or overwrite canonical GFA certificate, lifecycle, audit or private-storage records during rollback.
+
+### Release 13 — Certificate Contract QA Repair
+
+Release 13 repairs the three certificate-contract defects identified by Preview/QA without changing BetterDriver, SafeFreight or public certificate policy. It also applies the approved official PDF title, `Professional Truck Driver Certificate`, while preserving the existing clean GFA Quotation-language template, no curved motifs and no certification-authority signature block. It adds the idempotent GFA-only migration `supabase/migrations/20260913_r13_certificate_contract_qa_repair.sql`, which provides one atomic GFA decision procedure for Issue, Not Eligible, Revoke and Supersede. The procedure locks the canonical certificate, reconciles its originating evidence event where present and writes an `admin_audit_log` record containing the GFA administrator, lifecycle transition, bounded decision reason and correlation ID. It does not make a decision by itself and does not modify certificates during migration.
+
+The application repair uses one shared UUID guard in all certificate decision and opaque-mapping routes. Valid signed BetterDriver assertions that are malformed, forged, expired, wrong-audience, wrong-issuer or signed with an unexpected key return generic HTTP `401`; missing contract configuration returns `503`; only valid assertions that conflict with an approved GFA mapping or lifecycle return `409`. The public response still discloses no internal certificate, driver or document detail.
+
+| Additional Preview-only variable | Purpose |
+| --- | --- |
+| `GFA_TEST_PENDING_CERTIFICATE_ID` | Synthetic pending certificate used to prove Issue and its correlation/audit record. |
+| `GFA_TEST_NOT_ELIGIBLE_CERTIFICATE_ID` | Separate synthetic pending certificate used to prove Not Eligible and its correlation/audit record. |
+| `GFA_TEST_SUPERSEDE_CERTIFICATE_ID` | Synthetic issued certificate used to prove Supersede. |
+| `GFA_TEST_REPLACEMENT_CERTIFICATE_ID` | Separate issued certificate for the same synthetic driver; it is the only permitted replacement fixture. |
+
+Apply Release 13 only after Releases 11 and 12, and only in a newly identified Preview first. Set `NEXT_PUBLIC_SITE_URL` in Preview to that Preview origin so opaque handoff URLs are runnable there; set the production value only to the canonical live host. Run `npm ci`, `npm run type-check`, `npm run build` and `npx playwright test tests/playwright/10-certificate-contract-v2.spec.ts` with Preview-only keys, temporary administrator credentials and synthetic fixtures. QA must confirm that every decision route accepts a valid UUID, invalid contract requests return `401`, and Issue/Not Eligible/Revoke/Supersede each produce the expected certificate lifecycle, originating decision-event state and `admin_audit_log` record.
+
+Keep `ENABLE_GFA_CERTIFICATE_CONTRACT_V2=false` outside the approved Preview. Do not enable BetterDriver My Certificate, issue real certificates, send certificate-ready messages or use production records until the repaired Preview acceptance evidence is approved.
+
+### Release 14A — Public Contact Enquiry Persistence
+
+Release 14A repairs the public GFA contact form so it no longer displays a success message after a placeholder delay. The form now sends its validated payload to `POST /api/submit-enquiry`; GFA stores the enquiry in the existing `prospect_leads` pipeline with source `gfa_contact_form` and stage `new`. A confirmation appears only after the database write succeeds. Invalid or unavailable submissions display a visible error and leave the form available for correction or retry.
+
+This release adds **no migration, secret, email/WhatsApp notification, third-party integration or production data mutation**. It does not alter BetterDriver, SafeFreight, certificate issuance, payment, EFT or CPD/bulletin workflows. The endpoint validates bounded organisation/contact data and persists only the enquiry data supplied through the GFA form.
+
+For Preview verification, set `GFA_TEST_BASE_URL` only to a non-production URL and run `npx playwright test tests/playwright/11-contact-enquiry.spec.ts`. The default check loads `/contact` and submits an intentionally incomplete payload, proving validation rejects it without a database write. A human QA tester may then submit one clearly marked synthetic enquiry in Preview and confirm one corresponding `prospect_leads` row with source `gfa_contact_form`; do not use a real customer or production URL. Roll back by reverting the Release 14A pull request; the already stored enquiry rows remain available to administrators.
+
+### Release 14B — EFT Reconciliation Audit and Ledger Repair
+
+Release 14B adds `supabase/migrations/20260913_r14_eft_reconciliation_audit_repair.sql`. It replaces the finance route’s independent, partially non-blocking confirmation writes with one GFA-only database procedure for `confirm`, `request_clarification` and `reject`. The procedure locks the pending payment and linked quote, validates the approved decision, then records the payment/quote state, `payment_reconciliation_events` row, confirmed-EFT `ledger_entries` row where applicable and `admin_audit_log` record atomically. A successful response returns the reconciliation-event, ledger-entry and audit IDs for evidence review.
+
+The existing Release 9 once-only credit allocation remains separate and runs only after the atomic confirmed-EFT decision. If allocation fails, the payment decision remains auditable and deployment must be held for finance escalation; do not manually overwrite balances. This repair adds no payment gateway change, no live message test, no external accounting integration and no BetterDriver, SafeFreight, certificate or CPD/bulletin change.
+
+Apply Release 14B after the earlier migrations only in Preview first, with `ENABLE_EFT_RECONCILIATION_V2=true` there and all outbound email/WhatsApp credentials/configuration disabled or mocked. Supply a new synthetic `GFA_TEST_EFT_PENDING_PAYMENT_ID` and synthetic `GFA_TEST_EFT_BANK_REFERENCE`, then run `npx playwright test tests/playwright/12-eft-reconciliation-audit.spec.ts`. The test intentionally consumes one synthetic pending EFT and must return one reconciliation-event ID, one ledger-entry ID and one administrator-audit ID. QA must verify those rows are linked to the same payment before considering the fix accepted. Roll back by disabling the EFT flag and reverting the Release 14B pull request; do not delete any resulting financial audit rows.
+
+
+### Release 15 — GFA CPD Queue and Bulletin Repair
+
+Release 15 adds `supabase/migrations/20260913_r15_cpd_bulletin_qa_repair.sql` and keeps the approved GFA CPD and Bulletin workflows within this repository. The migration restores every `cpd_library_items` column required by the current queue in environments where the historic CPD schema was incomplete. It also provides a GFA-only atomic decision procedure: an administrator approval or rejection updates the CPD item and writes a correctly shaped `admin_audit_log` record in the same transaction.
+
+Client sessions now expose compatible `id` and `name` aliases derived from the canonical `companyId` and `companyName` fields. This repairs the existing Bulletin routes without changing the underlying company identity or sharing a BetterDriver, SafeFreight or database credential. Existing and legacy valid GFA client cookies are normalised at read time; newly signed cookies contain the aliases automatically.
+
+Apply Release 15 in Preview only after its preceding migrations. Verify with a synthetic client company and drivers, an explicitly configured Preview administrator and all WhatsApp/email delivery credentials disabled or mocked. QA must prove a client can create a GFA bulletin with the correct company association, the CPD queue lists its pending library item, an administrator can approve or reject it, and the corresponding `admin_audit_log` record is created. Roll back by disabling any Preview-only bulletin delivery configuration and reverting the Release 15 pull request; do not delete audit records generated during the test.
+
+
+
+### Final Preview Go-Live Acceptance Gate
+
+The integrated go-live branch includes `docs/testing/GFA_GO_LIVE_PREVIEW_E2E_PROTOCOL.md` and the guarded command `npm run test:e2e:go-live-preview`. The runner refuses the production GFA domain and refuses to start when any mandatory synthetic Preview fixture or secret is missing. It runs the complete Chromium Playwright suite only after TypeScript and production-build validation.
+
+A skipped mandatory test is not a pass. Before the final QA handover, provide a unique Preview URL, temporary synthetic administrator/client credentials, synthetic commercial/certificate fixtures, Preview-only signed assertions, no-send/mock WhatsApp and email configuration, and the evidence bundle specified by the protocol. Never commit test credentials, keys, fixture identifiers or generated reports.
