@@ -4,7 +4,6 @@ import {
   certificateContractV2Enabled,
   receiveCompletionEvidence,
   signCertificateStatusAssertion,
-  signPendingCertificateStatus,
   lookupCertificateStatus,
   verifyCompletionEvidence,
 } from "@/lib/certificateContractV2";
@@ -33,9 +32,9 @@ export async function POST(request: NextRequest) {
   try {
     const evidence = await verifyCompletionEvidence(request);
     const outcome = await receiveCompletionEvidence(evidence);
-    const statusAssertion = outcome.lifecycleStatus === "PENDING_REVIEW"
-      ? await signPendingCertificateStatus(outcome.certificateRef ?? "", evidence.programmeCode, evidence.programmeVersion)
-      : await signCertificateStatusAssertion(await lookupCertificateStatus(evidence.driverRef, outcome.certificateRef ?? undefined));
+    const statusAssertion = await signCertificateStatusAssertion(
+      await lookupCertificateStatus(evidence.driverRef, outcome.certificateRef ?? undefined)
+    );
 
     return NextResponse.json({ ok: true, statusAssertion }, {
       headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" },

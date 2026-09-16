@@ -37,7 +37,7 @@ GFA verifies BetterDriver’s public key. BetterDriver verifies GFA’s separate
 
 **Endpoint:** `POST /api/integrations/certificates/completion-evidence`
 
-This endpoint accepts learning-completion evidence only. It does **not** issue a certificate automatically. GFA records the evidence and creates a `PENDING_REVIEW` canonical certificate record. An authorised GFA administrator must make the issue or NOT_ELIGIBLE decision.
+This endpoint accepts verified qualifying learning-completion evidence. For the launch Professional Truck Driver Program, BetterDriver emits `COMPLETE` only after the driver has completed every required module and achieved at least 4/5 on every required quiz. GFA validates the signed event and its pre-created opaque mapping, then automatically allocates the canonical certificate number, renders the private official PDF and activates the certificate for exact-number verification. A separate administrator issue action is not required for a qualifying new completion.
 
 ### Required signed JWT claims
 
@@ -101,7 +101,7 @@ The signed assertion contains:
 
 `action` is exactly `view` or `download`. The signed lifetime must not exceed five minutes. GFA validates issuer, audience, key ID, expiry, `jti`, active mapping, certificate ownership, current lifecycle and current document availability.
 
-GFA returns only an opaque `handoffUrl` and expiry. The URL contains no driver ID, certificate number, certificate reference, raw JWT or signed storage URL. The driver opens that URL from BetterDriver. GFA redeems it once, rechecks that the certificate is still issued/current, then redirects to a short-lived private GFA storage URL. A replay, expiry, wrong driver, revoked, superseded or expired certificate fails without serving the document.
+GFA returns only an opaque `handoffUrl` and expiry. The URL contains no driver ID, certificate number, certificate reference, raw JWT or signed storage URL. The driver opens that URL from BetterDriver. GFA redeems it once, rechecks that the certificate is still issued/current, then redirects to a short-lived private GFA storage URL. A replay, expiry, wrong driver, revoked, superseded or expired certificate fails without serving the document. The one-time rule applies to each handoff URL only: whenever the authenticated driver later opens My Certificate, BetterDriver requests a fresh signed handoff for the same active certificate so repeated view and download remain available.
 
 ## 6. Official public verification
 
@@ -113,8 +113,8 @@ The certificate QR code resolves to the GFA `/verify?certificate=GFA-YYYY-######
 
 | GFA status | Driver-facing meaning | BetterDriver presentation rule |
 |---|---|---|
-| `PENDING_REVIEW` | Completion evidence received; GFA has not issued a certificate. | Show pending, no document action. |
-| `ISSUED` | GFA certificate is current and its GFA PDF is available. | May offer My Certificate through scoped handoff only. |
+| `ISSUED` | Verified qualifying completion automatically issued the certificate and the GFA PDF is available. | Offer My Certificate through a fresh scoped handoff whenever the authenticated driver requests view or download. |
+| `PENDING_REVIEW` | Historical/manual-exception state only; it is not created for qualifying new Professional Truck Driver Program completions. | Show pending only for a retained legacy record; no document action. |
 | `SUPERSEDED` | This record has been replaced. | Do not present as current or offer document access. |
 | `EXPIRED` | The recorded validity period ended. | Do not present as current or offer document access. |
 | `REVOKED` | GFA invalidated the record. | Do not present as current or offer document access. |
@@ -128,7 +128,7 @@ Certificate-ready messaging is outside this GFA branch. If later approved, the m
 
 ## 9. Preview acceptance and rollback
 
-Before BetterDriver implements or enables this contract, GFA must provide Preview evidence for: valid/replayed/expired evidence handling; GFA pending/issue/not-eligible decision; rendered private PDF; exact-number verification; no identity enumeration; signed status projection; driver A/B cross-access denial; one-time/expired document handoff; and type/build success.
+Before BetterDriver implements or enables this contract, GFA must provide Preview evidence for: valid/replayed/expired evidence handling; automatic issue from qualifying completion; rendered private PDF; active exact-number verification; no identity enumeration; signed status projection; driver A/B cross-access denial; one-time/expired document handoff; repeated access through fresh handoffs; and type/build success.
 
 Keep `ENABLE_GFA_CERTIFICATE_CONTRACT_V2=false` outside the approved Preview. Roll back presentation safely by disabling that flag and reverting the feature branch. Do not delete canonical GFA certificate, lifecycle, audit or storage records as part of rollback.
 

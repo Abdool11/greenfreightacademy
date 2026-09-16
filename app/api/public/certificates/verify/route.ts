@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await supabaseAdmin
       .from("certifications")
-      .select("id, certificate_number, programme, issued_at, expires_at, status, lifecycle_status, courses(name)")
+      .select("id, certificate_number, programme, issued_at, expires_at, status, lifecycle_status, document_storage_path, courses(name)")
       .eq("certificate_number", certificateNumber)
       .maybeSingle();
     if (error) throw error;
@@ -68,14 +68,24 @@ export async function POST(request: NextRequest) {
     }
 
     const hasExpired = data.expires_at ? new Date(data.expires_at).getTime() < Date.now() : false;
+    const documentReady =
+      data.lifecycle_status === "ISSUED" &&
+      ["active", "issued"].includes(data.status ?? "") &&
+      Boolean(data.document_storage_path);
     const status = data.status === "revoked" || data.lifecycle_status === "REVOKED"
       ? "revoked"
       : data.status === "superseded" || data.lifecycle_status === "SUPERSEDED"
         ? "superseded"
         : hasExpired || data.status === "expired" || data.lifecycle_status === "EXPIRED"
           ? "expired"
-          : "active";
+          : documentReady
+            ? "active"
+            : "not_found";
+
     await auditCertificateVerification(data.id, queryFingerprint, requestFingerprint, status === "active" ? "verified" : status === "superseded" ? "not_found" : status);
+    if (status === "not_found") {
+      return noStoreJson({ verified: false, status: "not_found" }, { status: 404 });
+    }
 
     return noStoreJson({
       verified: status === "active",
