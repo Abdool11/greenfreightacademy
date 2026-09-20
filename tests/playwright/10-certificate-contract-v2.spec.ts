@@ -3,6 +3,7 @@ import { adminLogin, sessionCookieHeader } from "./helpers";
 
 const baseUrl = process.env.GFA_TEST_BASE_URL;
 const completionAssertion = process.env.GFA_TEST_CERTIFICATE_COMPLETION_ASSERTION;
+const autoIssuedCertificateNumber = process.env.GFA_TEST_AUTO_ISSUED_CERTIFICATE_NUMBER;
 const statusAssertion = process.env.GFA_TEST_CERTIFICATE_STATUS_ASSERTION;
 const handoffAssertion = process.env.GFA_TEST_CERTIFICATE_HANDOFF_ASSERTION;
 const otherDriverHandoffAssertion = process.env.GFA_TEST_OTHER_DRIVER_HANDOFF_ASSERTION;
@@ -72,7 +73,7 @@ test.describe("GFA certificate contract Version 2", () => {
     }
   });
 
-  test("accepts a configured synthetic completion evidence event idempotently and returns only a signed GFA status assertion", async ({ request }) => {
+  test("automatically issues one certificate from qualifying completion evidence and returns only a signed GFA status assertion", async ({ request }) => {
     test.skip(!completionAssertion, "Requires a pre-signed synthetic GFA_TEST_CERTIFICATE_COMPLETION_ASSERTION.");
     const first = await request.post("/api/integrations/certificates/completion-evidence", { headers: signedHeaders(completionAssertion!) });
     expect(first.status()).toBe(200);
@@ -87,6 +88,17 @@ test.describe("GFA certificate contract Version 2", () => {
     const retryBody = await retry.json();
     expect(retryBody.ok).toBe(true);
     expect(typeof retryBody.statusAssertion).toBe("string");
+
+    if (autoIssuedCertificateNumber) {
+      const verification = await request.post("/api/public/certificates/verify", { data: { certificateNumber: autoIssuedCertificateNumber } });
+      expect(verification.status()).toBe(200);
+      const body = await verification.json();
+      expect(body.verified).toBe(true);
+      expect(body.status).toBe("active");
+      expect(body.certificateNumber).toBe(autoIssuedCertificateNumber);
+      expect(body).not.toHaveProperty("driverName");
+      expect(body).not.toHaveProperty("documentUrl");
+    }
   });
 
   test("returns a signed minimal status projection for a configured synthetic driver", async ({ request }) => {

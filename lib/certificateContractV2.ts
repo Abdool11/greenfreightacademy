@@ -297,60 +297,24 @@ async function loadCertificate(certificateId: string) {
   return data as unknown as CertificateContractRow;
 }
 
+interface AutoIssueCertificateResult {
+  created: boolean;
+  certificate_id: string;
+  certificate_ref: string;
+  certificate_number: string;
+  certificate_version: string | null;
+  lifecycle_status: CertificateLifecycleStatus;
+  issued_at: string;
+  expires_at: string | null;
+  decision_event_id: string;
+  correlation_id: string;
+}
+
 export async function receiveCompletionEvidence(evidence: CompletionEvidence) {
   const mapping = await findMapping(evidence.driverRef, evidence.companyRef, evidence.enrolmentRef);
   if (mapping.programme_code !== evidence.programmeCode || mapping.programme_version !== evidence.programmeVersion) {
     throw new Error("The completion evidence programme does not match the approved GFA mapping.");
   }
-
-  const { data: existingEvent, error: existingError } = await supabaseAdmin
-    .from("certificate_decision_events")
-    .select("id, decision_status")
-    .eq("source_system", "betterdriver")
-    .eq("source_event_id", evidence.eventId)
-    .maybeSingle();
-  if (existingError) throw new Error("The completion evidence could not be checked safely.");
-
-  if (existingEvent) {
-    const { data: existingCertificate, error: certificateError } = await supabaseAdmin
-      .from("certifications")
-      .select("id, certificate_ref, lifecycle_status, certificate_number, issued_at, expires_at")
-      .eq("decision_event_id", existingEvent.id)
-      .maybeSingle();
-    if (certificateError) throw new Error("The prior GFA decision could not be reloaded.");
-    return {
-      created: false,
-      certificateRef: existingCertificate?.certificate_ref ?? null,
-      lifecycleStatus: (existingCertificate?.lifecycle_status ?? existingEvent.decision_status) as CertificateLifecycleStatus,
-      issuedAt: existingCertificate?.issued_at ?? null,
-      expiresAt: existingCertificate?.expires_at ?? null,
-    };
-  }
-
-  const { data: decisionEvent, error: decisionError } = await supabaseAdmin
-    .from("certificate_decision_events")
-    .insert({
-      source_system: "betterdriver",
-      source_event_id: evidence.eventId,
-      schema_version: "1.0",
-      event_type: "bd.learning_completion_evidence.v1",
-      completion_evidence_ref: evidence.completionEvidenceRef,
-      external_driver_ref: evidence.driverRef,
-      external_company_ref: evidence.companyRef,
-      external_enrolment_ref: evidence.enrolmentRef,
-      programme_code: evidence.programmeCode,
-      programme_version: evidence.programmeVersion,
-      driver_id: mapping.driver_id,
-      company_id: mapping.company_id,
-      enrolment_id: mapping.enrolment_id,
-      occurred_at: evidence.occurredAt,
-      decision_status: "PENDING_REVIEW",
-      payload: { assessment_status: evidence.assessmentStatus, evidence_version: evidence.evidenceVersion },
-      processed_at: new Date().toISOString(),
-    })
-    .select("id")
-    .single();
-  if (decisionError || !decisionEvent) throw new Error("The completion evidence could not be recorded.");
 
   const { data: course, error: courseError } = await supabaseAdmin
     .from("enrolments")
@@ -361,32 +325,41 @@ export async function receiveCompletionEvidence(evidence: CompletionEvidence) {
     .maybeSingle();
   if (courseError || !course?.course_id) throw new Error("The mapped GFA enrolment is no longer available.");
 
-  const certificateRef = `gfa_cert_${randomUUID().replace(/-/g, "")}`;
-  const { data: certificate, error: certificateError } = await supabaseAdmin
-    .from("certifications")
-    .insert({
-      driver_id: mapping.driver_id,
-      company_id: mapping.company_id,
-      enrolment_id: mapping.enrolment_id,
-      course_id: course.course_id,
-      certificate_ref: certificateRef,
-      certificate_number: null,
-      programme: (course.courses as { name?: string } | null)?.name ?? evidence.programmeCode,
-      status: "pending_review",
-      lifecycle_status: "PENDING_REVIEW",
-      certificate_version: evidence.programmeVersion,
-      decision_event_id: decisionEvent.id,
-      lifecycle_updated_at: new Date().toISOString(),
-    })
-    .select("id, certificate_ref, lifecycle_status")
-    .single();
-
-  if (certificateError || !certificate) {
-    await supabaseAdmin.from("certificate_decision_events").update({ outcome_detail: "certificate record creation failed" }).eq("id", decisionEvent.id);
-    throw new Error("The GFA pending certificate could not be created.");
+  const { data, error } = await supabaseAdmin.rpc("gfa_record_auto_issued_certificate", {
+    p_source_event_id: evidence.eventId,
+    p_completion_evidence_ref: evidence.completionEvidenceRef,
+    p_external_driver_ref: evidence.driverRef,
+    p_external_company_ref: evidence.companyRef,
+    p_external_enrolment_ref: evidence.enrolmentRef,
+    p_programme_code: evidence.programmeCode,
+    p_programme_version: evidence.programmeVersion,
+    p_driver_id: mapping.driver_id,
+    p_company_id: mapping.company_id,
+    p_enrolment_id: mapping.enrolment_id,
+    p_course_id: course.course_id,
+    p_programme: (course.courses as { name?: string } | null)?.name ?? evidence.programmeCode,
+    p_occurred_at: evidence.occurredAt,
+    p_payload: {
+      assessment_status: evidence.assessmentStatus,
+      evidence_version: evidence.evidenceVersion,
+      automatic_issue_rule: "verified_learning_completion",
+    },
+  });
+  const issued = (Array.isArray(data) ? data[0] : data) as AutoIssueCertificateResult | null;
+  if (error || !issued?.certificate_id || !issued.certificate_ref || !issued.certificate_number) {
+    throw new Error("The GFA automatic certificate issue could not be completed.");
   }
 
-  return { created: true, certificateRef: certificate.certificate_ref, lifecycleStatus: certificate.lifecycle_status as CertificateLifecycleStatus, issuedAt: null, expiresAt: null };
+  // Object storage is outside the database transaction. A retry of the same
+  // signed event safely returns this same certificate and retries PDF storage.
+  const certificate = await renderAndStoreIssuedCertificate(issued.certificate_id);
+  return {
+    created: issued.created,
+    certificateRef: certificate.certificate_ref,
+    lifecycleStatus: certificate.lifecycle_status,
+    issuedAt: certificate.issued_at,
+    expiresAt: certificate.expires_at,
+  };
 }
 
 export async function renderAndStoreIssuedCertificate(certificateId: string) {
