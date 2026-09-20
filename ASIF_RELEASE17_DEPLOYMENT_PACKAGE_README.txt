@@ -5,10 +5,12 @@ Repository
 ----------
 https://github.com/Abdool11/greenfreightacademy
 
-Published branch and immutable commit
--------------------------------------
+Published branch and deployment commit
+--------------------------------------
 Branch: feature/gfa-release2-qa-remediation
-HEAD:   b5fc734316e2732884fbe665f2a22347cfd7a3c5
+Before deployment, resolve and record the exact published branch head:
+  git fetch origin --prune
+  git rev-parse origin/feature/gfa-release2-qa-remediation
 Compare base: main at 0bf959f4a92f659e7e8e2ae517bffe98486e45e5
 Pull request: https://github.com/Abdool11/greenfreightacademy/pull/new/feature/gfa-release2-qa-remediation
 
