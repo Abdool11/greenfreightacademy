@@ -1,6 +1,9 @@
--- Green Freight Academy — ALL MIGRATIONS RUN ONCE
+-- =============================================================================
+-- Green Freight Academy — Combined migrations
 -- Generated from supabase/migrations in filename order.
--- Review in Preview before applying to any environment.
+-- Use only for a new or intentionally rebuilt non-production database.
+-- For an existing environment, apply only migrations not yet recorded, in order.
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260501_base_schema.sql
@@ -505,9 +508,9 @@ ALTER TABLE training_campaigns ENABLE ROW LEVEL SECURITY;
 -- =============================================================================
 -- END OF BASE SCHEMA
 -- =============================================================================
-
 -- =============================================================================
 -- END supabase/migrations/20260501_base_schema.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260502_training_campaigns.sql
@@ -572,9 +575,9 @@ BEGIN
   END IF;
 END
 $$;
-
 -- =============================================================================
 -- END supabase/migrations/20260502_training_campaigns.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260502_video_library_bulletin_fields.sql
@@ -648,9 +651,9 @@ ALTER TABLE training_campaigns
 
 ALTER TABLE driver_invitations
   ADD COLUMN IF NOT EXISTS invite_video_url TEXT;
-
 -- =============================================================================
 -- END supabase/migrations/20260502_video_library_bulletin_fields.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260505_schema_gaps_fix.sql
@@ -848,9 +851,9 @@ CREATE INDEX IF NOT EXISTS idx_webhook_log_user ON moodle_webhook_log(moodle_use
 -- =============================================================================
 -- END OF GAPS FIX MIGRATION
 -- =============================================================================
-
 -- =============================================================================
 -- END supabase/migrations/20260505_schema_gaps_fix.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260506_column_gaps_fix.sql
@@ -1004,9 +1007,9 @@ ON CONFLICT (key) DO NOTHING;
 -- =============================================================================
 -- END OF MIGRATION
 -- =============================================================================
-
 -- =============================================================================
 -- END supabase/migrations/20260506_column_gaps_fix.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260506_enable_rls_all_tables.sql
@@ -1294,9 +1297,9 @@ CREATE POLICY "deny_anon_trial_vouchers"
 --
 -- Expected result: 0 rows.
 -- ============================================================
-
 -- =============================================================================
 -- END supabase/migrations/20260506_enable_rls_all_tables.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260718_add_course_name_and_audience.sql
@@ -1330,9 +1333,9 @@ UPDATE courses
     ELSE 'all_staff'
   END
   WHERE audience IS NULL OR audience = '';
-
 -- =============================================================================
 -- END supabase/migrations/20260718_add_course_name_and_audience.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260720_setup_tokens.sql
@@ -1349,9 +1352,9 @@ ALTER TABLE companies
   ADD COLUMN IF NOT EXISTS setup_token_used  BOOLEAN DEFAULT FALSE;
 
 CREATE INDEX IF NOT EXISTS idx_companies_setup_token ON companies(setup_token) WHERE setup_token_used = FALSE;
-
 -- =============================================================================
 -- END supabase/migrations/20260720_setup_tokens.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260721_quote_approval_columns.sql
@@ -1364,9 +1367,9 @@ ALTER TABLE quotes
 
 COMMENT ON COLUMN quotes.approved_at IS 'Timestamp when quote was approved (auto for Paystack, manual for EFT)';
 COMMENT ON COLUMN quotes.approved_by IS 'Who approved: paystack_auto or admin email/UUID';
-
 -- =============================================================================
 -- END supabase/migrations/20260721_quote_approval_columns.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260806_accounting_notifications.sql
@@ -1532,9 +1535,9 @@ CREATE TABLE IF NOT EXISTS stale_alert_log (
 -- =============================================================================
 -- END OF MIGRATION
 -- =============================================================================
-
 -- =============================================================================
 -- END supabase/migrations/20260806_accounting_notifications.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260816_r1_billing_quotes.sql
@@ -1629,9 +1632,9 @@ CREATE TRIGGER trg_company_billing_profiles_updated_at
 -- =============================================================================
 -- END RELEASE 1 MIGRATION
 -- =============================================================================
-
 -- =============================================================================
 -- END supabase/migrations/20260816_r1_billing_quotes.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260817_r2_eft_reconciliation.sql
@@ -1701,9 +1704,9 @@ ON CONFLICT (id) DO NOTHING;
 -- =============================================================================
 -- END RELEASE 2 MIGRATION
 -- =============================================================================
-
 -- =============================================================================
 -- END supabase/migrations/20260817_r2_eft_reconciliation.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260818_r3_discount_governance.sql
@@ -1817,9 +1820,9 @@ CREATE TRIGGER trg_discount_requests_updated_at
 -- =============================================================================
 -- END RELEASE 3 MIGRATION
 -- =============================================================================
-
 -- =============================================================================
 -- END supabase/migrations/20260818_r3_discount_governance.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260819_r6_learning_events.sql
@@ -1869,9 +1872,9 @@ DO $$ BEGIN
     CREATE POLICY "revenue_recognition_service_only" ON revenue_recognition_events FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
   END IF;
 END $$;
-
 -- =============================================================================
 -- END supabase/migrations/20260819_r6_learning_events.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260821_r7a_compliance_reporting.sql
@@ -1925,9 +1928,9 @@ ALTER TABLE quotes ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
 ALTER TABLE quotes ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 ALTER TABLE quotes ADD COLUMN IF NOT EXISTS expired_at TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS idx_quotes_active_expiry ON quotes(company_id, expires_at) WHERE archived_at IS NULL;
-
 -- =============================================================================
 -- END supabase/migrations/20260821_r7a_compliance_reporting.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260903_r8_invoices_vat_commercial_documents.sql
@@ -2107,9 +2110,9 @@ $$;
 -- =============================================================================
 -- END RELEASE 8
 -- =============================================================================
-
 -- =============================================================================
 -- END supabase/migrations/20260903_r8_invoices_vat_commercial_documents.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260905_r10_driver_deployment_idempotency.sql
@@ -2210,9 +2213,9 @@ GRANT EXECUTE ON FUNCTION reserve_quote_driver_deployment_once(UUID, UUID, UUID,
 -- =============================================================================
 -- END RELEASE 10 MIGRATION
 -- =============================================================================
-
 -- =============================================================================
 -- END supabase/migrations/20260905_r10_driver_deployment_idempotency.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260905_r9_payment_credit_idempotency.sql
@@ -2291,9 +2294,9 @@ GRANT EXECUTE ON FUNCTION allocate_quote_credits_once(UUID, UUID, UUID, INTEGER)
 -- =============================================================================
 -- END RELEASE 9 MIGRATION
 -- =============================================================================
-
 -- =============================================================================
 -- END supabase/migrations/20260905_r9_payment_credit_idempotency.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260908_r11_gfa_certificate_registry.sql
@@ -2616,9 +2619,9 @@ $$;
 -- 1. Existing legacy certifications with status='active' remain readable. They are not bulk-converted.
 -- 2. The application never uses certifications.pdf_url for new GFA certificates; it stores a private bucket path above.
 -- 3. Certificate/registry feature flags remain false until Preview evidence is signed off.
-
 -- =============================================================================
 -- END supabase/migrations/20260908_r11_gfa_certificate_registry.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260912_r12_certificate_contract_completion.sql
@@ -2900,9 +2903,9 @@ $$;
 -- =============================================================================
 -- END RELEASE 12 MIGRATION
 -- =============================================================================
-
 -- =============================================================================
 -- END supabase/migrations/20260912_r12_certificate_contract_completion.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260913_r13_certificate_contract_qa_repair.sql
@@ -3122,9 +3125,9 @@ $$;
 -- =============================================================================
 -- END RELEASE 13 MIGRATION
 -- =============================================================================
-
 -- =============================================================================
 -- END supabase/migrations/20260913_r13_certificate_contract_qa_repair.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260913_r14_eft_reconciliation_audit_repair.sql
@@ -3368,9 +3371,9 @@ $$;
 -- =============================================================================
 -- END RELEASE 14 MIGRATION
 -- =============================================================================
-
 -- =============================================================================
 -- END supabase/migrations/20260913_r14_eft_reconciliation_audit_repair.sql
+-- =============================================================================
 
 -- =============================================================================
 -- BEGIN supabase/migrations/20260913_r15_cpd_bulletin_qa_repair.sql
@@ -3505,6 +3508,444 @@ $$;
 -- =============================================================================
 -- END RELEASE 15 MIGRATION
 -- =============================================================================
-
 -- =============================================================================
 -- END supabase/migrations/20260913_r15_cpd_bulletin_qa_repair.sql
+-- =============================================================================
+
+-- =============================================================================
+-- BEGIN supabase/migrations/20260916_r16_auto_certificate_issue.sql
+-- =============================================================================
+-- =============================================================================
+-- RELEASE 16: Automatic Certificate Issue After Verified Completion
+-- Scope: Green Freight Academy only. Do not copy this migration to BetterDriver,
+-- SafeFreight, TAG, or any sister repository.
+--
+-- A cryptographically verified, mapped BetterDriver COMPLETE event is already
+-- emitted only after the learning platform applies the configured completion
+-- rule. For the launch Professional Truck Driver Program, that rule is: every
+-- required module complete and every required quiz score >= 4/5.
+--
+-- This function atomically records one source event, allocates one canonical
+-- GFA certificate number and creates one ISSUED certificate. PDF rendering and
+-- private storage remain in the application layer because object storage is not
+-- transactional with PostgreSQL. A retry of the same event returns the original
+-- certificate so the PDF render can safely be retried without a second number.
+-- =============================================================================
+
+CREATE OR REPLACE FUNCTION gfa_record_auto_issued_certificate(
+  p_source_event_id TEXT,
+  p_completion_evidence_ref TEXT,
+  p_external_driver_ref TEXT,
+  p_external_company_ref TEXT,
+  p_external_enrolment_ref TEXT,
+  p_programme_code TEXT,
+  p_programme_version TEXT,
+  p_driver_id UUID,
+  p_company_id UUID,
+  p_enrolment_id UUID,
+  p_course_id UUID,
+  p_programme TEXT,
+  p_occurred_at TIMESTAMPTZ,
+  p_payload JSONB DEFAULT '{}'::JSONB
+)
+RETURNS TABLE (
+  created BOOLEAN,
+  certificate_id UUID,
+  certificate_ref TEXT,
+  certificate_number TEXT,
+  certificate_version TEXT,
+  lifecycle_status TEXT,
+  issued_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ,
+  decision_event_id UUID,
+  correlation_id UUID
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  event_row certificate_decision_events%ROWTYPE;
+  certificate_row certifications%ROWTYPE;
+  event_id UUID;
+  allocated_number TEXT;
+  audit_correlation_id UUID := gen_random_uuid();
+BEGIN
+  IF coalesce(trim(p_source_event_id), '') = '' OR
+     coalesce(trim(p_completion_evidence_ref), '') = '' OR
+     coalesce(trim(p_programme_code), '') = '' OR
+     coalesce(trim(p_programme_version), '') = '' OR
+     p_driver_id IS NULL OR p_company_id IS NULL OR p_enrolment_id IS NULL OR
+     p_course_id IS NULL OR p_occurred_at IS NULL THEN
+    RAISE EXCEPTION 'Automatic certificate issue requires complete verified completion evidence' USING ERRCODE = 'P0001';
+  END IF;
+
+  -- The unique source event is the idempotency key. If this is a retry, return
+  -- the original canonical certificate rather than allocating another number.
+  INSERT INTO certificate_decision_events (
+    source_system,
+    source_event_id,
+    schema_version,
+    event_type,
+    completion_evidence_ref,
+    external_driver_ref,
+    external_company_ref,
+    external_enrolment_ref,
+    programme_code,
+    programme_version,
+    driver_id,
+    company_id,
+    enrolment_id,
+    occurred_at,
+    decision_status,
+    outcome_detail,
+    processed_at,
+    payload
+  ) VALUES (
+    'betterdriver',
+    p_source_event_id,
+    '1.0',
+    'bd.learning_completion_evidence.v1',
+    p_completion_evidence_ref,
+    p_external_driver_ref,
+    p_external_company_ref,
+    p_external_enrolment_ref,
+    p_programme_code,
+    p_programme_version,
+    p_driver_id,
+    p_company_id,
+    p_enrolment_id,
+    p_occurred_at,
+    'ISSUED',
+    'Automatically issued from verified qualifying completion evidence.',
+    NOW(),
+    coalesce(p_payload, '{}'::JSONB) || jsonb_build_object(
+      'automatic_issue', true,
+      'automatic_issue_rule', 'verified_learning_completion'
+    )
+  )
+  ON CONFLICT (source_system, source_event_id) DO NOTHING
+  RETURNING id INTO event_id;
+
+  IF event_id IS NULL THEN
+    SELECT * INTO event_row
+    FROM certificate_decision_events
+    WHERE source_system = 'betterdriver'
+      AND source_event_id = p_source_event_id;
+
+    SELECT * INTO certificate_row
+    FROM certifications
+    WHERE decision_event_id = event_row.id;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'The prior completion event has no canonical GFA certificate' USING ERRCODE = 'P0001';
+    END IF;
+
+    RETURN QUERY SELECT
+      false,
+      certificate_row.id,
+      certificate_row.certificate_ref,
+      certificate_row.certificate_number,
+      certificate_row.certificate_version,
+      certificate_row.lifecycle_status,
+      certificate_row.issued_at,
+      certificate_row.expires_at,
+      event_row.id,
+      audit_correlation_id;
+    RETURN;
+  END IF;
+
+  allocated_number := gfa_allocate_certificate_number(NOW());
+
+  INSERT INTO certifications (
+    driver_id,
+    company_id,
+    enrolment_id,
+    course_id,
+    certificate_ref,
+    certificate_number,
+    programme,
+    status,
+    lifecycle_status,
+    certificate_version,
+    decision_event_id,
+    issued_at,
+    lifecycle_updated_at
+  ) VALUES (
+    p_driver_id,
+    p_company_id,
+    p_enrolment_id,
+    p_course_id,
+    'gfa_cert_' || replace(gen_random_uuid()::TEXT, '-', ''),
+    allocated_number,
+    coalesce(nullif(trim(p_programme), ''), p_programme_code),
+    'pending_document',
+    'ISSUED',
+    p_programme_version,
+    event_id,
+    NOW(),
+    NOW()
+  )
+  RETURNING * INTO certificate_row;
+
+  INSERT INTO admin_audit_log (
+    admin_id,
+    admin_name,
+    action,
+    entity_type,
+    entity_id,
+    details,
+    created_at
+  ) VALUES (
+    NULL,
+    'GFA automatic certificate service',
+    'certificate_auto_issued',
+    'certifications',
+    certificate_row.id,
+    jsonb_build_object(
+      'certificate_ref', certificate_row.certificate_ref,
+      'certificate_number', certificate_row.certificate_number,
+      'previous_lifecycle_status', NULL,
+      'lifecycle_status', 'ISSUED',
+      'source_system', 'betterdriver',
+      'source_event_id', p_source_event_id,
+      'completion_evidence_ref', p_completion_evidence_ref,
+      'correlation_id', audit_correlation_id
+    ),
+    NOW()
+  );
+
+  RETURN QUERY SELECT
+    true,
+    certificate_row.id,
+    certificate_row.certificate_ref,
+    certificate_row.certificate_number,
+    certificate_row.certificate_version,
+    certificate_row.lifecycle_status,
+    certificate_row.issued_at,
+    certificate_row.expires_at,
+    event_id,
+    audit_correlation_id;
+END;
+$$;
+
+COMMENT ON FUNCTION gfa_record_auto_issued_certificate(
+  TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, UUID, UUID, UUID, UUID, TEXT, TIMESTAMPTZ, JSONB
+) IS 'GFA-only automatic certificate issuance for one verified BetterDriver learning-completion event. Idempotent by source event.';
+
+-- =============================================================================
+-- END RELEASE 16 MIGRATION
+-- =============================================================================
+-- =============================================================================
+-- END supabase/migrations/20260916_r16_auto_certificate_issue.sql
+-- =============================================================================
+
+-- =============================================================================
+-- BEGIN supabase/migrations/20260920_r17_release2_qa_remediation.sql
+-- =============================================================================
+-- =============================================================================
+-- RELEASE 17: GFA Release 2 QA Remediation
+-- Scope: Green Freight Academy only.
+--
+-- This migration makes the authorised launch catalogue explicit and provides an
+-- advisory-lock protected invitation reservation helper for the GFA admin cohort
+-- approval workflow. It does not contact BetterDriver, send messages, issue
+-- certificates, delete records, reconcile historic data or change production
+-- settings by itself.
+-- =============================================================================
+
+-- Catalogue compatibility: historic environments have not always contained the
+-- same course-display fields. Add only additive fields needed by the live GFA
+-- pricing and programme queries.
+ALTER TABLE courses
+  ADD COLUMN IF NOT EXISTS is_visible BOOLEAN DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS available BOOLEAN DEFAULT TRUE;
+
+-- The historic invitation table exists in more than one shape across GFA
+-- environments. These additive fields support safe invitation reuse and a
+-- minimal delivery record without depending on an untracked schema change.
+ALTER TABLE driver_invitations
+  ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS programme_slug TEXT,
+  ADD COLUMN IF NOT EXISTS driver_name TEXT,
+  ADD COLUMN IF NOT EXISTS driver_mobile TEXT,
+  ADD COLUMN IF NOT EXISTS driver_email TEXT,
+  ADD COLUMN IF NOT EXISTS whatsapp_sent_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS email_sent_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS sent_via TEXT[];
+
+ALTER TABLE enrolments
+  ADD COLUMN IF NOT EXISTS programme_id TEXT,
+  ADD COLUMN IF NOT EXISTS programme_slug TEXT,
+  ADD COLUMN IF NOT EXISTS modules_completed INTEGER DEFAULT 0;
+
+-- Fail closed if this environment has no recognised Professional Truck Driver
+-- Program record. Engineering must resolve the catalogue data deliberately,
+-- rather than deploying a customer journey that could sell another programme.
+DO $$
+DECLARE
+  ptdp_course_count INTEGER;
+BEGIN
+  SELECT COUNT(*)
+  INTO ptdp_course_count
+  FROM courses
+  WHERE slug IN ('ptdp', 'professional-truck-driver');
+
+  IF ptdp_course_count = 0 THEN
+    RAISE EXCEPTION
+      'Release 17 requires one existing PTDP course with slug ptdp or professional-truck-driver';
+  END IF;
+END
+$$;
+
+-- Keep exactly one canonical PTDP record customer-visible. Historic duplicate
+-- aliases are preserved for audit/history but are not offered for new sales.
+WITH ranked_ptdp AS (
+  SELECT id,
+         ROW_NUMBER() OVER (ORDER BY created_at ASC NULLS LAST, id ASC) AS row_number
+  FROM courses
+  WHERE slug IN ('ptdp', 'professional-truck-driver')
+)
+UPDATE courses AS course
+SET price_corporate = 299,
+    price_individual = 0,
+    price_model = 'once_off',
+    cpd_frequency = NULL,
+    is_active = TRUE,
+    is_visible = TRUE,
+    available = TRUE,
+    status = 'active'
+FROM ranked_ptdp
+WHERE course.id = ranked_ptdp.id
+  AND ranked_ptdp.row_number = 1;
+
+-- All other offers, including any duplicate PTDP alias, remain in the database
+-- but are unavailable and hidden from the public, client and quote paths until
+-- a later GFA product release explicitly enables them.
+WITH ranked_ptdp AS (
+  SELECT id,
+         ROW_NUMBER() OVER (ORDER BY created_at ASC NULLS LAST, id ASC) AS row_number
+  FROM courses
+  WHERE slug IN ('ptdp', 'professional-truck-driver')
+)
+UPDATE courses AS course
+SET is_active = FALSE,
+    is_visible = FALSE,
+    available = FALSE,
+    status = 'archived'
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM ranked_ptdp
+  WHERE ranked_ptdp.id = course.id
+    AND ranked_ptdp.row_number = 1
+);
+
+-- Reserve one driver invitation per deployment through an advisory lock. This
+-- keeps repeated administrator clicks/retries from creating a second invitation
+-- or triggering a second outbound send. Existing historic invitations are never
+-- changed or deleted; the latest unrevoked one is returned as the reusable row.
+CREATE OR REPLACE FUNCTION gfa_reserve_cohort_driver_invitation(
+  p_deployment_id UUID,
+  p_driver_id UUID,
+  p_company_id UUID,
+  p_programme_slug TEXT,
+  p_driver_name TEXT,
+  p_driver_mobile TEXT,
+  p_driver_email TEXT,
+  p_expires_at TIMESTAMPTZ,
+  p_token TEXT
+)
+RETURNS TABLE (
+  invitation_id UUID,
+  token TEXT,
+  reused BOOLEAN,
+  whatsapp_sent_at TIMESTAMPTZ,
+  email_sent_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  existing_invitation driver_invitations%ROWTYPE;
+  created_invitation driver_invitations%ROWTYPE;
+BEGIN
+  IF p_deployment_id IS NULL OR p_driver_id IS NULL OR p_company_id IS NULL THEN
+    RAISE EXCEPTION 'Deployment, driver and company are required';
+  END IF;
+  IF COALESCE(trim(p_token), '') = '' THEN
+    RAISE EXCEPTION 'Invitation token is required';
+  END IF;
+
+  PERFORM pg_advisory_xact_lock(
+    hashtextextended(p_deployment_id::TEXT || ':' || p_driver_id::TEXT, 0)
+  );
+
+  SELECT *
+  INTO existing_invitation
+  FROM driver_invitations
+  WHERE deployment_id = p_deployment_id
+    AND driver_id = p_driver_id
+    AND revoked_at IS NULL
+  ORDER BY created_at DESC, id DESC
+  LIMIT 1;
+
+  IF FOUND THEN
+    invitation_id := existing_invitation.id;
+    token := existing_invitation.token;
+    reused := TRUE;
+    whatsapp_sent_at := existing_invitation.whatsapp_sent_at;
+    email_sent_at := existing_invitation.email_sent_at;
+    RETURN NEXT;
+    RETURN;
+  END IF;
+
+  INSERT INTO driver_invitations (
+    driver_id,
+    company_id,
+    deployment_id,
+    token,
+    program_assignment,
+    programme_slug,
+    driver_name,
+    driver_mobile,
+    driver_email,
+    status,
+    expires_at,
+    created_at
+  ) VALUES (
+    p_driver_id,
+    p_company_id,
+    p_deployment_id,
+    p_token,
+    'p1',
+    COALESCE(NULLIF(trim(p_programme_slug), ''), 'professional-truck-driver'),
+    COALESCE(NULLIF(trim(p_driver_name), ''), 'Driver'),
+    NULLIF(trim(p_driver_mobile), ''),
+    NULLIF(trim(p_driver_email), ''),
+    'pending',
+    p_expires_at,
+    NOW()
+  )
+  RETURNING * INTO created_invitation;
+
+  invitation_id := created_invitation.id;
+  token := created_invitation.token;
+  reused := FALSE;
+  whatsapp_sent_at := NULL;
+  email_sent_at := NULL;
+  RETURN NEXT;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION gfa_reserve_cohort_driver_invitation(
+  UUID, UUID, UUID, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TEXT
+) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION gfa_reserve_cohort_driver_invitation(
+  UUID, UUID, UUID, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TEXT
+) TO service_role;
+
+-- =============================================================================
+-- END RELEASE 17 MIGRATION
+-- =============================================================================
+-- =============================================================================
+-- END supabase/migrations/20260920_r17_release2_qa_remediation.sql
+-- =============================================================================
