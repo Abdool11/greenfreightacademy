@@ -1061,14 +1061,48 @@ function ClosingTheLoopSection() {
   );
 }
 
+function LaunchProgrammeSection() {
+  const programme = PROGRAMMES.find((item) => item.id === "ptdp");
+  if (!programme) return null;
+
+  return (
+    <section className="section-py bg-section-mid">
+      <div className="container-gfa" style={{ maxWidth: "980px" }}>
+        <div style={{ textAlign: "center", maxWidth: "680px", margin: "0 auto 2.5rem" }}>
+          <span className="pill-badge pill-green" style={{ marginBottom: "1rem", display: "inline-flex" }}>Now enrolling</span>
+          <h2 style={{ marginBottom: "1rem" }}>Professional Truck Driver Program</h2>
+          <p style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>
+            Practical, self-paced foundational training for professional truck drivers, with completion visibility, management reporting and an official certificate for qualifying drivers.
+          </p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.5fr) minmax(260px, 0.8fr)", gap: "1.5rem", alignItems: "stretch" }}>
+          <div className="card-gfa" style={{ padding: "1.75rem" }}>
+            <h3 style={{ marginBottom: "0.8rem" }}>{programme.title}</h3>
+            <p style={{ color: "var(--text-muted)", lineHeight: 1.7, marginBottom: "1.25rem" }}>{programme.shortDescription}</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+              {programme.outcomes.slice(0, 3).map((outcome) => <span key={outcome} className="pill-badge pill-white">{outcome}</span>)}
+            </div>
+          </div>
+          <div style={{ padding: "1.75rem", borderRadius: "1rem", background: "rgba(34,197,94,0.09)", border: "1px solid rgba(34,197,94,0.24)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.4rem" }}>Launch price</div>
+              <div style={{ color: "var(--color-green-400)", fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "2rem" }}>R299</div>
+              <p style={{ color: "var(--text-secondary)", lineHeight: 1.6, marginTop: "0.75rem", fontSize: "0.9rem" }}>Once-off per driver. No monthly programme fees at launch. EFT payment is confirmed by finance before training is deployed.</p>
+            </div>
+            <Link href="/register" className="btn-primary" style={{ marginTop: "1.25rem", justifyContent: "center" }}>Get a formal quote <ArrowRight size={16} /></Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Page Export ──────────────────────────────────────────────────
 export default function HomePage() {
   return (
     <>
       <HeroSection />
-      <ProgrammeArchitectureSection />
-      <ClosingTheLoopSection />
-      <CPDSection />
+      <LaunchProgrammeSection />
       <CTASection />
     </>
   );

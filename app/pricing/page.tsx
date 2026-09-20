@@ -34,8 +34,11 @@ export default async function PricingPage() {
   const { data, error } = await supabaseAdmin
     .from("courses")
     .select("id, name, slug, price_corporate, price_individual, description")
+    .in("slug", ["ptdp", "professional-truck-driver"])
     .eq("is_active", true)
     .eq("is_visible", true)
+    .eq("available", true)
+    .eq("status", "active")
     .order("name");
 
   const courses = (data ?? []) as CoursePricing[];
@@ -50,13 +53,12 @@ export default async function PricingPage() {
         }}
       >
         <div className="container-gfa" style={{ textAlign: "center" }}>
-          <h1 style={{ maxWidth: "660px", margin: "0 auto 1.25rem" }}>Pricing that supports fleet-wide rollout</h1>
+          <h1 style={{ maxWidth: "660px", margin: "0 auto 1.25rem" }}>Professional Truck Driver Program launch pricing</h1>
           <p style={{ maxWidth: "620px", margin: "0 auto 1rem", fontSize: "1.0625rem", color: "var(--text-secondary)" }}>
-            Green Freight Academy is designed to make structured capability development practical to deploy across your fleet.
-            The prices below are managed from the same approved course catalogue used for quotations.
+            The launch programme is available at a once-off price of R299 per driver. There are no monthly programme fees at launch.
           </p>
           <p style={{ maxWidth: "560px", margin: "0 auto", fontSize: "0.9375rem", color: "var(--text-muted)" }}>
-            Request a quotation for your selected drivers, programmes and commercial terms.
+            Request a formal quotation for your selected drivers, then pay by EFT and submit the payment details for finance confirmation.
           </p>
         </div>
       </section>
@@ -65,9 +67,9 @@ export default async function PricingPage() {
         <div className="container-gfa">
           <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "end", flexWrap: "wrap", marginBottom: "2.25rem" }}>
             <div>
-              <h2 style={{ marginBottom: "0.6rem" }}>Available programmes</h2>
+              <h2 style={{ marginBottom: "0.6rem" }}>Available launch programme</h2>
               <p style={{ maxWidth: "620px", color: "var(--text-secondary)", margin: 0 }}>
-                Corporate pricing is shown per available programme. Individual pricing is provided where that enrolment route is available.
+                The Professional Truck Driver Program is the only programme available for new enrolments at this launch.
               </p>
             </div>
             <Link href={bookHref} className="btn-primary" style={{ fontSize: "0.875rem" }}>
@@ -88,7 +90,6 @@ export default async function PricingPage() {
               {courses.map((course) => {
                 const copy = programmeCopy(course.slug);
                 const corporatePrice = Number(course.price_corporate ?? 0);
-                const individualPrice = Number(course.price_individual ?? 0);
                 return (
                   <article key={course.id} style={{ padding: "1.75rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: "1rem", display: "flex", flexDirection: "column" }}>
                     <h3 style={{ fontSize: "1.125rem", marginBottom: "0.65rem" }}>{course.name}</h3>
@@ -96,9 +97,9 @@ export default async function PricingPage() {
                       {course.description || copy?.shortDescription || "Structured capability development for road-freight teams."}
                     </p>
                     <div style={{ padding: "1rem", background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)", borderRadius: "0.75rem", marginBottom: "1.25rem" }}>
-                      <div style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)", marginBottom: "0.25rem" }}>Corporate programme price</div>
+                      <div style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)", marginBottom: "0.25rem" }}>Once-off price per driver</div>
                       <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "2rem", color: "var(--color-green-400)", lineHeight: 1 }}>{formatZar(corporatePrice)}</div>
-                      {individualPrice > 0 && <div style={{ color: "var(--text-secondary)", fontSize: "0.78rem", marginTop: "0.45rem" }}>Individual enrolment from {formatZar(individualPrice)}</div>}
+                      <div style={{ color: "var(--text-secondary)", fontSize: "0.78rem", marginTop: "0.45rem" }}>No monthly programme fee at launch</div>
                     </div>
                     <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "0.5rem", margin: "0 0 1.5rem", padding: 0 }}>
                       {["Structured learning content", "Progress visibility for management", "Completion and evidence context"].map((item) => (
@@ -107,7 +108,6 @@ export default async function PricingPage() {
                     </ul>
                     <div style={{ marginTop: "auto", display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
                       <Link href={bookHref} className="btn-primary" style={{ fontSize: "0.84rem" }}>{bookLabel}</Link>
-                      {individualPrice > 0 && <Link href={`/contact?type=individual-learner&programme=${course.slug}`} className="btn-secondary" style={{ fontSize: "0.84rem" }}>Individual enquiry</Link>}
                     </div>
                   </article>
                 );
@@ -131,7 +131,7 @@ export default async function PricingPage() {
           <div style={{ display: "flex", gap: "0.875rem", justifyContent: "center", flexWrap: "wrap" }}>
             <Link href={bookHref} className="btn-primary">{bookLabel}<ArrowRight size={16} /></Link>
             <Link href="/demo" className="btn-secondary" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><Play size={15} /> Take a guided tour</Link>
-            <Link href="/contact" className="btn-secondary">Contact us</Link>
+            <Link href="/contact" className="btn-secondary">Contact GFA</Link>
           </div>
         </div>
       </section>

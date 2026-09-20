@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Loader2, CreditCard, Building2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { X, Loader2, Building2, CheckCircle2, AlertTriangle } from "lucide-react";
 
 interface Course {
   id: string;
@@ -18,7 +18,7 @@ interface BuyCreditsModalProps {
 }
 
 export default function BuyCreditsModal({ open, onClose, courses, onQuoteCreated }: BuyCreditsModalProps) {
-  const [step, setStep] = useState<"form" | "quote" | "eft" | "paying">("form");
+  const [step, setStep] = useState<"form" | "quote" | "eft">("form");
   const [numDrivers, setNumDrivers] = useState(1);
   const [courseId, setCourseId] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -74,28 +74,6 @@ export default function BuyCreditsModal({ open, onClose, courses, onQuoteCreated
     }
   }
 
-  async function handlePayByCard() {
-    if (!quote) return;
-    setStep("paying");
-    try {
-      const res = await fetch("/api/paystack/initialize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quoteId: quote.quoteId }),
-      });
-      const data = await res.json();
-      if (res.ok && data.authorization_url) {
-        window.location.href = data.authorization_url;
-      } else {
-        setError(data.error || "Payment initialization failed. Please try again.");
-        setStep("quote");
-      }
-    } catch {
-      setError("Network error. Please try again.");
-      setStep("quote");
-    }
-  }
-
   async function handlePayByEFT() {
     if (!quote) return;
     setSubmitting(true);
@@ -129,7 +107,6 @@ export default function BuyCreditsModal({ open, onClose, courses, onQuoteCreated
             {step === "form" && "Get an Instant Quote"}
             {step === "quote" && "Your Quote"}
             {step === "eft" && "EFT Payment Instructions"}
-            {step === "paying" && "Processing..."}
           </h2>
           <button onClick={handleClose} className="text-slate-400 hover:text-white transition-colors">
             <X size={20} />
@@ -270,16 +247,7 @@ export default function BuyCreditsModal({ open, onClose, courses, onQuoteCreated
             </div>
 
             <div className="space-y-3">
-              <p className="text-slate-400 text-sm text-center">Choose your payment method:</p>
-
-              <button
-                onClick={handlePayByCard}
-                disabled={submitting}
-                className="w-full bg-[#2ecc71] hover:bg-[#27ae60] disabled:opacity-50 text-white py-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-              >
-                <CreditCard size={18} />
-                Pay by Card (Instant)
-              </button>
+              <p className="text-slate-400 text-sm text-center">The current launch payment method is EFT. Finance confirms your payment before training is deployed.</p>
 
               <button
                 onClick={handlePayByEFT}
@@ -287,7 +255,7 @@ export default function BuyCreditsModal({ open, onClose, courses, onQuoteCreated
                 className="w-full bg-[#0a1628] hover:bg-slate-800 border border-slate-700/50 text-white py-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
               >
                 <Building2 size={18} />
-                Pay by EFT (Nedbank Account)
+                Continue with EFT
               </button>
             </div>
           </div>
@@ -299,14 +267,14 @@ export default function BuyCreditsModal({ open, onClose, courses, onQuoteCreated
             <div className="flex items-center gap-3 bg-[#2ecc71]/10 border border-[#2ecc71]/30 rounded-lg p-4">
               <CheckCircle2 size={24} className="text-[#2ecc71] flex-shrink-0" />
               <div>
-                <p className="text-white font-medium text-sm">Nedbank EFT Payment Recorded</p>
-                <p className="text-slate-400 text-xs mt-0.5">We&apos;ve emailed you the Nedbank account details and notified our team.</p>
+                <p className="text-white font-medium text-sm">EFT payment notice recorded</p>
+                <p className="text-slate-400 text-xs mt-0.5">Use the banking details on your formal quotation, then submit payment details and optional proof from the dashboard.</p>
               </div>
             </div>
 
             <div className="bg-[#0a1628] border border-slate-700/30 rounded-lg p-4 space-y-2">
-              <p className="text-slate-400 text-xs font-medium uppercase mb-2">Nedbank Banking Details</p>
-              <p className="text-slate-400 text-sm">Please check your email for full banking details and use this reference:</p>
+              <p className="text-slate-400 text-xs font-medium uppercase mb-2">EFT reference</p>
+              <p className="text-slate-400 text-sm">Please use the banking details on your formal quotation and this reference:</p>
               <div className="bg-[#111f3a] rounded-lg p-3 mt-2">
                 <p className="text-slate-500 text-xs">Payment Reference:</p>
                 <p className="text-white font-mono font-bold">{quote.reference}</p>
@@ -315,8 +283,8 @@ export default function BuyCreditsModal({ open, onClose, courses, onQuoteCreated
 
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
               <p className="text-amber-400 text-sm">
-                After making your EFT payment, email your proof of payment to our team.
-                Once verified, your credits will be activated and you can deploy training.
+                After making your EFT payment, submit your payment reference and optional proof from the GFA dashboard.
+                Once finance verifies it, your credits will be activated and you can deploy training.
               </p>
             </div>
 
@@ -329,13 +297,6 @@ export default function BuyCreditsModal({ open, onClose, courses, onQuoteCreated
           </div>
         )}
 
-        {/* Paying step */}
-        {step === "paying" && (
-          <div className="p-8 flex flex-col items-center justify-center gap-3">
-            <Loader2 size={32} className="animate-spin text-[#2ecc71]" />
-            <p className="text-slate-400 text-sm">Redirecting to secure payment...</p>
-          </div>
-        )}
       </div>
     </div>
   );

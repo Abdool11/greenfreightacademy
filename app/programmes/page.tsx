@@ -1,342 +1,70 @@
-"use client";
-
-/**
- * GreenFreightAcademy — Programmes Page
- */
-
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, ChevronRight, Info, Play, Zap } from "lucide-react";
+import { ArrowRight, CheckCircle2, Info } from "lucide-react";
 import { PROGRAMMES } from "@/lib/constants";
 
-// Derive enrolment fee from constants — single source of truth
-const ENROLMENT_FEE = PROGRAMMES.find((p) => p.pricingModel === "monthly-per-driver")?.price ?? 75;
+const launchProgramme = PROGRAMMES.find((programme) => programme.id === "ptdp");
 
 export default function ProgrammesPage() {
-  const bookHref = "/register";
-  const bookLabel = "Book for your company";
+  const programme = launchProgramme;
 
-  const tiers = [
-    {
-      id: "workforce",
-      label: "Tier 1 — Workforce capability",
-      description: "For drivers and operational staff",
-      color: "#22c55e",
-      programmes: PROGRAMMES.filter((p) => p.tier === "workforce"),
-    },
-    {
-      id: "enterprise",
-      label: "Tier 2 — Enterprise capability",
-      description: "For managers, staff, and procurement teams",
-      color: "#2dd4bf",
-      programmes: PROGRAMMES.filter((p) => p.tier === "enterprise"),
-    },
-  ];
+  if (!programme) return null;
 
   return (
     <div style={{ paddingTop: "5rem", background: "var(--color-slate-900)", minHeight: "100vh" }}>
-      {/* Header */}
-      <section
-        style={{
-          padding: "5rem 0 4rem",
-          background: "linear-gradient(160deg, #0a1628 0%, #0f1f3d 100%)",
-          borderBottom: "1px solid var(--border-subtle)",
-        }}
-      >
-        <div className="container-gfa">
-          <h1 style={{ maxWidth: "640px", marginBottom: "1.25rem" }}>
-            Training pathways across the freight enterprise
-          </h1>
-          <p style={{ maxWidth: "580px", fontSize: "1.0625rem", color: "var(--text-secondary)" }}>
-            Four programmes covering every level of the road freight business — from professional drivers and eco-driving through to management, procurement, and green freight transition.
+      <section style={{ padding: "5rem 0 4rem", background: "linear-gradient(160deg, #0a1628 0%, #0f1f3d 100%)", borderBottom: "1px solid var(--border-subtle)" }}>
+        <div className="container-gfa" style={{ maxWidth: "780px" }}>
+          <span className="pill-badge pill-green" style={{ display: "inline-flex", marginBottom: "1rem" }}>Now enrolling</span>
+          <h1 style={{ marginBottom: "1.25rem" }}>Professional Truck Driver Program</h1>
+          <p style={{ maxWidth: "660px", fontSize: "1.0625rem", color: "var(--text-secondary)" }}>
+            Foundational professional driver training for safer, more consistent road-freight operations.
           </p>
         </div>
       </section>
 
-      {/* Tiers */}
-      {tiers.map((tier, tierIndex) => (
-        <section
-          key={tier.id}
-          id={tier.id}
-          style={{
-            padding: "4rem 0",
-            background: tierIndex % 2 === 0 ? "var(--color-slate-900)" : "var(--bg-section-mid)",
-          }}
-        >
-          <div className="container-gfa">
-            {/* Tier header */}
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "2.5rem" }}>
-              <div style={{ height: "3px", width: "3rem", background: tier.color, borderRadius: "2px" }} />
+      <section style={{ padding: "4rem 0", background: "var(--color-slate-900)" }}>
+        <div className="container-gfa" style={{ maxWidth: "900px" }}>
+          <article style={{ padding: "2rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(34,197,94,0.24)", borderRadius: "1rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "flex-start", flexWrap: "wrap", marginBottom: "1.25rem" }}>
               <div>
-                <div
-                  style={{
-                    fontFamily: "var(--font-display)",
-                    fontWeight: 700,
-                    fontSize: "0.75rem",
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                    color: tier.color,
-                  }}
-                >
-                  {tier.label}
-                </div>
-                <div style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>{tier.description}</div>
+                <h2 style={{ fontSize: "1.4rem", margin: 0 }}>{programme.title}</h2>
+                <p style={{ color: "var(--text-secondary)", margin: "0.75rem 0 0", maxWidth: "620px", lineHeight: 1.7 }}>{programme.fullDescription}</p>
+              </div>
+              <div style={{ padding: "0.65rem 0.9rem", borderRadius: "0.65rem", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)", color: "var(--color-green-400)", fontFamily: "var(--font-display)", fontWeight: 800, whiteSpace: "nowrap" }}>
+                R299 once-off per driver
               </div>
             </div>
 
-            {/* Programme cards */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-                gap: "1.5rem",
-              }}
-            >
-              {tier.programmes.map((prog) => (
-                <div
-                  key={prog.id}
-                  id={prog.slug}
-                  style={{
-                    padding: "2rem",
-                    background: "rgba(255,255,255,0.03)",
-                    border: `1px solid ${tier.color}18`,
-                    borderRadius: "1rem",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "1.25rem",
-                  }}
-                >
-                  {/* Status badge + title row */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", marginBottom: "-0.25rem" }}>
-                    {(prog as { status?: string }).status === "active" ? (
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "0.3rem",
-                          padding: "0.2rem 0.6rem",
-                          background: "rgba(34,197,94,0.12)",
-                          border: "1px solid rgba(34,197,94,0.3)",
-                          borderRadius: "9999px",
-                          fontSize: "0.7rem",
-                          fontWeight: 700,
-                          fontFamily: "var(--font-display)",
-                          color: "#22c55e",
-                          letterSpacing: "0.04em",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
-                        Active
-                      </span>
-                    ) : (prog as { status?: string }).status === "coming-soon" ? (
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "0.3rem",
-                          padding: "0.2rem 0.6rem",
-                          background: "rgba(34,197,94,0.1)",
-                          border: "1px solid rgba(34,197,94,0.25)",
-                          borderRadius: "9999px",
-                          fontSize: "0.7rem",
-                          fontWeight: 700,
-                          fontFamily: "var(--font-display)",
-                          color: "#22c55e",
-                          letterSpacing: "0.04em",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
-                        Coming Soon
-                      </span>
-                    ) : (
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "0.3rem",
-                          padding: "0.2rem 0.6rem",
-                          background: "rgba(148,163,184,0.08)",
-                          border: "1px solid rgba(148,163,184,0.2)",
-                          borderRadius: "9999px",
-                          fontSize: "0.7rem",
-                          fontWeight: 700,
-                          fontFamily: "var(--font-display)",
-                          color: "var(--text-muted)",
-                          letterSpacing: "0.04em",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        In Development
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Title and price */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
-                    <h3 style={{ fontSize: "1.125rem", lineHeight: 1.3, flex: 1 }}>{prog.title}</h3>
-                    <span
-                      style={{
-                        padding: "0.3rem 0.75rem",
-                        background: `${tier.color}15`,
-                        color: tier.color,
-                        borderRadius: "0.5rem",
-                        fontSize: "0.8rem",
-                        fontWeight: 700,
-                        fontFamily: "var(--font-display)",
-                        whiteSpace: "nowrap",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {prog.priceLabel}
-                    </span>
-                  </div>
-
-                  {/* Description */}
-                  <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", lineHeight: 1.7 }}>
-                    {prog.fullDescription}
-                  </p>
-
-                  {/* Outcomes */}
-                  <div>
-                    <div
-                      style={{
-                        fontSize: "0.75rem",
-                        fontFamily: "var(--font-display)",
-                        fontWeight: 700,
-                        letterSpacing: "0.05em",
-                        textTransform: "uppercase",
-                        color: "var(--text-muted)",
-                        marginBottom: "0.75rem",
-                      }}
-                    >
-                      What participants gain
-                    </div>
-                    <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                      {prog.outcomes.map((outcome) => (
-                        <li
-                          key={outcome}
-                          style={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: "0.5rem",
-                            fontSize: "0.875rem",
-                            color: "var(--text-secondary)",
-                          }}
-                        >
-                          <CheckCircle2
-                            size={14}
-                            style={{ color: tier.color, marginTop: "0.2rem", flexShrink: 0 }}
-                          />
-                          {outcome}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Meta */}
-                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                    <span className="pill-badge pill-white" style={{ fontSize: "0.7rem" }}>
-                      {prog.audienceLabel}
-                    </span>
-                    <span className="pill-badge pill-white" style={{ fontSize: "0.7rem" }}>
-                      {prog.durationLabel}
-                    </span>
-                    <span className="pill-badge pill-white" style={{ fontSize: "0.7rem" }}>
-                      {prog.deliveryModel === "online-self-paced"
-                        ? "Online — self-paced"
-                        : prog.deliveryModel === "blended"
-                        ? "Blended delivery"
-                        : prog.deliveryModel}
-                    </span>
-                  </div>
-
-                  {/* CTAs */}
-                  <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginTop: "auto" }}>
-                    {(prog as { status?: string }).status === "coming-soon" ? (
-                      <Link
-                        href={`/contact?type=ev-driver-interest&programme=${prog.slug}`}
-                        className="btn-secondary"
-                        style={{ fontSize: "0.8rem", padding: "0.5rem 1rem" }}
-                      >
-                        Register your interest
-                        <ChevronRight size={13} />
-                      </Link>
-                    ) : (
-                      <>
-                        <Link
-                          href={bookHref}
-                          className="btn-primary"
-                          style={{ fontSize: "0.8rem", padding: "0.5rem 1rem" }}
-                        >
-                          {bookLabel}
-                        </Link>
-                        <Link
-                          href={`/contact?type=individual-learner&programme=${prog.slug}`}
-                          className="btn-ghost"
-                          style={{ fontSize: "0.8rem" }}
-                        >
-                          Individual enrolment
-                          <ChevronRight size={13} />
-                        </Link>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Tier 1 pricing note */}
-            {tier.id === "workforce" && (
-              <div
-                style={{
-                  marginTop: "1.5rem",
-                  padding: "1rem 1.25rem",
-                  background: "rgba(34,197,94,0.04)",
-                  border: "1px solid rgba(34,197,94,0.15)",
-                  borderRadius: "0.75rem",
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "0.75rem",
-                }}
-              >
-                <Info size={15} style={{ color: "var(--color-green-400)", marginTop: "0.15rem", flexShrink: 0 }} />
-                <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", lineHeight: 1.6, margin: 0 }}>
-                  <strong style={{ color: "white" }}>Pricing note:</strong> Pricing shown per month (plus VAT) with a 24&#8209;month agreement and an R{ENROLMENT_FEE} per person enrolment and setup fee. Thereafter month&#8209;to&#8209;month. Debit order available for company accounts.
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.25rem", margin: "1.75rem 0" }}>
+              <div style={{ padding: "1.25rem", borderRadius: "0.75rem", background: "rgba(255,255,255,0.025)" }}>
+                <h3 style={{ fontSize: "0.82rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.8rem" }}>What drivers gain</h3>
+                <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "0.65rem", padding: 0, margin: 0 }}>
+                  {programme.outcomes.map((outcome) => (
+                    <li key={outcome} style={{ display: "flex", gap: "0.5rem", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
+                      <CheckCircle2 size={15} style={{ color: "var(--color-green-400)", flexShrink: 0, marginTop: "0.15rem" }} />
+                      {outcome}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div style={{ padding: "1.25rem", borderRadius: "0.75rem", background: "rgba(255,255,255,0.025)" }}>
+                <h3 style={{ fontSize: "0.82rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.8rem" }}>Launch terms</h3>
+                <p style={{ margin: 0, fontSize: "0.875rem", lineHeight: 1.7, color: "var(--text-secondary)" }}>
+                  The launch price is <strong style={{ color: "white" }}>R299 once-off per driver</strong>. There are no monthly programme fees. Payment is by EFT and training is deployed after finance confirms the payment.
                 </p>
               </div>
-            )}
-          </div>
-        </section>
-      ))}
+            </div>
 
-      {/* CTA */}
-      <section
-        style={{
-          padding: "5rem 0",
-          background: "linear-gradient(135deg, #0f1f3d 0%, #0a1628 100%)",
-          borderTop: "1px solid var(--border-subtle)",
-          textAlign: "center",
-        }}
-      >
-        <div className="container-gfa">
-          <h2 style={{ maxWidth: "560px", margin: "0 auto 1.25rem" }}>
-            Ready to build capability across your business?
-          </h2>
-          <p style={{ maxWidth: "500px", margin: "0 auto 2.5rem", color: "var(--text-secondary)" }}>
-            Register your company to book seats, import your driver list, and begin your training campaign.
-          </p>
-          <div style={{ display: "flex", gap: "0.875rem", justifyContent: "center", flexWrap: "wrap" }}>
-            <Link href={bookHref} className="btn-primary">
-              {bookLabel}
-              <ArrowRight size={16} />
-            </Link>
-            <Link href="/demo" className="btn-secondary" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <Play size={15} /> Take a guided tour
-            </Link>
-            <Link href="/contact" className="btn-secondary">
-              Contact us
-            </Link>
+            <div style={{ display: "flex", gap: "0.875rem", alignItems: "center", flexWrap: "wrap" }}>
+              <Link href="/register" className="btn-primary">Register your company <ArrowRight size={16} /></Link>
+              <Link href="/contact?type=enquiry" className="btn-secondary">Ask a question</Link>
+            </div>
+          </article>
+
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", marginTop: "1.5rem", padding: "1rem 1.25rem", background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.16)", borderRadius: "0.75rem" }}>
+            <Info size={16} style={{ color: "var(--color-green-400)", flexShrink: 0, marginTop: "0.15rem" }} />
+            <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
+              Additional GFA programmes, CPD and driver-briefing offerings are planned for later release. They are not open for sale or enrolment at this launch.
+            </p>
           </div>
         </div>
       </section>
