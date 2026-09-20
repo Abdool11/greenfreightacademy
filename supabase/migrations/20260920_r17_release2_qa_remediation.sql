@@ -16,6 +16,24 @@ ALTER TABLE courses
   ADD COLUMN IF NOT EXISTS is_visible BOOLEAN DEFAULT TRUE,
   ADD COLUMN IF NOT EXISTS available BOOLEAN DEFAULT TRUE;
 
+-- The historic invitation table exists in more than one shape across GFA
+-- environments. These additive fields support safe invitation reuse and a
+-- minimal delivery record without depending on an untracked schema change.
+ALTER TABLE driver_invitations
+  ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS programme_slug TEXT,
+  ADD COLUMN IF NOT EXISTS driver_name TEXT,
+  ADD COLUMN IF NOT EXISTS driver_mobile TEXT,
+  ADD COLUMN IF NOT EXISTS driver_email TEXT,
+  ADD COLUMN IF NOT EXISTS whatsapp_sent_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS email_sent_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS sent_via TEXT[];
+
+ALTER TABLE enrolments
+  ADD COLUMN IF NOT EXISTS programme_id TEXT,
+  ADD COLUMN IF NOT EXISTS programme_slug TEXT,
+  ADD COLUMN IF NOT EXISTS modules_completed INTEGER DEFAULT 0;
+
 -- Fail closed if this environment has no recognised Professional Truck Driver
 -- Program record. Engineering must resolve the catalogue data deliberately,
 -- rather than deploying a customer journey that could sell another programme.

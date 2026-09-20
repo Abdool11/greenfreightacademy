@@ -12,6 +12,7 @@ const notEligibleCertificateId = process.env.GFA_TEST_NOT_ELIGIBLE_CERTIFICATE_I
 const supersedeCertificateId = process.env.GFA_TEST_SUPERSEDE_CERTIFICATE_ID;
 const replacementCertificateId = process.env.GFA_TEST_REPLACEMENT_CERTIFICATE_ID;
 const safePreview = Boolean(baseUrl) && !/greenfreightacademy\.co\.za/i.test(baseUrl || "");
+const certificateContractConfigured = process.env.GFA_TEST_CERTIFICATE_CONTRACT_CONFIGURED === "true";
 
 function signedHeaders(assertion: string) {
   return { Authorization: `Bearer ${assertion}` };
@@ -30,6 +31,10 @@ test.describe("GFA certificate contract Version 2", () => {
   });
 
   test("fails closed for invalid Version 2 signed assertions", async ({ request }) => {
+    test.skip(
+      !certificateContractConfigured,
+      "Requires GFA_TEST_CERTIFICATE_CONTRACT_CONFIGURED=true after the Preview certificate keys and Version 2 flag are configured."
+    );
     const [completion, status, handoff] = await Promise.all([
       request.post("/api/integrations/certificates/completion-evidence", { headers: signedHeaders("intentionally-invalid") }),
       request.post("/api/integrations/certificates/status", { headers: signedHeaders("intentionally-invalid") }),
