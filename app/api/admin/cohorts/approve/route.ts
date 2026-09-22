@@ -4,20 +4,51 @@ import { supabaseAdmin, getConfigs } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
 import crypto from "crypto";
 
-// ─── Generate a secure magic link token ──────────────────────────────────────
+type QuoteItem = {
+  driverId: string;
+  driverName?: string;
+  courseIds: string[];
+};
+
+type DriverRecord = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  mobile: string | null;
+  email: string | null;
+};
+
+type CourseRecord = {
+  id: string;
+  slug: string | null;
+  name: string | null;
+};
+
+type InvitationReservation = {
+  invitation_id: string;
+  token: string;
+  reused: boolean;
+  whatsapp_sent_at: string | null;
+  email_sent_at: string | null;
+};
+
 function generateToken(): string {
   return crypto.randomBytes(32).toString("hex");
 }
 
-// ─── Send WhatsApp message ────────────────────────────────────────────────────
+function normaliseSAMobile(mobile: string): string {
+  const digits = mobile.replace(/\s+/g, "").replace(/[^0-9]/g, "");
+  if (digits.startsWith("27")) return digits;
+  if (digits.startsWith("0")) return `27${digits.slice(1)}`;
+  return `27${digits}`;
+}
+
 async function sendWhatsApp(
   mobile: string,
   message: string,
   phoneId: string,
   accessToken: string
 ): Promise<boolean> {
-  let number = mobile.replace(/\s+/g, "").replace(/^0/, "27");
-  if (!number.startsWith("27")) number = `27${number}`;
   try {
     const res = await fetch(`https://graph.facebook.com/v18.0/${phoneId}/messages`, {
       method: "POST",
@@ -27,7 +58,7 @@ async function sendWhatsApp(
       },
       body: JSON.stringify({
         messaging_product: "whatsapp",
-        to: number,
+        to: normaliseSAMobile(mobile),
         type: "text",
         text: { body: message },
       }),
@@ -38,12 +69,7 @@ async function sendWhatsApp(
   }
 }
 
-// ─── Send driver activation email ────────────────────────────────────────────
-async function sendDriverEmail(
-  to: string,
-  subject: string,
-  html: string
-): Promise<boolean> {
+async function sendDriverEmail(to: string, subject: string, html: string): Promise<boolean> {
   if (!process.env.BREVO_SMTP_PASSWORD) return false;
   try {
     await sendEmail({
@@ -59,251 +85,296 @@ async function sendDriverEmail(
   }
 }
 
-export async function POST(req: NextRequest) {
-  const adminSession = await getAdminSession();
-  if (!adminSession) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+async function getCohortDriverRows(deployment: {
+  id: string;
+  company_id: string;
+  quote_id: string | null;
+}): Promise<Array<{ driver: DriverRecord; course: CourseRecord }>> {
+  if (!deployment.quote_id) return [];
+
+  const { data: quote, error: quoteError } = await supabaseAdmin
+    .from("quotes")
+    .select("items_json")
+    .eq("id", deployment.quote_id)
+    .eq("company_id", deployment.company_id)
+    .maybeSingle();
+
+  if (quoteError) throw new Error("Could not load the cohort quotation.");
+  const items = (quote?.items_json ?? []) as QuoteItem[];
+  const driverIds = [...new Set(items.map((item) => item.driverId).filter(Boolean))];
+  const courseIds = [...new Set(items.flatMap((item) => item.courseIds ?? []).filter(Boolean))];
+  if (driverIds.length === 0 || courseIds.length === 0) return [];
+
+  const [{ data: drivers, error: driversError }, { data: courses, error: coursesError }] = await Promise.all([
+    supabaseAdmin
+      .from("drivers")
+      .select("id, first_name, last_name, mobile, email")
+      .eq("company_id", deployment.company_id)
+      .in("id", driverIds),
+    supabaseAdmin
+      .from("courses")
+      .select("id, slug, name")
+      .in("id", courseIds),
+  ]);
+
+  if (driversError || coursesError) throw new Error("Could not load the approved drivers and programme details.");
+  const driverMap = new Map((drivers ?? []).map((driver) => [driver.id, driver as DriverRecord]));
+  const courseMap = new Map((courses ?? []).map((course) => [course.id, course as CourseRecord]));
+  const rows: Array<{ driver: DriverRecord; course: CourseRecord }> = [];
+
+  for (const item of items) {
+    const driver = driverMap.get(item.driverId);
+    if (!driver) continue;
+    for (const courseId of item.courseIds ?? []) {
+      const course = courseMap.get(courseId);
+      if (course) rows.push({ driver, course });
+    }
+  }
+  return rows;
+}
+
+async function ensureCohortEnrolment(params: {
+  deploymentId: string;
+  companyId: string;
+  driverId: string;
+  course: CourseRecord;
+  now: string;
+}) {
+  const { deploymentId, companyId, driverId, course, now } = params;
+  const { data: existing, error: existingError } = await supabaseAdmin
+    .from("enrolments")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("driver_id", driverId)
+    .eq("course_id", course.id)
+    .maybeSingle();
+
+  if (existingError) throw new Error("Could not inspect cohort enrolment state.");
+
+  if (existing) {
+    const { error } = await supabaseAdmin
+      .from("enrolments")
+      .update({ deployment_id: deploymentId, status: "enrolled" })
+      .eq("id", existing.id);
+    if (error) throw new Error("Could not attach the existing enrolment to this cohort.");
+    return;
   }
 
-  const body = await req.json();
-  const { deploymentId, action, paymentReference, paymentAmount } = body;
+  const { error } = await supabaseAdmin.from("enrolments").insert({
+    driver_id: driverId,
+    company_id: companyId,
+    course_id: course.id,
+    programme_id: course.id,
+    programme_slug: course.slug ?? "professional-truck-driver",
+    deployment_id: deploymentId,
+    status: "enrolled",
+    progress_percent: 0,
+    modules_completed: 0,
+    enrolled_at: now,
+  });
+  if (error) throw new Error("Could not create the cohort enrolment.");
+}
 
+export async function POST(req: NextRequest) {
+  const adminSession = await getAdminSession();
+  if (!adminSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body = await req.json();
+  const { deploymentId, action } = body;
   if (!deploymentId || !action) {
     return NextResponse.json({ error: "deploymentId and action required" }, { status: 400 });
   }
 
-  // ─── Action: confirm_eft ─────────────────────────────────────────────────
   if (action === "confirm_eft") {
-    if (!paymentReference || !paymentAmount) {
-      return NextResponse.json({ error: "paymentReference and paymentAmount required" }, { status: 400 });
-    }
-
-    const { error } = await supabaseAdmin
-      .from("deployments")
-      .update({
-        approval_status: "payment_received",
-        payment_method: "eft",
-        payment_reference: paymentReference,
-        payment_amount: parseFloat(paymentAmount),
-        payment_confirmed_at: new Date().toISOString(),
-        payment_confirmed_by: adminSession.adminId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", deploymentId);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    // Log payment record
-    const { data: deployment } = await supabaseAdmin
-      .from("deployments")
-      .select("company_id")
-      .eq("id", deploymentId)
-      .single();
-
-    if (deployment) {
-      await supabaseAdmin.from("payments").insert({
-        company_id: deployment.company_id,
-        deployment_id: deploymentId,
-        payment_method: "eft",
-        amount: parseFloat(paymentAmount),
-        currency: "ZAR",
-        reference: paymentReference,
-        status: "confirmed",
-        confirmed_at: new Date().toISOString(),
-        confirmed_by: adminSession.adminId,
-      });
-    }
-
-    return NextResponse.json({ ok: true, status: "payment_received" });
+    // Payment confirmation is owned by the audited finance reconciliation
+    // workflow. This route deliberately does not provide a second manual path
+    // that could mark a cohort paid without the submitted EFT evidence.
+    return NextResponse.json({
+      error: "Manual cohort EFT confirmation is retired. Confirm the submitted EFT in Admin Finance & Ledger before activating training.",
+    }, { status: 409 });
   }
 
-  // ─── Action: approve_and_go_live ─────────────────────────────────────────
-  if (action === "approve_and_go_live") {
-    // Fetch deployment with drivers
-    const { data: deployment } = await supabaseAdmin
-      .from("deployments")
-      .select(`
-        id, company_id, approval_status,
-        companies(id, name),
-        enrolments(
-          id, driver_id, course_id,
-          drivers(id, first_name, last_name, mobile, email),
-          courses(slug, name)
-        )
-      `)
-      .eq("id", deploymentId)
-      .single();
+  if (action !== "approve_and_go_live") {
+    return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+  }
 
-    if (!deployment) {
-      return NextResponse.json({ error: "Deployment not found" }, { status: 404 });
-    }
+  const { data: deployment, error: deploymentError } = await supabaseAdmin
+    .from("deployments")
+    .select("id, company_id, quote_id, approval_status, companies(id, name)")
+    .eq("id", deploymentId)
+    .maybeSingle();
 
-    if (!["payment_received", "pending_payment"].includes(deployment.approval_status)) {
-      return NextResponse.json({ error: "Deployment is not in an approvable state" }, { status: 400 });
-    }
+  if (deploymentError) {
+    console.error("[GFA cohort approval] deployment lookup failed:", deploymentError);
+    return NextResponse.json({ error: "Could not load this cohort. Please refresh and try again." }, { status: 500 });
+  }
+  if (!deployment) return NextResponse.json({ error: "Cohort not found" }, { status: 404 });
 
-    // Get messaging config
-    const config = await getConfigs([
-      "whatsapp_phone_id",
-      "whatsapp_access_token",
-      "whatsapp_welcome_template",
-    ]);
+  if (["approved", "live", "completed"].includes(deployment.approval_status)) {
+    return NextResponse.json({
+      ok: true,
+      status: deployment.approval_status === "completed" ? "completed" : "live",
+      alreadyLive: true,
+      driversNotified: 0,
+      whatsappSent: 0,
+      emailSent: 0,
+    });
+  }
+  if (deployment.approval_status !== "payment_received") {
+    return NextResponse.json({ error: "Finance confirmation is required before this cohort can go live." }, { status: 409 });
+  }
 
-    const bdBaseUrl = process.env.BD_BASE_URL || "https://betterdriver.co.za";
-    const enrolments = (deployment.enrolments as Record<string, unknown>[]) ?? [];
+  let cohortRows: Array<{ driver: DriverRecord; course: CourseRecord }>;
+  try {
+    cohortRows = await getCohortDriverRows({
+      id: deployment.id,
+      company_id: deployment.company_id,
+      quote_id: deployment.quote_id,
+    });
+  } catch (error) {
+    console.error("[GFA cohort approval] cohort rows failed:", error);
+    return NextResponse.json({ error: "Could not load the approved cohort. No invitations were sent." }, { status: 500 });
+  }
 
-    // Group enrolments by driver
-    const driverMap = new Map<string, {
-      driver: Record<string, string>;
-      courses: string[];
-      courseNames: string[];
-    }>();
+  if (cohortRows.length === 0) {
+    return NextResponse.json({
+      error: "This cohort has no approved quote drivers to activate. Review the quotation and deployment record before retrying.",
+    }, { status: 409 });
+  }
 
-    for (const enrolment of enrolments) {
-      const driver = enrolment.drivers as Record<string, string>;
-      const course = enrolment.courses as Record<string, string>;
-      if (!driver) continue;
-      const existing = driverMap.get(driver.id);
-      if (existing) {
-        existing.courses.push(course?.slug ?? "");
-        existing.courseNames.push(course?.name ?? "");
-      } else {
-        driverMap.set(driver.id, {
-          driver,
-          courses: [course?.slug ?? ""],
-          courseNames: [course?.name ?? ""],
+  const config = await getConfigs([
+    "whatsapp_phone_id",
+    "whatsapp_access_token",
+    "whatsapp_welcome_template",
+  ]);
+  const bdBaseUrl = (process.env.BD_BASE_URL || "https://betterdriver.co.za").replace(/\/$/, "");
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const companyName = ((deployment.companies as unknown) as { name?: string } | null)?.name ?? "your company";
+  const driverCourses = new Map<string, { driver: DriverRecord; courses: CourseRecord[] }>();
+
+  for (const row of cohortRows) {
+    const entry = driverCourses.get(row.driver.id) ?? { driver: row.driver, courses: [] };
+    if (!entry.courses.some((course) => course.id === row.course.id)) entry.courses.push(row.course);
+    driverCourses.set(row.driver.id, entry);
+  }
+
+  const results: Array<{ driverId: string; reused: boolean; whatsapp: boolean; email: boolean }> = [];
+
+  for (const [driverId, entry] of driverCourses) {
+    try {
+      for (const course of entry.courses) {
+        await ensureCohortEnrolment({
+          deploymentId: deployment.id,
+          companyId: deployment.company_id,
+          driverId,
+          course,
+          now: nowIso,
         });
       }
-    }
 
-    const results: { driverId: string; token: string; whatsapp: boolean; email: boolean }[] = [];
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
+      const primaryCourse = entry.courses[0];
+      const { data: reservationData, error: reservationError } = await supabaseAdmin.rpc(
+        "gfa_reserve_cohort_driver_invitation",
+        {
+          p_deployment_id: deployment.id,
+          p_driver_id: driverId,
+          p_company_id: deployment.company_id,
+          p_programme_slug: primaryCourse.slug ?? "professional-truck-driver",
+          p_driver_name: `${entry.driver.first_name} ${entry.driver.last_name}`.trim(),
+          p_driver_mobile: entry.driver.mobile,
+          p_driver_email: entry.driver.email,
+          p_expires_at: expiresAt,
+          p_token: generateToken(),
+        }
+      );
+      if (reservationError || !reservationData?.[0]) throw new Error("Could not reserve a unique driver invitation.");
+      const reservation = reservationData[0] as InvitationReservation;
 
-    for (const [driverId, { driver, courses, courseNames }] of driverMap) {
-      const token = generateToken();
-      const activationUrl = `${bdBaseUrl}/activate?token=${token}`;
-      const programmeName = courseNames[0] ?? "Training Programme";
+      if (reservation.reused) {
+        results.push({
+          driverId,
+          reused: true,
+          whatsapp: Boolean(reservation.whatsapp_sent_at),
+          email: Boolean(reservation.email_sent_at),
+        });
+        continue;
+      }
 
-      // Create driver_invitation record
-      await supabaseAdmin.from("driver_invitations").insert({
-        token,
-        driver_id: driverId,
-        company_id: deployment.company_id,
-        deployment_id: deploymentId,
-        programme_slug: courses[0] ?? "",
-        driver_name: `${driver.first_name} ${driver.last_name}`,
-        driver_mobile: driver.mobile,
-        driver_email: driver.email,
-        status: "pending",
-        expires_at: expiresAt.toISOString(),
-      });
-
-      // Update enrolment status to active
-      await supabaseAdmin
-        .from("enrolments")
-        .update({ status: "active", start_date: now.toISOString() })
-        .eq("driver_id", driverId)
-        .eq("company_id", deployment.company_id);
-
-      // Send WhatsApp
-      let whatsappSent = false;
+      const programmeName = primaryCourse.name ?? "Professional Truck Driver Program";
+      const activationUrl = `${bdBaseUrl}/activate?token=${reservation.token}`;
       const phoneId = config.whatsapp_phone_id;
       const accessToken = config.whatsapp_access_token;
-
-      if (phoneId && accessToken && driver.mobile) {
+      let whatsappSent = false;
+      if (phoneId && accessToken && entry.driver.mobile) {
         const template = config.whatsapp_welcome_template ||
-          `Hi {{driver_name}}, welcome to BetterDriver! Your {{programme_name}} training has been activated by {{company_name}}. Click here to get started: {{portal_link}}`;
-
+          "Hi {{driver_name}}, welcome to BetterDriver! Your {{programme_name}} training has been activated by {{company_name}}. Click here to get started: {{portal_link}}";
         const message = template
-          .replace(/{{driver_name}}/g, driver.first_name)
+          .replace(/{{driver_name}}/g, entry.driver.first_name)
           .replace(/{{programme_name}}/g, programmeName)
-          .replace(/{{company_name}}/g, ((deployment.companies as unknown) as Record<string, string>)?.name ?? "")
+          .replace(/{{company_name}}/g, companyName)
           .replace(/{{portal_link}}/g, activationUrl);
-
-        whatsappSent = await sendWhatsApp(driver.mobile, message, phoneId, accessToken);
-
+        whatsappSent = await sendWhatsApp(entry.driver.mobile, message, phoneId, accessToken);
         if (whatsappSent) {
           await supabaseAdmin
             .from("driver_invitations")
-            .update({ whatsapp_sent_at: now.toISOString(), sent_via: ["whatsapp"] })
-            .eq("token", token);
+            .update({ whatsapp_sent_at: nowIso, sent_via: ["whatsapp"] })
+            .eq("id", reservation.invitation_id);
         }
       }
 
-      // Send email if available
       let emailSent = false;
-      if (driver.email) {
-        const emailHtml = `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: #0a1628; padding: 32px; border-radius: 12px 12px 0 0; text-align: center;">
-              <h1 style="color: #2ecc71; margin: 0; font-size: 24px;">GreenFreightAcademy</h1>
-              <p style="color: #94a3b8; margin: 8px 0 0;">BetterDriver Training Platform</p>
-            </div>
-            <div style="background: #111f3a; padding: 32px; border-radius: 0 0 12px 12px;">
-              <h2 style="color: white; margin: 0 0 16px;">Hi ${driver.first_name},</h2>
-              <p style="color: #94a3b8; line-height: 1.6;">
-                Your <strong style="color: white;">${programmeName}</strong> training has been activated by 
-                <strong style="color: white;">${((deployment.companies as unknown) as Record<string, string>)?.name ?? "your company"}</strong>.
-              </p>
-              <p style="color: #94a3b8; line-height: 1.6;">
-                Click the button below to set up your account and begin your training journey.
-              </p>
-              <div style="text-align: center; margin: 32px 0;">
-                <a href="${activationUrl}" 
-                   style="background: #2ecc71; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">
-                  Activate My Account →
-                </a>
-              </div>
-              <p style="color: #64748b; font-size: 12px; text-align: center;">
-                This link expires in 30 days. If you did not expect this email, please ignore it.
-              </p>
-            </div>
-          </div>
-        `;
+      if (entry.driver.email) {
         emailSent = await sendDriverEmail(
-          driver.email,
+          entry.driver.email,
           `Your ${programmeName} training is ready — activate your BetterDriver account`,
-          emailHtml
+          `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto"><div style="background:#0a1628;padding:32px;text-align:center"><h1 style="color:#2ecc71;margin:0">GreenFreightAcademy</h1></div><div style="background:#111f3a;padding:32px"><h2 style="color:white">Hi ${entry.driver.first_name},</h2><p style="color:#cbd5e1">Your <strong>${programmeName}</strong> training has been activated by <strong>${companyName}</strong>.</p><p style="margin:32px 0"><a href="${activationUrl}" style="background:#2ecc71;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold">Activate My Account</a></p><p style="color:#94a3b8;font-size:12px">This link expires in 30 days.</p></div></div>`
         );
-
         if (emailSent) {
           await supabaseAdmin
             .from("driver_invitations")
             .update({
-              email_sent_at: now.toISOString(),
+              email_sent_at: nowIso,
               sent_via: whatsappSent ? ["whatsapp", "email"] : ["email"],
             })
-            .eq("token", token);
+            .eq("id", reservation.invitation_id);
         }
       }
 
-      results.push({ driverId, token, whatsapp: whatsappSent, email: emailSent });
+      results.push({ driverId, reused: false, whatsapp: whatsappSent, email: emailSent });
+    } catch (error) {
+      console.error("[GFA cohort approval] driver activation failed:", { deploymentId, driverId, error });
+      return NextResponse.json({
+        error: "The cohort could not be activated safely. No further driver invitations were sent; review the cohort and retry after resolving the reported data issue.",
+      }, { status: 500 });
     }
-
-    // Mark deployment as live
-    await supabaseAdmin
-      .from("deployments")
-      .update({
-        approval_status: "live",
-        approved_at: now.toISOString(),
-        approved_by: adminSession.adminId,
-        magic_links_sent_at: now.toISOString(),
-        magic_links_sent_count: results.length,
-        updated_at: now.toISOString(),
-      })
-      .eq("id", deploymentId);
-
-    return NextResponse.json({
-      ok: true,
-      status: "live",
-      driversNotified: results.length,
-      whatsappSent: results.filter((r) => r.whatsapp).length,
-      emailSent: results.filter((r) => r.email).length,
-    });
   }
 
-  return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+  const { error: liveError } = await supabaseAdmin
+    .from("deployments")
+    .update({
+      approval_status: "live",
+      approved_at: nowIso,
+      approved_by: adminSession.adminId,
+      magic_links_sent_at: nowIso,
+      magic_links_sent_count: results.filter((result) => !result.reused).length,
+      updated_at: nowIso,
+    })
+    .eq("id", deployment.id)
+    .eq("approval_status", "payment_received");
+
+  if (liveError) {
+    console.error("[GFA cohort approval] final transition failed:", liveError);
+    return NextResponse.json({ error: "Driver invitations were prepared but the cohort state could not be finalised. Do not resend; refresh and contact GFA support." }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    status: "live",
+    driversNotified: results.filter((result) => !result.reused).length,
+    invitationsReused: results.filter((result) => result.reused).length,
+    whatsappSent: results.filter((result) => result.whatsapp && !result.reused).length,
+    emailSent: results.filter((result) => result.email && !result.reused).length,
+  });
 }

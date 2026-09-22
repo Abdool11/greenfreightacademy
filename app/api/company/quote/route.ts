@@ -62,16 +62,36 @@ export async function POST(req: NextRequest) {
     getConfigs(["email_booking_to"]),
   ]);
 
-  const allCourseIds = [...new Set(items.flatMap((item) => item.courseIds))];
+  const allCourseIds = [...new Set(items.flatMap((item) => item.courseIds ?? []).filter(Boolean))];
+  if (allCourseIds.length !== 1) {
+    return NextResponse.json({ error: "The launch quotation supports the Professional Truck Driver Program only." }, { status: 409 });
+  }
   const { data: courses, error: coursesError } = await supabaseAdmin
     .from("courses")
-    .select("id, name, price_corporate")
+    .select("id, name, slug, price_corporate, price_model, is_active, is_visible, available, status")
     .in("id", allCourseIds);
 
   if (coursesError) return NextResponse.json({ error: "Could not load programme pricing" }, { status: 500 });
   const courseMap = Object.fromEntries((courses ?? []).map((course) => [course.id, course]));
   if (allCourseIds.some((courseId) => !courseMap[courseId])) {
     return NextResponse.json({ error: "One or more selected programmes are unavailable. Please refresh and try again." }, { status: 400 });
+  }
+  const launchCourse = courseMap[allCourseIds[0]] as {
+    slug: string | null;
+    price_corporate: number | string | null;
+    price_model: string | null;
+    is_active: boolean | null;
+    is_visible: boolean | null;
+    available: boolean | null;
+    status: string | null;
+  };
+  if (
+    !["ptdp", "professional-truck-driver"].includes(launchCourse.slug ?? "") ||
+    launchCourse.price_model !== "once_off" ||
+    Number(launchCourse.price_corporate) !== 299 ||
+    !launchCourse.is_active || !launchCourse.is_visible || !launchCourse.available || launchCourse.status !== "active"
+  ) {
+    return NextResponse.json({ error: "The launch programme catalogue is not configured for the approved R299 once-off price. Please contact GFA." }, { status: 503 });
   }
 
   const driverIds = items.map((item) => item.driverId);
@@ -80,6 +100,9 @@ export async function POST(req: NextRequest) {
     .select("id, mobile")
     .in("id", driverIds)
     .eq("company_id", session.companyId);
+  if ((driversData ?? []).length !== new Set(driverIds).size) {
+    return NextResponse.json({ error: "One or more selected drivers could not be found in your company. Refresh the driver list and try again." }, { status: 409 });
+  }
   const driverMobileMap = Object.fromEntries((driversData ?? []).map((driver) => [driver.id, driver.mobile]));
 
   const lineItems = items.flatMap((item) => item.courseIds.map((courseId) => ({
@@ -205,8 +228,8 @@ export async function POST(req: NextRequest) {
           <tfoot><tr><td colspan="2" style="padding:8px 12px;text-align:right;color:#6b7280;">Subtotal</td><td style="padding:8px 12px;text-align:right;">${formatZar(subtotal)}</td></tr><tr><td colspan="2" style="padding:8px 12px;text-align:right;color:#6b7280;">${formatVatLabel(supplier.vat_rate)}</td><td style="padding:8px 12px;text-align:right;">${formatZar(vat)}</td></tr><tr style="background:#f0fdf4;"><td colspan="2" style="padding:10px 12px;text-align:right;font-weight:700;">TOTAL</td><td style="padding:10px 12px;text-align:right;font-weight:700;color:#16a34a;">${formatZar(total)}</td></tr></tfoot>
         </table>
         <div style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:18px;">
-          <p style="margin:0 0 8px;font-weight:700;font-size:14px;">Payment options</p>
-          <p style="margin:0;color:#374151;font-size:13px;">Pay securely by card from your GFA dashboard, or make an EFT using the details below.</p>
+          <p style="margin:0 0 8px;font-weight:700;font-size:14px;">EFT payment instructions</p>
+          <p style="margin:0;color:#374151;font-size:13px;">Please make an EFT using the details below, then submit the payment reference and optional proof through your GFA dashboard. Training is deployed after finance confirms the EFT.</p>
           <p style="margin:8px 0 0;color:#374151;font-size:13px;">Bank: <strong>${html(supplier.bank_name || "To be confirmed")}</strong></p>
           <p style="margin:4px 0 0;color:#374151;font-size:13px;">Account holder: ${html(supplier.bank_account_holder || supplier.legal_name)}</p>
           <p style="margin:4px 0 0;color:#374151;font-size:13px;">Account number: <strong>${html(supplier.bank_account || "To be confirmed")}</strong></p>

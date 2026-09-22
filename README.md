@@ -389,8 +389,31 @@ Apply Release 15 in Preview only after its preceding migrations. Verify with a s
 
 
 
+### Release 16 — Automatic Professional Truck Driver Certificate Issue
+
+Release 16 adds `supabase/migrations/20260916_r16_auto_certificate_issue.sql` after Releases 11–15. It replaces the new qualifying-completion `PENDING_REVIEW` path with an atomic GFA-only issuance procedure. BetterDriver remains responsible for emitting its signed completion evidence only after every required module is complete and every required quiz score is at least 4/5. GFA verifies the signed event and opaque mapping, allocates one canonical certificate number, records the automatic issuance and renders/stores the private official PDF before the exact-number public registry reports the certificate as active. The database procedure is idempotent by source event, so a retry returns the original certificate rather than allocating another number. The Version 2 contract remains disabled until its synthetic Preview acceptance has passed. This release is published on `feature/gfa-auto-certification` at `0bcc1c5`; it is not a claim of production deployment.
+
+### Release 17 — Release 2 QA Remediation and EFT-First Launch Catalogue
+
+Release 17 adds `supabase/migrations/20260920_r17_release2_qa_remediation.sql` after Release 16. It is a GFA-only migration and application change. The migration makes the approved **Professional Truck Driver Program** the only active, visible and available programme, with `price_corporate = 299`, `price_model = once_off` and no CPD frequency. All other course records remain preserved for future product work but are hidden and unavailable for new sales. The public pricing/programmes pages, client catalogue and both quotation endpoints fail closed to that approved programme. The launch purchase experience is EFT-first: the deferred card checkout is not displayed, clients submit EFT details and proof, and finance confirmation remains the gate before training deployment.
+
+The same release replaces the misleading admin **Approve & Go Live** error path with a deterministic quote-backed cohort lookup and one-invitation-per-driver reservation. A duplicate activation request reuses the existing invitation rather than generating a second magic link or sending a second notification. The cohort UI no longer offers a manual EFT bypass while a client payment is awaiting finance confirmation. Spreadsheet imports now skip and clearly report duplicate mobile/identity rows instead of updating an existing driver row.
+
+Apply the Release 17 migration in a non-production environment first. Verify that exactly one recognised PTDP course record exists before migration; the migration stops with a clear error if it cannot find `ptdp` or `professional-truck-driver`. `ALL_MIGRATIONS_RUN_ONCE.sql` is regenerated from `scripts/build_combined_migrations.sh` for a new or deliberately rebuilt non-production database only; do not run it against an existing environment. After deployment, configure only synthetic Preview credentials and fixtures, keep WhatsApp/email mocked or disabled, then run:
+
+```bash
+npm run type-check
+npm run build
+GFA_TEST_BASE_URL=https://your-preview.vercel.app \
+GFA_TEST_CLIENT_EMAIL=... \
+GFA_TEST_CLIENT_PASSWORD=... \
+npx playwright test tests/playwright/15-release2-launch-catalogue.spec.ts
+```
+
+For the state-changing cohort acceptance, use one new synthetic Preview cohort after the migration with `GFA_TEST_COHORT_DEPLOYMENT_ID` recorded locally and mocked delivery. Confirm: finance confirmation is required; one valid activation creates one enrolment/invitation per selected driver; the repeated activation reports the existing live cohort and sends no second message; and the recorded invitation count stays unchanged. The test fixture must never be a production company, driver, payment, certificate or delivery channel. Roll back application behaviour by reverting the release pull request; do not delete quotation, payment, invitation or audit records created during a controlled test.
+
 ### Final Preview Go-Live Acceptance Gate
 
 The integrated go-live branch includes `docs/testing/GFA_GO_LIVE_PREVIEW_E2E_PROTOCOL.md` and the guarded command `npm run test:e2e:go-live-preview`. The runner refuses the production GFA domain and refuses to start when any mandatory synthetic Preview fixture or secret is missing. It runs the complete Chromium Playwright suite only after TypeScript and production-build validation.
 
-A skipped mandatory test is not a pass. Before the final QA handover, provide a unique Preview URL, temporary synthetic administrator/client credentials, synthetic commercial/certificate fixtures, Preview-only signed assertions, no-send/mock WhatsApp and email configuration, and the evidence bundle specified by the protocol. Never commit test credentials, keys, fixture identifiers or generated reports.
+A skipped mandatory test is not a pass. Before the final QA handover, provide a unique Preview URL, temporary synthetic administrator/client credentials, synthetic commercial/certificate fixtures, Preview-only signed assertions, no-send/mock WhatsApp and email configuration, and the evidence bundle specified by the protocol. Set `GFA_TEST_CERTIFICATE_CONTRACT_CONFIGURED=true` only after Preview certificate keys and `ENABLE_GFA_CERTIFICATE_CONTRACT_V2` are configured; this enables the invalid-signature fail-closed check. Never commit test credentials, keys, fixture identifiers or generated reports.

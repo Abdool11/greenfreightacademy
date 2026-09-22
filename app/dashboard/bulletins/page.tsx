@@ -259,7 +259,7 @@ export default function BulletinsPage() {
   if (step === "payment") {
     const total = Math.round(urgentFee * 1.15);
     return (
-      <div className="max-w-2xl mx-auto py-12 px-4">
+      <div className="max-w-2xl mx-auto pb-12 pt-28 px-4">
         <div className="bg-[#0d1f14] border border-[#1a3a22] rounded-2xl p-8">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 bg-amber-500/20 rounded-full flex items-center justify-center">
@@ -349,7 +349,7 @@ export default function BulletinsPage() {
   // ── Submitted step ────────────────────────────────────────────────────────
   if (step === "submitted") {
     return (
-      <div className="max-w-2xl mx-auto py-12 px-4">
+      <div className="max-w-2xl mx-auto pb-12 pt-28 px-4">
         <div className="bg-[#0d1f14] border border-[#1a3a22] rounded-2xl p-8 text-center">
           <div className="w-16 h-16 bg-[#1a3a22] rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 className="w-8 h-8 text-[#4ade80]" />
@@ -418,7 +418,7 @@ export default function BulletinsPage() {
   const stepIndex = ["form", "audience", "review"].indexOf(step);
 
   return (
-    <div className="max-w-3xl mx-auto py-8 px-4">
+    <div className="max-w-3xl mx-auto pb-8 pt-28 px-4">
       {/* Header */}
       <div className="mb-8">
         <span className="text-xs font-semibold uppercase tracking-widest text-[#4ade80]">

@@ -35,7 +35,7 @@ export default function TermsPage() {
       <section style={{ marginBottom: "2rem" }}>
         <h2 style={{ fontSize: "1.2rem", fontWeight: 700, color: "#2ecc71", marginBottom: "0.75rem" }}>4. Payment and cancellation</h2>
         <p style={{ lineHeight: 1.7, color: "#cbd5e1" }}>
-          Monthly driver programme subscriptions are billed monthly with an initial 24-month agreement, thereafter month to month. Once-off programme fees are charged on enrolment. Cancellation requests must be submitted in writing with 30 days notice. Refunds are not provided for partially used subscription periods.
+          At launch, the Professional Truck Driver Program is charged at a once-off fee per enrolled driver, as recorded in the approved quotation. There are no monthly programme subscription fees at launch. Payment is made by EFT and training is made available only after GFA finance confirms the payment. Cancellation requests must be submitted in writing. Refund eligibility, where applicable, is assessed against the unused service and the approved quotation terms.
         </p>
       </section>
 

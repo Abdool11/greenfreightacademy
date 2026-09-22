@@ -65,19 +65,19 @@ export const PROGRAMMES: Programme[] = [
     shortDescription:
       "A comprehensive development programme that builds professional driving capability, safety discipline, and operational professionalism.",
     fullDescription:
-      "The Professional Truck Driver Programme develops drivers across safety, professionalism, fuel efficiency, vehicle care, and operational discipline. Includes training, evaluation, certification, and quarterly CPD. Designed for fleet-wide rollout at an adoption-friendly price point.",
+      "The Professional Truck Driver Program develops drivers across safety, professionalism, fuel efficiency, vehicle care, and operational discipline. It includes structured training, assessment and an official Professional Truck Driver Certificate when the required learning and pass criteria are completed.",
     outcomes: [
       "Improved safety discipline and incident reduction",
       "Better fuel efficiency and vehicle care",
       "Stronger professional identity and motivation",
-      "Recognised certification and CPD record",
+      "Official Professional Truck Driver Certificate on qualifying completion",
       "Useful evidence for RTMS and compliance reporting",
     ],
-    price: 75,
-    pricingModel: "monthly-per-driver",
-    priceLabel: "R75 per driver per month",
+    price: 299,
+    pricingModel: "once-off",
+    priceLabel: "R299 once-off per driver",
     deliveryModel: "online-self-paced",
-    durationLabel: "12-month programme with quarterly CPD",
+    durationLabel: "Self-paced foundational programme",
     available: true,
     status: "active",
   },
@@ -452,10 +452,6 @@ export const FOOTER_LINKS = [
     heading: "Programmes",
     links: [
       { label: "Professional Truck Driver", href: "/programmes#ptdp" },
-      { label: "Eco-Driver Training", href: "/programmes#eco-driver" },
-      { label: "Green Road Freight Management", href: "/programmes#road-freight-manager" },
-      { label: "Electric Truck Transformation", href: "/programmes#electric-truck" },
-      { label: "Green Freight Procurement", href: "/programmes#procurement" },
     ],
   },
   {

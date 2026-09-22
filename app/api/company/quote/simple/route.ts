@@ -36,15 +36,25 @@ export async function POST(req: NextRequest) {
     getSupplierProfile(),
   ]);
 
-  // Fetch course price
+  // The EFT-first launch accepts only the active, visible Professional Truck
+  // Driver Program catalogue record. This server-side check prevents a stale
+  // browser or crafted request from quoting a future programme.
   const { data: course } = await supabaseAdmin
     .from("courses")
-    .select("id, name, price_corporate")
+    .select("id, name, slug, price_corporate, price_model, is_active, is_visible, available, status")
     .eq("id", courseId)
+    .in("slug", ["ptdp", "professional-truck-driver"])
+    .eq("is_active", true)
+    .eq("is_visible", true)
+    .eq("available", true)
+    .eq("status", "active")
     .single();
 
   if (!course) {
-    return NextResponse.json({ error: "Course not found" }, { status: 404 });
+    return NextResponse.json({ error: "Only the Professional Truck Driver Program is available for the current launch." }, { status: 409 });
+  }
+  if (course.price_model !== "once_off" || Number(course.price_corporate) !== 299) {
+    return NextResponse.json({ error: "The launch programme catalogue is not configured for the approved R299 once-off price. Please contact GFA." }, { status: 503 });
   }
 
   const pricePerDriver = Number(course.price_corporate ?? 0);
@@ -164,7 +174,7 @@ export async function POST(req: NextRequest) {
         </div>
 
         <p style="color: #6b7280; font-size: 0.8125rem;">
-          You can pay online via card — just click <strong>"Pay Now"</strong> on your dashboard. Alternatively, pay via EFT using the bank details above and email your proof of payment to ${config.company_email || "info@greenfreightacademy.com"}.
+          Please pay by EFT using the bank details above, then submit your payment reference and optional proof through your GFA dashboard. Training becomes available only after finance confirms the EFT.
         </p>
       </div>
     </div>

@@ -7,6 +7,7 @@ import { Upload, Download, CheckCircle2, AlertCircle, Loader2, ArrowLeft, Users 
 
 interface ImportResult {
   imported: number;
+  duplicates: number;
   total: number;
   errors: { row: number; message: string }[];
 }
@@ -84,7 +85,8 @@ export default function ImportPage() {
               <div style={{ background: "#0d1520", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "1rem", padding: "2rem", textAlign: "center" }}>
                 <CheckCircle2 size={40} style={{ color: "#22c55e", margin: "0 auto 1rem", display: "block" }} />
                 <h3 style={{ margin: "0 0 0.5rem" }}>Import complete</h3>
-                <p style={{ color: "#9ca3af", marginBottom: "1.25rem" }}>{result.imported} of {result.total} driver rows imported successfully.</p>
+                <p style={{ color: "#9ca3af", marginBottom: "0.5rem" }}>{result.imported} of {result.total} driver rows imported successfully.</p>
+                {result.duplicates > 0 && <p style={{ color: "#fbbf24", margin: "0 0 1.25rem", fontSize: "0.8125rem" }}>{result.duplicates} duplicate row{result.duplicates === 1 ? " was" : "s were"} skipped. Existing driver records were not changed.</p>}
                 {result.errors.length > 0 && (
                   <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)", borderRadius: "0.625rem", padding: "0.875rem", marginBottom: "1.25rem", textAlign: "left" }}>
                     <p style={{ color: "#f87171", fontSize: "0.8125rem", margin: "0 0 0.5rem", fontWeight: 600 }}>Rows with errors:</p>

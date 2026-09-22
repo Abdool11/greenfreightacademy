@@ -31,6 +31,16 @@ export async function POST(req: NextRequest) {
 
   const imported: string[] = [];
   const errors: { row: number; message: string }[] = [];
+  const { data: existingDrivers, error: existingDriversError } = await supabaseAdmin
+    .from("drivers")
+    .select("mobile, id_number")
+    .eq("company_id", session.companyId);
+  if (existingDriversError) {
+    return NextResponse.json({ error: "Could not check the existing driver list before import." }, { status: 500 });
+  }
+  const existingMobiles = new Set((existingDrivers ?? []).map((driver) => normaliseSAMobile(driver.mobile ?? "")));
+  const existingIdentities = new Set((existingDrivers ?? []).map((driver) => String(driver.id_number ?? "").trim().toUpperCase()).filter(Boolean));
+  let duplicates = 0;
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -65,16 +75,28 @@ export async function POST(req: NextRequest) {
       errors.push({ row: rowNum, message: `Row ${rowNum}: ${identity.error}` });
       continue;
     }
+    if (existingMobiles.has(normalisedMobile)) {
+      duplicates += 1;
+      errors.push({ row: rowNum, message: `Row ${rowNum}: ${name} was not imported because this mobile number already belongs to a driver in your company.` });
+      continue;
+    }
+    if (existingIdentities.has(identity.normalised)) {
+      duplicates += 1;
+      errors.push({ row: rowNum, message: `Row ${rowNum}: ${name} was not imported because this ID or passport number already belongs to a driver in your company.` });
+      continue;
+    }
 
     // Split name into first/last
     const nameParts = name.split(" ");
     const firstName = nameParts[0];
     const lastName = nameParts.slice(1).join(" ") || "";
 
-    // Upsert driver (match on mobile + company)
+    // Insert only after duplicate checks. Existing entries are intentionally
+    // never updated by an import, so a spreadsheet cannot silently overwrite a
+    // driver record or create duplicate rows through a retry.
     const { data: driver, error } = await supabaseAdmin
       .from("drivers")
-      .upsert({
+      .insert({
         company_id: session.companyId,
         first_name: firstName,
         last_name: lastName,
@@ -85,9 +107,6 @@ export async function POST(req: NextRequest) {
         region: region || null,
         id_number: identity.normalised,
         status: "active",
-      }, {
-        onConflict: "company_id,mobile",
-        ignoreDuplicates: false,
       })
       .select("id")
       .single();
@@ -96,11 +115,14 @@ export async function POST(req: NextRequest) {
       errors.push({ row: rowNum, message: `Failed to import ${name}: ${error.message}` });
     } else {
       imported.push(driver.id);
+      existingMobiles.add(normalisedMobile);
+      existingIdentities.add(identity.normalised);
     }
   }
 
   return NextResponse.json({
     imported: imported.length,
+    duplicates,
     total: rows.length,
     errors,
   });

@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   Users, Award, Upload, CheckCircle2, Loader2, Send,
-  CreditCard, BarChart3, FileText, LogOut, RefreshCw, Bell, BookOpen, Zap, Target,
+  BarChart3, FileText, LogOut, RefreshCw, Bell, BookOpen, Zap, Target,
   UserPlus, Download, ChevronDown, ChevronRight, Landmark,
 } from "lucide-react";
 import CampaignSetupModal from "@/components/CampaignSetupModal";
@@ -119,7 +119,6 @@ export default function DashboardPage() {
   const [selectedNudges, setSelectedNudges] = useState<Set<string>>(new Set());
   const [quoting, setQuoting] = useState(false);
   const [quoteSent, setQuoteSent] = useState(false);
-  const [payingQuote, setPayingQuote] = useState<string | null>(null);
   const [deploying, setDeploying] = useState<string | null>(null);
   const [sendingNudge, setSendingNudge] = useState(false);
   const [nudgeSent, setNudgeSent] = useState(false);
@@ -137,7 +136,7 @@ export default function DashboardPage() {
   const [showBuyCredits, setShowBuyCredits] = useState(false);
   const [autoPopupChecked, setAutoPopupChecked] = useState(false);
   const [expandedQuoteId, setExpandedQuoteId] = useState<string | null>(null);
-  // All active courses for Buy Credits modal (not filtered to ptdp)
+  // The server returns only the approved launch programme.
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [programmeFilter, setProgrammeFilter] = useState("");
 
@@ -297,25 +296,6 @@ export default function DashboardPage() {
       setSelectedEnrolments({});
       await fetchData();
     } finally { setQuoting(false); }
-  };
-
-  const handlePayNow = async (quoteId: string) => {
-    setPayingQuote(quoteId);
-    try {
-      const res = await fetch("/api/paystack/initialize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quoteId }),
-      });
-      const data = await res.json();
-      if (res.ok && data.authorization_url) {
-        window.location.href = data.authorization_url;
-      } else {
-        alert(data.error || "Payment initialization failed. Please try again or contact support.");
-      }
-    } catch {
-      alert("Network error. Please try again.");
-    } finally { setPayingQuote(null); }
   };
 
   const handleDeploy = async (quoteId: string) => {
@@ -511,8 +491,8 @@ export default function DashboardPage() {
 
             {/* ── Guided enrolment start: reduces a complex matrix to one clear job ── */}
             <section style={{ marginBottom: "1.25rem", border: "1px solid rgba(34,197,94,0.24)", background: "linear-gradient(135deg, rgba(34,197,94,0.09), rgba(15,31,61,0.4))", borderRadius: "1rem", padding: "1.25rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" }}><div><span style={{ color: "#86efac", fontSize: "0.72rem", fontWeight: 800, letterSpacing: "0.06em" }}>START TRAINING</span><h2 style={{ margin: "0.3rem 0", fontSize: "1.15rem" }}>Add drivers, choose a programme, then get a formal quote</h2><p style={{ margin: 0, color: "#cbd5e1", fontSize: "0.85rem" }}>Your selected drivers and programme stay visible below. You can pay by card or EFT after reviewing the formal quote.</p></div><div style={{ color: "#94a3b8", fontSize: "0.8rem", textAlign: "right" }}><strong style={{ color: "#86efac" }}>1</strong> Add drivers &nbsp;→&nbsp; <strong style={{ color: "#86efac" }}>2</strong> Select programme &nbsp;→&nbsp; <strong style={{ color: "#86efac" }}>3</strong> Quote & pay &nbsp;→&nbsp; <strong style={{ color: "#86efac" }}>4</strong> Deploy</div></div>
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: "0.75rem", marginTop: "1rem" }}><div style={{ minWidth: "250px", flex: "1 1 250px" }}><label style={{ display: "block", color: "#cbd5e1", fontSize: "0.75rem", fontWeight: 800, marginBottom: "0.35rem" }}>Choose a programme to enrol</label><select value={programmeFilter} onChange={(event) => setProgrammeFilter(event.target.value)} style={{ width: "100%", background: "#0a1628", color: "#f8fafc", border: "1px solid rgba(255,255,255,0.16)", padding: "0.68rem", borderRadius: "0.5rem" }}><option value="">Show all active programmes</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.name}{course.price_corporate ? ` — R${Number(course.price_corporate).toLocaleString("en-ZA")} per driver` : ""}</option>)}</select></div>{totalSelected > 0 && <div style={{ background: "#0a1628", borderRadius: "0.6rem", padding: "0.65rem 0.85rem", fontSize: "0.82rem" }}><strong style={{ color: "#86efac" }}>{selectedDriverCount} driver{selectedDriverCount === 1 ? "" : "s"} · {totalSelected} enrolment{totalSelected === 1 ? "" : "s"}</strong><br /><span style={{ color: "#94a3b8" }}>Estimated total: R{estimatedTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })} incl. VAT</span></div>}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" }}><div><span style={{ color: "#86efac", fontSize: "0.72rem", fontWeight: 800, letterSpacing: "0.06em" }}>START TRAINING</span><h2 style={{ margin: "0.3rem 0", fontSize: "1.15rem" }}>Add drivers, select the Professional Truck Driver Program, then get a formal quote</h2><p style={{ margin: 0, color: "#cbd5e1", fontSize: "0.85rem" }}>The R299 per driver once-off programme is paid by EFT. Finance confirms the payment before training can be deployed.</p></div><div style={{ color: "#94a3b8", fontSize: "0.8rem", textAlign: "right" }}><strong style={{ color: "#86efac" }}>1</strong> Add drivers &nbsp;→&nbsp; <strong style={{ color: "#86efac" }}>2</strong> Select programme &nbsp;→&nbsp; <strong style={{ color: "#86efac" }}>3</strong> EFT & finance confirmation &nbsp;→&nbsp; <strong style={{ color: "#86efac" }}>4</strong> Deploy</div></div>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: "0.75rem", marginTop: "1rem" }}><div style={{ minWidth: "250px", flex: "1 1 250px" }}><label style={{ display: "block", color: "#cbd5e1", fontSize: "0.75rem", fontWeight: 800, marginBottom: "0.35rem" }}>Launch programme</label><select value={programmeFilter} onChange={(event) => setProgrammeFilter(event.target.value)} style={{ width: "100%", background: "#0a1628", color: "#f8fafc", border: "1px solid rgba(255,255,255,0.16)", padding: "0.68rem", borderRadius: "0.5rem" }}><option value="">Professional Truck Driver Program — R299 once-off per driver</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.name}{course.price_corporate ? ` — R${Number(course.price_corporate).toLocaleString("en-ZA")} once-off per driver` : ""}</option>)}</select></div>{totalSelected > 0 && <div style={{ background: "#0a1628", borderRadius: "0.6rem", padding: "0.65rem 0.85rem", fontSize: "0.82rem" }}><strong style={{ color: "#86efac" }}>{selectedDriverCount} driver{selectedDriverCount === 1 ? "" : "s"} · {totalSelected} enrolment{totalSelected === 1 ? "" : "s"}</strong><br /><span style={{ color: "#94a3b8" }}>Estimated total: R{estimatedTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })} incl. VAT</span></div>}</div>
             </section>
 
             {/* ── Demo tour discoverability banner (dismissable, localStorage-gated) ── */}
@@ -521,7 +501,7 @@ export default function DashboardPage() {
             {quoteSent && (
               <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "0.875rem", padding: "1rem 1.25rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.75rem", color: "#22c55e" }}>
                 <CheckCircle2 size={18} />
-                <span>Quote emailed to you. Click <strong>Pay Now</strong> below to pay securely via Paystack, then <strong>Deploy Training</strong>.</span>
+                <span>Quote emailed to you. Open <strong>Pay by EFT</strong> below, submit your payment details, then wait for finance confirmation before deploying training.</span>
               </div>
             )}
             {nudgeSent && (
@@ -696,7 +676,7 @@ export default function DashboardPage() {
                   </a>
                 </div>
               </div>
-              <p style={{ margin: "0 0 1.25rem", color: "#6b7280", fontSize: "0.875rem" }}>Pay for your quote via Paystack, then deploy training to send WhatsApp welcome messages to each driver.</p>
+              <p style={{ margin: "0 0 1.25rem", color: "#6b7280", fontSize: "0.875rem" }}>Pay by EFT, submit the payment reference and optional proof, then deploy training after finance confirms the payment.</p>
               {quotes.length === 0 ? (
                 <div style={{ background: "#0d1520", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: "0.875rem", padding: "2.5rem", textAlign: "center", color: "#4b5563" }}>
                   <FileText size={32} style={{ margin: "0 auto 0.75rem", display: "block" }} />
@@ -762,10 +742,6 @@ export default function DashboardPage() {
                               <Link href={`/dashboard/eft?quoteId=${quote.id}`} style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "rgba(59,130,246,0.11)", border: "1px solid rgba(96,165,250,0.3)", borderRadius: "0.5rem", padding: "0.5rem 0.875rem", color: "#93c5fd", fontSize: "0.8125rem", fontWeight: 700, textDecoration: "none" }}>
                                 <Landmark size={13} /> Pay by EFT
                               </Link>
-                              <button onClick={() => handlePayNow(quote.id)} disabled={payingQuote === quote.id} style={{ display: "flex", alignItems: "center", gap: "0.375rem", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "0.5rem", padding: "0.5rem 0.875rem", color: "#22c55e", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}>
-                                {payingQuote === quote.id ? <Loader2 size={13} className="animate-spin" /> : <CreditCard size={13} />}
-                                Pay by card
-                              </button>
                             </>
                           )}
                           {(quote.status === "paid" || quote.status === "approved") && !quote.deployed_at &&
