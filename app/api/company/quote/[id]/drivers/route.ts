@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { validateDriverIdentity } from "@/lib/driverIdentity";
+import { friendlyDriverInsertError } from "@/lib/driverErrors";
 
 const VALID_SA_PREFIXES = new Set([
   "60","61","62","63","64","65","66","67","68","69",
@@ -169,7 +170,7 @@ export async function PATCH(
         .single();
 
       if (insertErr || !newDriver) {
-        errors.push({ index: idx, field: "general", message: `Database error: ${insertErr?.message ?? "unknown"}` });
+        errors.push({ index: idx, field: "general", message: friendlyDriverInsertError(insertErr?.message) });
         continue;
       }
 

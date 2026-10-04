@@ -176,7 +176,12 @@ export default function DashboardPage() {
       if (driversData.companyName) setCompanyName(driversData.companyName);
       if (coursesRes.ok) {
         const cData = await coursesRes.json();
-        const allActive = (cData.programmes ?? []).filter((p: Course) => p.status === "active");
+        // The catalogue endpoint already restricts the response to active,
+        // visible and available launch programmes. Treating a missing status
+        // field as "not active" emptied this list, which removed every course
+        // from the Training Matrix and left the Get Quote button permanently
+        // disabled.
+        const allActive = (cData.programmes ?? []).filter((p: Course) => !p.status || p.status === "active");
         setAllCourses(allActive);
         setCourses(allActive);
       }

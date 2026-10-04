@@ -15,7 +15,7 @@ export async function GET() {
 
   const { data, error } = await supabaseAdmin
     .from("courses")
-    .select("id, name, slug, description, price_corporate, price_individual, price_model, duration_weeks, module_count, audience")
+    .select("id, name, slug, description, price_corporate, price_individual, price_model, duration_weeks, module_count, audience, status")
     .in("slug", LAUNCH_PROGRAMME_SLUGS)
     .eq("is_active", true)
     .eq("is_visible", true)

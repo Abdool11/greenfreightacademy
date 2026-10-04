@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Menu, X, ChevronRight, LogOut, User } from "lucide-react";
 import { NAV_LINKS, NAV_CTA_PRIMARY, NAV_CTA_SECONDARY, SITE_NAME, LOGO_URL } from "@/lib/constants";
 
@@ -18,6 +18,14 @@ export function Navigation() {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+
+  // The landing page deliberately floats a transparent header over its hero.
+  // Every other route renders its page heading directly beneath this fixed
+  // header, so the header must be opaque there or the two layers visually
+  // overlap and neither is readable.
+  const isHome = pathname === "/";
+  const headerSolid = scrolled || !isHome;
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -54,11 +62,11 @@ export function Navigation() {
         right: 0,
         zIndex: 50,
         transition: "background 0.3s ease, border-color 0.3s ease, backdrop-filter 0.3s ease",
-        background: scrolled
+        background: headerSolid
           ? "rgba(10, 22, 40, 0.92)"
           : "transparent",
-        backdropFilter: scrolled ? "blur(16px)" : "none",
-        borderBottom: scrolled
+        backdropFilter: headerSolid ? "blur(16px)" : "none",
+        borderBottom: headerSolid
           ? "1px solid rgba(255,255,255,0.08)"
           : "1px solid transparent",
       }}

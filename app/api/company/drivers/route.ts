@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { validateDriverIdentity } from "@/lib/driverIdentity";
+import { friendlyDriverInsertError } from "@/lib/driverErrors";
 
 // ─── Mobile validation ──────────────────────────────────────────────────────
 
@@ -184,7 +185,7 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (error) {
-        errors.push({ index: idx, field: "general", message: `Database error: ${error.message}` });
+        errors.push({ index: idx, field: "general", message: friendlyDriverInsertError(error.message) });
         continue;
       }
 
