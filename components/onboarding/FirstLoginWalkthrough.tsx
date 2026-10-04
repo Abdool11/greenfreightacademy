@@ -74,16 +74,17 @@ export default function FirstLoginWalkthrough() {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
-    const done = localStorage.getItem(STORAGE_KEY);
-    if (done) return;
-
-    // Show if ?welcome=1 in URL OR if this is a fresh session
+    // Only offer the walkthrough immediately after registration (?welcome=1).
+    // Gating on localStorage alone re-showed the tour to established users on
+    // any browser that had not stored the flag, which made the dashboard look
+    // like it was sending a returning user back to step 1.
     const params = new URLSearchParams(window.location.search);
-    if (params.get("welcome") === "1" || !done) {
-      // Small delay so the dashboard has time to render
-      const t = setTimeout(() => setActive(true), 800);
-      return () => clearTimeout(t);
-    }
+    if (params.get("welcome") !== "1") return;
+    if (localStorage.getItem(STORAGE_KEY)) return;
+
+    // Small delay so the dashboard has time to render
+    const t = setTimeout(() => setActive(true), 800);
+    return () => clearTimeout(t);
   }, []);
 
   const finish = () => {
@@ -126,6 +127,8 @@ export default function FirstLoginWalkthrough() {
           transform: "translate(-50%, -50%)",
           zIndex: 9999,
           width: "min(480px, 92vw)",
+          maxHeight: "90dvh",
+          overflowY: "auto",
           background: "linear-gradient(160deg, #0d1526 0%, #0f1f3d 100%)",
           border: "1px solid rgba(34,197,94,0.25)",
           borderRadius: "1rem",
