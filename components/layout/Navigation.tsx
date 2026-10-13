@@ -21,11 +21,13 @@ export function Navigation() {
   const pathname = usePathname();
 
   // The landing page deliberately floats a transparent header over its hero.
-  // Every other route renders its page heading directly beneath this fixed
-  // header, so the header must be opaque there or the two layers visually
-  // overlap and neither is readable.
-  const isHome = pathname === "/";
-  const headerSolid = scrolled || !isHome;
+  // Dashboard routes render their page heading directly beneath this fixed
+  // header, so the header must be opaque there or the two layers overlap.
+  // Marketing routes keep their original transparent-until-scroll behaviour:
+  // forcing them opaque hid the first heading on pages whose own top padding is
+  // smaller than the header height.
+  const isDashboard = pathname?.startsWith("/dashboard") ?? false;
+  const headerSolid = scrolled || isDashboard;
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
