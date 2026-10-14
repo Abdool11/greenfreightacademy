@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useDemo, TOUR_STEPS } from "@/lib/demo-context";
 import { X, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 
@@ -141,7 +141,17 @@ export default function DemoTourOverlay() {
     };
   }, [currentStep.targetId]);
 
-  const tooltipStyle = getTooltipStyle(targetRect, currentStep.position ?? "center");
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [cardHeight, setCardHeight] = useState(220);
+
+  // The card height varies per step. Clamping against a fixed 220px estimate
+  // positioned taller cards too low and pushed the Next button off-screen, so
+  // measure the rendered card and clamp against the real height.
+  useLayoutEffect(() => {
+    if (cardRef.current) setCardHeight(cardRef.current.offsetHeight);
+  }, [currentStepIndex, targetRect]);
+
+  const tooltipStyle = getTooltipStyle(targetRect, currentStep.position ?? "center", 380, cardHeight);
   const isFirst = currentStepIndex === 0;
   const isLast  = currentStepIndex === totalSteps - 1;
   const pct     = Math.round(((currentStepIndex + 1) / totalSteps) * 100);
@@ -167,6 +177,8 @@ export default function DemoTourOverlay() {
         boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
         padding: "1.5rem",
         fontFamily: "inherit",
+        maxHeight: "calc(100vh - 2rem)",
+        overflowY: "auto",
       }}>
 
         {/* Header row */}

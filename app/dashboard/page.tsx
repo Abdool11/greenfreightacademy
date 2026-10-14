@@ -354,7 +354,7 @@ export default function DashboardPage() {
   const toDeployDrivers = drivers.filter(d => d.enrolments.length === 0).length;
 
   return (
-    <div style={{ paddingTop: "5rem", background: "var(--color-slate-900)", minHeight: "100vh" }}>
+    <div style={{ background: "var(--color-slate-900)", minHeight: "100vh" }}>
       {/* Add Drivers Modal */}
       {showAddDriversModal && (
       <AddDriversModal
