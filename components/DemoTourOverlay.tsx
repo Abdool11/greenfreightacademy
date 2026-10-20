@@ -9,12 +9,13 @@ function getTooltipStyle(
   targetRect: DOMRect | null,
   position: string,
   tooltipW = 380,
-  tooltipH = 220
+  tooltipH = 220,
+  bottomInset = 0
 ): React.CSSProperties {
   if (!targetRect || position === "center") {
     return {
       position: "fixed",
-      top: "50%",
+      top: `calc(50% - ${bottomInset / 2}px)`,
       left: "50%",
       transform: "translate(-50%, -50%)",
       zIndex: 10001,
@@ -52,8 +53,11 @@ function getTooltipStyle(
   }
 
   // Clamp to viewport
+  // bottomInset reserves the fixed demo progress bar, which is painted above the
+  // card (zIndex 10002 vs 10001). Without it the card is clamped to the very
+  // bottom of the viewport and the bar covers the Back/Next buttons.
   left = Math.max(margin, Math.min(left, vw - tooltipW - margin));
-  top  = Math.max(margin, Math.min(top,  vh - tooltipH - margin));
+  top  = Math.max(margin, Math.min(top,  vh - tooltipH - margin - bottomInset));
 
   return { position: "fixed", top, left, zIndex: 10001, width: tooltipW };
 }
@@ -142,16 +146,22 @@ export default function DemoTourOverlay() {
   }, [currentStep.targetId]);
 
   const cardRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
   const [cardHeight, setCardHeight] = useState(220);
+  const [barHeight, setBarHeight] = useState(0);
 
   // The card height varies per step. Clamping against a fixed 220px estimate
   // positioned taller cards too low and pushed the Next button off-screen, so
-  // measure the rendered card and clamp against the real height.
+  // measure the rendered card and clamp against the real height. The progress
+  // bar is measured too so the clamp can keep the card clear of it.
   useLayoutEffect(() => {
     if (cardRef.current) setCardHeight(cardRef.current.offsetHeight);
-  }, [currentStepIndex, targetRect]);
+    if (barRef.current) setBarHeight(barRef.current.offsetHeight);
+    // Keyed on the step only: the spotlight re-measures targetRect every frame,
+    // so depending on it would read layout on every frame for no benefit.
+  }, [currentStepIndex]);
 
-  const tooltipStyle = getTooltipStyle(targetRect, currentStep.position ?? "center", 380, cardHeight);
+  const tooltipStyle = getTooltipStyle(targetRect, currentStep.position ?? "center", 380, cardHeight, barHeight);
   const isFirst = currentStepIndex === 0;
   const isLast  = currentStepIndex === totalSteps - 1;
   const pct     = Math.round(((currentStepIndex + 1) / totalSteps) * 100);
@@ -169,7 +179,7 @@ export default function DemoTourOverlay() {
       <SpotlightOverlay targetRect={targetRect} />
 
       {/* Tooltip card */}
-      <div style={{
+      <div ref={cardRef} style={{
         ...tooltipStyle,
         background: "#0f1f3d",
         border: "1px solid rgba(34,197,94,0.35)",
@@ -177,7 +187,7 @@ export default function DemoTourOverlay() {
         boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
         padding: "1.5rem",
         fontFamily: "inherit",
-        maxHeight: "calc(100vh - 2rem)",
+        maxHeight: `calc(100vh - ${barHeight + 32}px)`,
         overflowY: "auto",
       }}>
 
@@ -287,7 +297,7 @@ export default function DemoTourOverlay() {
       </div>
 
       {/* Fixed bottom progress bar */}
-      <div style={{
+      <div ref={barRef} style={{
         position: "fixed", bottom: 0, left: 0, right: 0,
         background: "#0a1628", borderTop: "1px solid rgba(255,255,255,0.06)",
         padding: "0.625rem 1.5rem",
