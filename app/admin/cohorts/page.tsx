@@ -7,7 +7,7 @@ import CohortApprovalActions from "./CohortApprovalActions";
 export default async function AdminCohortsPage() {
   await requireAdminSession();
 
-  const { data: deployments } = await supabaseAdmin
+  const { data: deployments, error: deploymentsError } = await supabaseAdmin
     .from("deployments")
     .select(`
       id, approval_status, payment_method, payment_reference, payment_amount,
@@ -58,6 +58,12 @@ export default async function AdminCohortsPage() {
             ))}
           </div>
         </div>
+
+        {deploymentsError && (
+          <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+            The cohort list could not be loaded. {deploymentsError.message}
+          </div>
+        )}
 
         <div className="space-y-4">
           {(deployments ?? []).map((d) => {

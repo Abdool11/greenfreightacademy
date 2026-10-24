@@ -422,6 +422,8 @@ Release 18 adds `supabase/migrations/20261024_r18_cohort_activation_gate.sql` af
 
 The migration changes the `deployments.approval_status` default to `payment_received` so a future insert cannot silently create a live cohort. Existing rows are deliberately untouched — cohorts already live remain live. `ALL_MIGRATIONS_RUN_ONCE.sql` is regenerated from `scripts/build_combined_migrations.sh`; use it only for a new or deliberately rebuilt non-production database.
 
+The migration also repairs schema drift. The Cohort Approvals board selects `payment_method`, `payment_reference`, `payment_amount` and `payment_confirmed_at` from `deployments`, but none of these columns existed in any migration — they were present only in the live database. A database rebuilt from this repository therefore returned a PostgREST error for the unknown columns, and because the board ignored the error it rendered as an empty list with no explanation. The columns are now added idempotently, and the board surfaces a load failure instead of silently showing nothing.
+
 No new environment variables are introduced by this release. Apply the migration before deploying the application, then verify on a non-production environment that: a paid quote registers a cohort without sending any invitation; the cohort appears on Admin → Cohort Approvals as **Payment Received**; activating it creates one invitation per driver and moves the cohort to **Live**; a repeated activation reuses the existing invitation and sends nothing further; and a quote whose items still contain unfilled placeholder slots activates its real drivers instead of failing.
 
 ### Final Preview Go-Live Acceptance Gate
