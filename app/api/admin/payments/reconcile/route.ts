@@ -90,6 +90,19 @@ export async function POST(req: NextRequest) {
   }
 
   if (decision === "confirm") {
+    // Move a cohort that was waiting on this payment into the activatable state, so
+    // the administrator can activate it on Admin -> Cohort Approvals. The deployment
+    // is normally created already paid, in which case this matches no rows; it exists
+    // to repair cohorts registered before payment, including historic pending rows.
+    const { error: cohortStateError } = await supabaseAdmin
+      .from("deployments")
+      .update({ approval_status: "payment_received", updated_at: new Date().toISOString() })
+      .eq("quote_id", quote.id)
+      .eq("approval_status", "pending_payment");
+    if (cohortStateError) {
+      console.error("Cohort activation state update failed:", cohortStateError);
+    }
+
     let creditAllocation: Awaited<ReturnType<typeof allocateQuoteCreditsOnce>>;
     try {
       creditAllocation = await allocateQuoteCreditsOnce({

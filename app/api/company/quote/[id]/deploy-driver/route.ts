@@ -86,6 +86,10 @@ export async function POST(
       .insert({
         quote_id: quoteId,
         company_id: session.companyId,
+        // A new cohort is never born live. Finance has confirmed payment by this
+        // point, so it is ready for activation, but a GFA administrator must still
+        // activate it on Admin -> Cohort Approvals before any link is sent.
+        approval_status: "payment_received",
         deployed_at: new Date().toISOString(),
       })
       .select("id")
@@ -95,6 +99,26 @@ export async function POST(
       return NextResponse.json({ error: "Failed to create deployment record" }, { status: 500 });
     }
     deploymentId = newDeployment.id;
+  }
+
+  // Cohort activation gate — payment confirmation is not authorisation to teach.
+  // Admin -> Cohort Approvals is the only path that sends driver invitations, so
+  // nothing is sent here until an administrator activates the cohort.
+  const { data: cohortGate, error: gateError } = await supabaseAdmin
+    .from("deployments")
+    .select("approval_status")
+    .eq("id", deploymentId)
+    .maybeSingle();
+
+  if (gateError) {
+    console.error("[deploy-driver] cohort activation gate lookup failed:", gateError);
+    return NextResponse.json({ error: "Could not verify the cohort activation state. No WhatsApp message was sent." }, { status: 500 });
+  }
+  if (cohortGate?.approval_status !== "live") {
+    return NextResponse.json({
+      error: "This cohort is registered and awaiting GFA activation. A GFA administrator must activate the cohort on Admin → Cohort Approvals before any training link is sent.",
+      pendingActivation: true,
+    }, { status: 409 });
   }
 
   // Validate the driver before reserving a credit or creating any external side effect.

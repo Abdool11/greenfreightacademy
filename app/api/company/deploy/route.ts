@@ -192,6 +192,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, alreadyDeployed: true });
   }
 
+  // Finance confirmation is a precondition for registration, not for teaching.
+  // This mirrors deploy-driver so the bulk path cannot bypass the payment gate.
+  if (!["paid", "approved", "deployed"].includes(quote.status)) {
+    return NextResponse.json({
+      error: "This quote is not yet paid. Finance must confirm payment before a cohort can be registered for activation.",
+    }, { status: 409 });
+  }
+
   // Deployment credits are reserved per driver below through the Release 10
   // database function. This is the only balance mutation in this workflow.
   const items: Array<{ driverId: string; driverName: string; courseIds: string[] }> =
@@ -248,6 +256,10 @@ export async function POST(req: NextRequest) {
         quote_id: quoteId,
         company_id: session.companyId,
         campaign_id: campaignId ?? null,
+        // A new cohort is never born live. Finance has confirmed payment by this
+        // point, so it is ready for activation, but a GFA administrator must still
+        // activate it on Admin -> Cohort Approvals before any link is sent.
+        approval_status: "payment_received",
         deployed_at: new Date().toISOString(),
       })
       .select("id")
@@ -258,6 +270,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to create deployment record" }, { status: 500 });
     }
     deploymentId = newDeployment.id;
+  }
+
+  // ── 4b. Cohort activation gate ────────────────────────────────────────────
+  // Payment confirmation is not authorisation to teach. Admin -> Cohort Approvals
+  // is the only path that sends driver invitations, so this route registers the
+  // cohort and sends nothing until an administrator activates it.
+  const { data: cohortGate, error: gateError } = await supabaseAdmin
+    .from("deployments")
+    .select("approval_status")
+    .eq("id", deploymentId)
+    .maybeSingle();
+
+  if (gateError) {
+    console.error("[GFA deploy] cohort activation gate lookup failed:", gateError);
+    return NextResponse.json({ error: "Could not verify the cohort activation state. No training links were sent." }, { status: 500 });
+  }
+  if (cohortGate?.approval_status !== "live") {
+    return NextResponse.json({
+      error: "This cohort is registered and awaiting GFA activation. A GFA administrator must activate the cohort on Admin → Cohort Approvals before any training link is sent.",
+      pendingActivation: true,
+    }, { status: 409 });
   }
 
   // ── 5. Process each driver ─────────────────────────────────────────────────
