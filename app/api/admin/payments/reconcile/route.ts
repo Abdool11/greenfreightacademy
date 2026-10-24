@@ -90,17 +90,41 @@ export async function POST(req: NextRequest) {
   }
 
   if (decision === "confirm") {
-    // Move a cohort that was waiting on this payment into the activatable state, so
-    // the administrator can activate it on Admin -> Cohort Approvals. The deployment
-    // is normally created already paid, in which case this matches no rows; it exists
-    // to repair cohorts registered before payment, including historic pending rows.
-    const { error: cohortStateError } = await supabaseAdmin
+    // Confirming payment is what activates a cohort. A cohort registered before
+    // payment is resolved here: it goes live when its invitations already exist,
+    // and otherwise waits as payment_received until the client deploys. A cohort
+    // registered after payment is activated by the deploy flow itself, so this
+    // matches nothing in the normal order.
+    const { data: cohort } = await supabaseAdmin
       .from("deployments")
-      .update({ approval_status: "payment_received", updated_at: new Date().toISOString() })
+      .select("id, approval_status")
       .eq("quote_id", quote.id)
-      .eq("approval_status", "pending_payment");
-    if (cohortStateError) {
-      console.error("Cohort activation state update failed:", cohortStateError);
+      .maybeSingle();
+
+    if (cohort && !["live", "completed"].includes(cohort.approval_status)) {
+      const { count: existingInvitations } = await supabaseAdmin
+        .from("driver_invitations")
+        .select("id", { count: "exact", head: true })
+        .eq("deployment_id", cohort.id)
+        .is("revoked_at", null);
+
+      const cohortActivated = (existingInvitations ?? 0) > 0;
+      const cohortIso = new Date().toISOString();
+      const { error: cohortStateError } = await supabaseAdmin
+        .from("deployments")
+        .update({
+          approval_status: cohortActivated ? "live" : "payment_received",
+          payment_method: "eft",
+          payment_reference: bankTransactionReference || null,
+          payment_amount: submittedAmount,
+          payment_confirmed_at: cohortIso,
+          ...(cohortActivated ? { approved_at: cohortIso, magic_links_sent_at: cohortIso } : {}),
+          updated_at: cohortIso,
+        })
+        .eq("id", cohort.id);
+      if (cohortStateError) {
+        console.error("Cohort activation state update failed:", cohortStateError);
+      }
     }
 
     let creditAllocation: Awaited<ReturnType<typeof allocateQuoteCreditsOnce>>;

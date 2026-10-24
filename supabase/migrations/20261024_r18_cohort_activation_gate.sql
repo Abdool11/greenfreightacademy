@@ -1,9 +1,10 @@
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Release 18 — Cohort Activation Gate
 -- ─────────────────────────────────────────────────────────────────────────────
--- Admin → Cohort Approvals is the only path that may send driver invitations.
--- A cohort becomes activatable once finance has confirmed payment, and becomes
--- live when the cohort is activated.
+-- A cohort activates on payment confirmation, not on a separate administrator
+-- approval. A cohort registered after payment goes live as soon as the client
+-- deploys it; a cohort registered before payment is activated by the finance
+-- reconciliation that confirms the payment.
 --
 -- Safe to run repeatedly.
 

@@ -256,9 +256,8 @@ export async function POST(req: NextRequest) {
         quote_id: quoteId,
         company_id: session.companyId,
         campaign_id: campaignId ?? null,
-        // A new cohort is never born live. Finance has confirmed payment by this
-        // point, so it is ready for activation, but a GFA administrator must still
-        // activate it on Admin -> Cohort Approvals before any link is sent.
+        // Payment is confirmed before this route can run. The cohort is marked live
+        // once its drivers have been processed, further down.
         approval_status: "payment_received",
         deployed_at: new Date().toISOString(),
       })
@@ -270,27 +269,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to create deployment record" }, { status: 500 });
     }
     deploymentId = newDeployment.id;
-  }
-
-  // ── 4b. Cohort activation gate ────────────────────────────────────────────
-  // Payment confirmation is not authorisation to teach. Admin -> Cohort Approvals
-  // is the only path that sends driver invitations, so this route registers the
-  // cohort and sends nothing until an administrator activates it.
-  const { data: cohortGate, error: gateError } = await supabaseAdmin
-    .from("deployments")
-    .select("approval_status")
-    .eq("id", deploymentId)
-    .maybeSingle();
-
-  if (gateError) {
-    console.error("[GFA deploy] cohort activation gate lookup failed:", gateError);
-    return NextResponse.json({ error: "Could not verify the cohort activation state. No training links were sent." }, { status: 500 });
-  }
-  if (cohortGate?.approval_status !== "live") {
-    return NextResponse.json({
-      error: "This cohort is registered and awaiting GFA activation. A GFA administrator must activate the cohort on Admin → Cohort Approvals before any training link is sent.",
-      pendingActivation: true,
-    }, { status: 409 });
   }
 
   // ── 5. Process each driver ─────────────────────────────────────────────────
@@ -471,6 +449,24 @@ export async function POST(req: NextRequest) {
     .from("quotes")
     .update({ status: "deployed", deployed_at: new Date().toISOString() })
     .eq("id", quoteId);
+
+  // Payment confirmation is what authorises training, and it has already happened,
+  // so the cohort is live as soon as its drivers have been processed.
+  const liveIso = new Date().toISOString();
+  const { error: liveError } = await supabaseAdmin
+    .from("deployments")
+    .update({
+      approval_status: "live",
+      approved_at: liveIso,
+      magic_links_sent_at: liveIso,
+      magic_links_sent_count: results.filter((result) => result.magicLink !== "").length,
+      updated_at: liveIso,
+    })
+    .eq("id", deploymentId)
+    .neq("approval_status", "completed");
+  if (liveError) {
+    console.error("[GFA deploy] cohort live transition failed:", liveError);
+  }
 
   // ── 7. Notify GFA admin by email ───────────────────────────────────────────
   const adminEmail = config.email_booking_to || "durbanroadtransport@gmail.com";

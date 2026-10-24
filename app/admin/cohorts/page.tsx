@@ -40,7 +40,7 @@ export default async function AdminCohortsPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold">Cohort Approvals</h1>
           <p className="text-slate-400 text-sm mt-1">
-            Review payment confirmations and approve cohorts to go live
+            Cohorts go live automatically once finance confirms payment. This board monitors that flow.
           </p>
         </div>
 
