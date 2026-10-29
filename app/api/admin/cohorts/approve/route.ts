@@ -36,6 +36,12 @@ function generateToken(): string {
   return crypto.randomBytes(32).toString("hex");
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID_PATTERN.test(value);
+}
+
 function normaliseSAMobile(mobile: string): string {
   const digits = mobile.replace(/\s+/g, "").replace(/[^0-9]/g, "");
   if (digits.startsWith("27")) return digits;
@@ -101,8 +107,13 @@ async function getCohortDriverRows(deployment: {
 
   if (quoteError) throw new Error("Could not load the cohort quotation.");
   const items = (quote?.items_json ?? []) as QuoteItem[];
-  const driverIds = [...new Set(items.map((item) => item.driverId).filter(Boolean))];
-  const courseIds = [...new Set(items.flatMap((item) => item.courseIds ?? []).filter(Boolean))];
+  // Quote items legitimately carry `placeholder-N` ids for slots the client has not
+  // filled yet. drivers.id and courses.id are UUID columns, so passing a placeholder
+  // into the filters below makes Postgres reject the entire query ("invalid input
+  // syntax for type uuid") and the activation fails as if the cohort were unreadable.
+  // Only real identifiers may reach the database.
+  const driverIds = [...new Set(items.map((item) => item.driverId).filter(isUuid))];
+  const courseIds = [...new Set(items.flatMap((item) => item.courseIds ?? []).filter(isUuid))];
   if (driverIds.length === 0 || courseIds.length === 0) return [];
 
   const [{ data: drivers, error: driversError }, { data: courses, error: coursesError }] = await Promise.all([

@@ -192,6 +192,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, alreadyDeployed: true });
   }
 
+  // Finance confirmation is a precondition for registration, not for teaching.
+  // This mirrors deploy-driver so the bulk path cannot bypass the payment gate.
+  if (!["paid", "approved", "deployed"].includes(quote.status)) {
+    return NextResponse.json({
+      error: "This quote is not yet paid. Finance must confirm payment before a cohort can be registered for activation.",
+    }, { status: 409 });
+  }
+
   // Deployment credits are reserved per driver below through the Release 10
   // database function. This is the only balance mutation in this workflow.
   const items: Array<{ driverId: string; driverName: string; courseIds: string[] }> =
@@ -248,6 +256,9 @@ export async function POST(req: NextRequest) {
         quote_id: quoteId,
         company_id: session.companyId,
         campaign_id: campaignId ?? null,
+        // Payment is confirmed before this route can run. The cohort is marked live
+        // once its drivers have been processed, further down.
+        approval_status: "payment_received",
         deployed_at: new Date().toISOString(),
       })
       .select("id")
@@ -438,6 +449,24 @@ export async function POST(req: NextRequest) {
     .from("quotes")
     .update({ status: "deployed", deployed_at: new Date().toISOString() })
     .eq("id", quoteId);
+
+  // Payment confirmation is what authorises training, and it has already happened,
+  // so the cohort is live as soon as its drivers have been processed.
+  const liveIso = new Date().toISOString();
+  const { error: liveError } = await supabaseAdmin
+    .from("deployments")
+    .update({
+      approval_status: "live",
+      approved_at: liveIso,
+      magic_links_sent_at: liveIso,
+      magic_links_sent_count: results.filter((result) => result.magicLink !== "").length,
+      updated_at: liveIso,
+    })
+    .eq("id", deploymentId)
+    .neq("approval_status", "completed");
+  if (liveError) {
+    console.error("[GFA deploy] cohort live transition failed:", liveError);
+  }
 
   // ── 7. Notify GFA admin by email ───────────────────────────────────────────
   const adminEmail = config.email_booking_to || "durbanroadtransport@gmail.com";

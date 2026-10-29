@@ -120,6 +120,7 @@ export default function DashboardPage() {
   const [quoting, setQuoting] = useState(false);
   const [quoteSent, setQuoteSent] = useState(false);
   const [deploying, setDeploying] = useState<string | null>(null);
+  const [deployNotice, setDeployNotice] = useState<{ quoteId: string; message: string } | null>(null);
   const [sendingNudge, setSendingNudge] = useState(false);
   const [nudgeSent, setNudgeSent] = useState(false);
   // Campaign setup modal
@@ -305,22 +306,29 @@ export default function DashboardPage() {
 
   const handleDeploy = async (quoteId: string) => {
     setDeploying(quoteId);
+    setDeployNotice(null);
     try {
       const res = await fetch("/api/company/deploy", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quoteId }) });
-      if (res.ok) {
-        // After deploying, gather the newly created enrolment IDs and show campaign setup
-        const driversRes = await fetch("/api/company/drivers");
-        const driversData = await driversRes.json();
-        const allEnrolments: string[] = (driversData.drivers ?? []).flatMap((d: { enrolments: Array<{ id: string; campaign_id?: string }> }) =>
-          d.enrolments.filter((e) => e.campaign_id === quoteId).map((e) => e.id)
-        );
-        if (allEnrolments.length > 0) {
-          setPendingDeployQuoteId(quoteId);
-          setPendingEnrolmentIds(allEnrolments);
-          setShowCampaignModal(true);
-        }
+      if (!res.ok) {
+        // The cohort is registered but not yet activated by GFA, or the request was
+        // refused. Nothing was sent either way, so say so rather than imply success.
+        const data = await res.json().catch(() => ({}));
+        setDeployNotice({ quoteId, message: data.error ?? "The cohort could not be registered. No training links were sent." });
         await fetchData();
+        return;
       }
+      // After deploying, gather the newly created enrolment IDs and show campaign setup
+      const driversRes = await fetch("/api/company/drivers");
+      const driversData = await driversRes.json();
+      const allEnrolments: string[] = (driversData.drivers ?? []).flatMap((d: { enrolments: Array<{ id: string; campaign_id?: string }> }) =>
+        d.enrolments.filter((e) => e.campaign_id === quoteId).map((e) => e.id)
+      );
+      if (allEnrolments.length > 0) {
+        setPendingDeployQuoteId(quoteId);
+        setPendingEnrolmentIds(allEnrolments);
+        setShowCampaignModal(true);
+      }
+      await fetchData();
     } finally { setDeploying(null); }
   };
 
@@ -755,6 +763,12 @@ export default function DashboardPage() {
                               {deploying === quote.id ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
                               Deploy Training
                             </button>
+                          )}
+                          {deployNotice?.quoteId === quote.id && (
+                            <div style={{ marginTop: "0.75rem", fontSize: "0.75rem", color: "#fca5a5", display: "flex", alignItems: "flex-start", gap: "0.375rem" }}>
+                              <span style={{ flexShrink: 0 }}>⚠️</span>
+                              <span>{deployNotice.message}</span>
+                            </div>
                           )}
                           {(quote.status === "deployed" ||
                             (quote.items_json && quote.items_json.length > 0 && quote.items_json.every((item) => item.deployedAt))) && (

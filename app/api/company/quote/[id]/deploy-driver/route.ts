@@ -86,6 +86,9 @@ export async function POST(
       .insert({
         quote_id: quoteId,
         company_id: session.companyId,
+        // Payment is confirmed before this route can run. The cohort is marked live
+        // once this driver is deployed, further down.
+        approval_status: "payment_received",
         deployed_at: new Date().toISOString(),
       })
       .select("id")
@@ -249,6 +252,29 @@ export async function POST(
       .eq("quote_id", quoteId)
       .eq("driver_id", driverId);
     return NextResponse.json({ error: "Driver deployment could not be recorded. No WhatsApp message was sent." }, { status: 500 });
+  }
+
+  // Payment confirmation is what authorises training, and it has already happened,
+  // so the cohort is live as soon as a driver is deployed.
+  const { count: liveInvitationCount } = await supabaseAdmin
+    .from("driver_invitations")
+    .select("id", { count: "exact", head: true })
+    .eq("deployment_id", deploymentId)
+    .is("revoked_at", null);
+
+  const { error: liveError } = await supabaseAdmin
+    .from("deployments")
+    .update({
+      approval_status: "live",
+      approved_at: deployedAt,
+      magic_links_sent_at: deployedAt,
+      magic_links_sent_count: liveInvitationCount ?? 0,
+      updated_at: deployedAt,
+    })
+    .eq("id", deploymentId)
+    .neq("approval_status", "completed");
+  if (liveError) {
+    console.error("[deploy-driver] cohort live transition failed:", liveError);
   }
 
   await supabaseAdmin
