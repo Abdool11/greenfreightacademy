@@ -197,11 +197,14 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Auto-open Buy Credits modal when credits are 0 and no pending quotes
+  // Auto-open Buy Credits modal when credits are 0 and no pending quotes.
+  // The check runs once on first load and latches either way, so later data
+  // refreshes (e.g. after deploying a paid quote) cannot trigger the popup.
   useEffect(() => {
-    if (!loading && !autoPopupChecked && creditBalance === 0 && pendingQuoteCount === 0) {
+    if (loading || autoPopupChecked) return;
+    setAutoPopupChecked(true);
+    if (creditBalance === 0 && pendingQuoteCount === 0) {
       setShowBuyCredits(true);
-      setAutoPopupChecked(true);
     }
   }, [loading, creditBalance, pendingQuoteCount, autoPopupChecked]);
 
