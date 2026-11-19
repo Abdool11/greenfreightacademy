@@ -197,16 +197,21 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Auto-open Buy Credits modal when credits are 0 and no pending quotes.
-  // The check runs once on first load and latches either way, so later data
-  // refreshes (e.g. after deploying a paid quote) cannot trigger the popup.
+  // Auto-open Buy Credits modal only for brand-new companies: zero credits,
+  // zero pending quotes, and no quote activity at all. The check runs once on
+  // first load and latches either way; a dismissed flag persists in
+  // localStorage so refreshes and tab switches cannot reopen the popup.
   useEffect(() => {
     if (loading || autoPopupChecked) return;
     setAutoPopupChecked(true);
-    if (creditBalance === 0 && pendingQuoteCount === 0) {
+    const dismissed =
+      typeof window !== "undefined" &&
+      window.localStorage.getItem("gfa-quote-popup-dismissed") === "1";
+    if (!dismissed && creditBalance === 0 && pendingQuoteCount === 0 && quotes.length === 0) {
       setShowBuyCredits(true);
+      window.localStorage.setItem("gfa-quote-popup-dismissed", "1");
     }
-  }, [loading, creditBalance, pendingQuoteCount, autoPopupChecked]);
+  }, [loading, creditBalance, pendingQuoteCount, quotes.length, autoPopupChecked]);
 
   // Poll quotes for 30s after load to catch payment status updates
   useEffect(() => {
